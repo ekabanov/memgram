@@ -130,7 +130,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func openMainWindow() {
         if mainWindow == nil {
-            let hostingController = NSHostingController(rootView: MainWindowPlaceholderView())
+            let hostingController = NSHostingController(rootView: MainWindowView())
             let window = NSWindow(contentViewController: hostingController)
             window.title = "Memgram"
             window.setContentSize(NSSize(width: 900, height: 600))
