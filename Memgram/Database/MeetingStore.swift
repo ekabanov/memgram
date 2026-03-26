@@ -78,6 +78,24 @@ final class MeetingStore {
         }
     }
 
+    func renameSpeaker(_ oldName: String, to newName: String, inMeeting meetingId: String) throws {
+        try db.write { db in
+            try db.execute(
+                sql: "UPDATE segments SET speaker = ? WHERE meeting_id = ? AND speaker = ?",
+                arguments: [newName, meetingId, oldName]
+            )
+        }
+    }
+
+    func renameSpeakerGlobally(_ oldName: String, to newName: String) throws {
+        try db.write { db in
+            try db.execute(
+                sql: "UPDATE segments SET speaker = ? WHERE speaker = ?",
+                arguments: [newName, oldName]
+            )
+        }
+    }
+
     /// Discards a meeting that is currently recording (e.g. on crash recovery).
     /// Use `deleteMeeting` to remove a completed meeting from history.
     func discardMeeting(_ meetingId: String) throws {
