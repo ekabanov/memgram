@@ -130,7 +130,7 @@ struct MeetingDetailView: View {
         let trimmed = editableTitle.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { isEditingTitle = false; return }
         try? MeetingStore.shared.updateTitle(meetingId, title: trimmed)
-        isEditingTitle = false
+        load()
     }
 }
 
