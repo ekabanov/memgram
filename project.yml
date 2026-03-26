@@ -2,7 +2,7 @@ name: Memgram
 options:
   bundleIdPrefix: com.memgram
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "14.0"
   defaultConfig: Debug
   xcodeVersion: "15"
   groupSortPosition: top
@@ -54,7 +54,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.memgram.app
         SWIFT_VERSION: "5.9"
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
         SWIFT_STRICT_CONCURRENCY: minimal
@@ -66,8 +66,6 @@ targets:
       - package: ZIPFoundation
         product: ZIPFoundation
       - package: MLXSwiftExamples
-        product: MLXLLM
-      - package: MLXSwiftExamples
-        product: MLXLMCommon
+        product: LLM
     scheme:
       testTargets: []

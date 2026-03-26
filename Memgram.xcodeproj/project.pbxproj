@@ -17,7 +17,6 @@
 		2DEFA9ECB0A66429A958E4B8 /* MeetingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CADF3A54BCED319651C9AC /* MeetingStore.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
 		3FAC792296A3AEA4A1F22AEE /* MLXProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2EC2587DEF3BE1B93D911C9 /* MLXProvider.swift */; };
-		AA11BB22CC33DD44EE55FF66 /* QwenMLXProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC33DD44EE55FF6677AA /* QwenMLXProvider.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
@@ -33,7 +32,8 @@
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
 		BE8B254989015D617A0BA897 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = B2036FE2180B0C88D6470DDE /* ZIPFoundation */; };
-		C1868B2895C1401C2E77FAA5 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 53BD9539689CB76F94BBDACC /* MLXLLM */; };
+		BFE28D65FA549CF3BA03EB01 /* QwenMLXProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */; };
+		C1868B2895C1401C2E77FAA5 /* LLM in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2FB6C5104C50E62453DCC6 /* LLM */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
@@ -77,6 +77,7 @@
 		8B079BA5413B938636C31EC9 /* RecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSession.swift; sourceTree = "<group>"; };
 		8B42916D4665E4E55C140260 /* MeetingSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSegment.swift; sourceTree = "<group>"; };
 		9272F36873A483ABC9FDCB0F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenMLXProvider.swift; sourceTree = "<group>"; };
 		95BDF9934A5067BEC5703004 /* StereoMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StereoMixer.swift; sourceTree = "<group>"; };
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -88,7 +89,6 @@
 		CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerRenameView.swift; sourceTree = "<group>"; };
 		D2EC2587DEF3BE1B93D911C9 /* MLXProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXProvider.swift; sourceTree = "<group>"; };
-		BB22CC33DD44EE55FF6677AA /* QwenMLXProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenMLXProvider.swift; sourceTree = "<group>"; };
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
 		E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
@@ -107,7 +107,7 @@
 				11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */,
 				7FA883EF3295076E0BBDB8A2 /* SwiftWhisper in Frameworks */,
 				BE8B254989015D617A0BA897 /* ZIPFoundation in Frameworks */,
-				C1868B2895C1401C2E77FAA5 /* MLXLLM in Frameworks */,
+				C1868B2895C1401C2E77FAA5 /* LLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,8 +202,8 @@
 				68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */,
 				D2EC2587DEF3BE1B93D911C9 /* MLXProvider.swift */,
 				4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */,
-				BB22CC33DD44EE55FF6677AA /* QwenMLXProvider.swift */,
 				71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */,
+				9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */,
 				9B5DFF25E171256C015392B0 /* SearchEngine.swift */,
 				8009E920FB91831616BDC1FD /* SummaryEngine.swift */,
 			);
@@ -301,7 +301,7 @@
 				F7F968E28E3536B2BD9133D2 /* GRDB */,
 				F3708B7169D30B983BA721A1 /* SwiftWhisper */,
 				B2036FE2180B0C88D6470DDE /* ZIPFoundation */,
-				53BD9539689CB76F94BBDACC /* MLXLLM */,
+				9E2FB6C5104C50E62453DCC6 /* LLM */,
 			);
 			productName = Memgram;
 			productReference = 9B83A48D9B5013FC9151290B /* Memgram.app */;
@@ -376,10 +376,10 @@
 				D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */,
 				15A508C1BFE79B2C91F22FF5 /* OllamaProvider.swift in Sources */,
 				833A3C45383F91821935CB27 /* OnboardingView.swift in Sources */,
-				AA11BB22CC33DD44EE55FF66 /* QwenMLXProvider.swift in Sources */,
 				F4079DD0A1D5E98E12EE09D4 /* OpenAIProvider.swift in Sources */,
 				F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */,
 				501FEB83850E856B56431C2B /* PopoverView.swift in Sources */,
+				BFE28D65FA549CF3BA03EB01 /* QwenMLXProvider.swift in Sources */,
 				326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */,
 				2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */,
 				29B9E8EA107ACD884B77613A /* SearchEngine.swift in Sources */,
@@ -619,7 +619,7 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		53BD9539689CB76F94BBDACC /* MLXLLM */ = {
+		9E2FB6C5104C50E62453DCC6 /* LLM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 95AA3FE33531F063E9CFA4B3 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
 			productName = LLM;
