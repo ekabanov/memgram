@@ -54,9 +54,9 @@ final class RecordingSession: ObservableObject {
         )
         currentMeetingId = meeting.id
 
-        if let modelURL = WhisperModelManager.shared.currentModelURL {
-            try? transcriptionEngine.prepare(modelURL: modelURL)
-        }
+        // Load WhisperKit model (downloads if not cached — first run may take a moment)
+        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
+        try? await transcriptionEngine.prepare(modelName: modelName)
         transcriptionEngine.reset()
         segments = []
 

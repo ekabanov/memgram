@@ -12,11 +12,8 @@ packages:
   GRDB:
     url: https://github.com/groue/GRDB.swift
     from: "6.0.0"
-  SwiftWhisper:
-    url: https://github.com/exPHAT/SwiftWhisper
-    branch: master
-  ZIPFoundation:
-    url: https://github.com/weichsel/ZIPFoundation
+  WhisperKit:
+    url: https://github.com/argmaxinc/WhisperKit
     from: "0.9.0"
   MLXSwiftExamples:
     url: https://github.com/ml-explore/mlx-swift-examples
@@ -26,7 +23,7 @@ targets:
   Memgram:
     type: application
     platform: macOS
-    deploymentTarget: "13.0"
+    deploymentTarget: "14.0"
     sources:
       - path: Memgram
         excludes:
@@ -61,10 +58,8 @@ targets:
     dependencies:
       - package: GRDB
         product: GRDB
-      - package: SwiftWhisper
-        product: SwiftWhisper
-      - package: ZIPFoundation
-        product: ZIPFoundation
+      - package: WhisperKit
+        product: WhisperKit
       - package: MLXSwiftExamples
         product: LLM
     scheme:

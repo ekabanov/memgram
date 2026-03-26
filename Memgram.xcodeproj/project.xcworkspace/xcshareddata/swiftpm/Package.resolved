@@ -1,5 +1,5 @@
 {
-  "originHash" : "b63e1fd2c672f9b670100d0979a7f9452f41db23801c1434fc77ec981e2ff128",
+  "originHash" : "03b7f922d9b5dab2dfaac2cf830305f5f6f3e09fe599eaaa3cf9c530609c98d1",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -83,21 +83,12 @@
       }
     },
     {
-      "identity" : "swiftwhisper",
+      "identity" : "whisperkit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/exPHAT/SwiftWhisper",
+      "location" : "https://github.com/argmaxinc/WhisperKit",
       "state" : {
-        "branch" : "master",
-        "revision" : "c340197966ebd264f3135d3955874b40f8ed58bc"
-      }
-    },
-    {
-      "identity" : "zipfoundation",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/weichsel/ZIPFoundation",
-      "state" : {
-        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
-        "version" : "0.9.20"
+        "revision" : "3900754c847a86f4b03df7e0a772933613d79c67",
+        "version" : "0.14.1"
       }
     }
   ],

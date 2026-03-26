@@ -1,6 +1,6 @@
 import AVFoundation
 import Combine
-import SwiftWhisper
+import WhisperKit
 
 enum AudioChannel: String {
     case microphone = "microphone"
@@ -19,11 +19,10 @@ struct TranscriptSegment: Identifiable {
 
 final class TranscriptionEngine {
 
-    private var whisper: Whisper?
+    private var whisperKit: WhisperKit?
     private let subject = PassthroughSubject<TranscriptSegment, Never>()
     private var accumulatedSeconds: Double = 0
 
-    // Serial queue for pending chunks — prevents instanceBusy by processing one at a time.
     private struct PendingChunk {
         let samples: [Float]
         let leftEnergy: Float
@@ -45,19 +44,14 @@ final class TranscriptionEngine {
         subject.eraseToAnyPublisher()
     }
 
-    func prepare(modelURL: URL) throws {
-        let w = Whisper(fromFileURL: modelURL)
-        let isEnglishOnly = modelURL.lastPathComponent.contains(".en.")
-        if isEnglishOnly {
-            w.params.language = .english
-        } else {
-            w.params.language = .auto
-        }
-        w.params.n_threads = Int32(max(1, ProcessInfo.processInfo.activeProcessorCount - 1))
-        w.params.no_context = false
-        w.params.suppress_blank = true
-        self.whisper = w
-        print("[TranscriptionEngine] Loaded model: \(modelURL.lastPathComponent) | language: \(isEnglishOnly ? "english" : "auto") | threads: \(w.params.n_threads)")
+    /// Load (and if needed download) the WhisperKit model. Called before recording starts.
+    func prepare(modelName: String) async throws {
+        print("[TranscriptionEngine] Loading WhisperKit model: \(modelName)")
+        whisperKit = try await WhisperKit(
+            model: modelName,
+            verbose: false
+        )
+        print("[TranscriptionEngine] ✓ WhisperKit ready — model: \(modelName)")
     }
 
     func reset() {
@@ -67,9 +61,8 @@ final class TranscriptionEngine {
     }
 
     /// Called with each 30s stereo chunk from StereoMixer (left=mic, right=system).
-    /// Enqueues the chunk; transcription runs serially so Whisper is never called while busy.
     func transcribe(_ buffer: AVAudioPCMBuffer) {
-        guard whisper != nil else { return }
+        guard whisperKit != nil else { return }
 
         let leftEnergy  = channelRMS(buffer, channel: 0)
         let rightEnergy = channelRMS(buffer, channel: 1)
@@ -78,47 +71,58 @@ final class TranscriptionEngine {
         let chunkStart = accumulatedSeconds
         accumulatedSeconds += Double(buffer.frameLength) / buffer.format.sampleRate
 
-        let chunk = PendingChunk(samples: samples, leftEnergy: leftEnergy,
-                                 rightEnergy: rightEnergy, chunkStart: chunkStart)
-        pendingChunks.append(chunk)
+        pendingChunks.append(PendingChunk(
+            samples: samples, leftEnergy: leftEnergy,
+            rightEnergy: rightEnergy, chunkStart: chunkStart
+        ))
         drainIfIdle()
     }
 
     private func drainIfIdle() {
-        guard !isTranscribing, !pendingChunks.isEmpty, let whisper else { return }
+        guard !isTranscribing, !pendingChunks.isEmpty, let whisperKit else { return }
         let chunk = pendingChunks.removeFirst()
         isTranscribing = true
         Task { [weak self] in
             guard let self else { return }
             do {
-                let segments = try await whisper.transcribe(audioFrames: chunk.samples)
-                for seg in segments {
-                    let text = seg.text.trimmingCharacters(in: .whitespaces)
-                    guard !text.isEmpty else { continue }
+                let options = DecodingOptions(
+                    task: .transcribe,
+                    language: nil,   // auto-detect
+                    temperature: 0
+                )
+                let results: [TranscriptionResult] = try await whisperKit.transcribe(
+                    audioArray: chunk.samples,
+                    decodeOptions: options
+                ) ?? []
 
-                    let startSec = chunk.chunkStart + Double(seg.startTime) / 1000.0
-                    let endSec   = chunk.chunkStart + Double(seg.endTime)   / 1000.0
+                for result in results {
+                    for seg in result.segments {
+                        let text = seg.text.trimmingCharacters(in: .whitespaces)
+                        guard !text.isEmpty else { continue }
 
-                    let (speaker, channel) = self.determineSpeaker(
-                        text: text,
-                        leftEnergy: chunk.leftEnergy,
-                        rightEnergy: chunk.rightEnergy
-                    )
-                    let cleanText = Self.stripDiarizationTags(text)
-                    guard !cleanText.isEmpty else { continue }
+                        let startSec = chunk.chunkStart + Double(seg.start)
+                        let endSec   = chunk.chunkStart + Double(seg.end)
 
-                    let segment = TranscriptSegment(
-                        id: UUID(),
-                        startSeconds: startSec,
-                        endSeconds: endSec,
-                        text: cleanText,
-                        speaker: speaker,
-                        channel: channel
-                    )
-                    self.subject.send(segment)
+                        let (speaker, channel) = self.determineSpeaker(
+                            text: text,
+                            leftEnergy: chunk.leftEnergy,
+                            rightEnergy: chunk.rightEnergy
+                        )
+                        let cleanText = Self.stripDiarizationTags(text)
+                        guard !cleanText.isEmpty else { continue }
+
+                        self.subject.send(TranscriptSegment(
+                            id: UUID(),
+                            startSeconds: startSec,
+                            endSeconds: endSec,
+                            text: cleanText,
+                            speaker: speaker,
+                            channel: channel
+                        ))
+                    }
                 }
             } catch {
-                // Non-fatal — skip chunk
+                print("[TranscriptionEngine] Chunk failed: \(error)")
             }
             self.isTranscribing = false
             if self.pendingChunks.isEmpty {
@@ -134,7 +138,6 @@ final class TranscriptionEngine {
     private func determineSpeaker(text: String, leftEnergy: Float, rightEnergy: Float) -> (String, AudioChannel) {
         if text.contains("[SPEAKER_00]") { return ("You", .microphone) }
         if text.contains("[SPEAKER_01]") { return ("Remote", .system) }
-
         let threshold: Float = 1.2
         if leftEnergy > rightEnergy * threshold  { return ("You", .microphone) }
         if rightEnergy > leftEnergy * threshold  { return ("Remote", .system) }
@@ -156,7 +159,6 @@ final class TranscriptionEngine {
         let frames = Int(buffer.frameLength)
         let channelCount = Int(buffer.format.channelCount)
         guard channelCount > 0, frames > 0 else { return nil }
-
         var mono = [Float](repeating: 0, count: frames)
         for ch in 0..<channelCount {
             for i in 0..<frames { mono[i] += channels[ch][i] }

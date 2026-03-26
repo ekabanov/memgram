@@ -1,11 +1,12 @@
 import SwiftUI
+import WhisperKit
 
 struct ModelDownloadView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var modelManager = WhisperModelManager.shared
     @State private var selectedModel: WhisperModel = WhisperModelManager.shared.selectedModel
-    @State private var downloadError: String?
-    @State private var isDownloading = false
+    @State private var isPrewarming = false
+    @State private var prewarmStatus = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,30 +25,27 @@ struct ModelDownloadView: View {
                 .font(.system(size: 36))
                 .foregroundStyle(.blue, .purple)
 
-            VStack(spacing: 8) {
-                Text("Download Transcription Model")
+            VStack(spacing: 6) {
+                Text("Transcription Model")
                     .font(.title3.bold())
-                Text("Memgram uses Whisper to transcribe speech locally.\nNo audio ever leaves your Mac.")
+                Text("WhisperKit downloads and caches models automatically on first use.\nAll processing is local — no audio leaves your Mac.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
 
-            if isDownloading {
-                downloadingView
-            } else {
-                modelPicker
-            }
+            modelPicker
 
-            if let error = downloadError {
-                Text(error)
+            if !prewarmStatus.isEmpty {
+                Text(prewarmStatus)
                     .font(.caption)
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
+                    .foregroundColor(prewarmStatus.hasPrefix("✓") ? .green : .secondary)
             }
         }
         .padding(16)
     }
+
+    // MARK: - Model picker (grouped)
 
     private struct ModelGroup {
         let title: String
@@ -77,15 +75,8 @@ struct ModelDownloadView: View {
                                 Image(systemName: selectedModel == model ? "checkmark.circle.fill" : "circle")
                                     .foregroundColor(selectedModel == model ? .accentColor : Color(NSColor.separatorColor))
                                     .frame(width: 18)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(model.displayName)
-                                        .font(.body)
-                                    if modelManager.isDownloaded(model) {
-                                        Text(modelManager.isCoreMLReady(model) ? "Downloaded + CoreML" : "Downloaded")
-                                            .font(.caption)
-                                            .foregroundColor(.green)
-                                    }
-                                }
+                                Text(model.displayName)
+                                    .font(.body)
                                 Spacer()
                             }
                             .contentShape(Rectangle())
@@ -100,77 +91,50 @@ struct ModelDownloadView: View {
                     }
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(8)
-                    .padding(.horizontal, 0)
                 }
             }
         }
         .frame(maxHeight: 340)
     }
 
-    private var downloadingView: some View {
-        VStack(spacing: 10) {
-            ProgressView(value: modelManager.downloadProgress)
-                .progressViewStyle(.linear)
-            HStack {
-                Text("\(modelManager.downloadPhase.isEmpty ? "Downloading" : modelManager.downloadPhase)…")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text("\(Int(modelManager.downloadProgress * 100))%")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
+    // MARK: - Footer
 
     private var footer: some View {
         HStack {
-            if modelManager.isModelReady && !isDownloading {
-                Button("Skip") {
-                    closeSheet()
-                }
+            Button("Skip") { closeSheet() }
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
-            }
             Spacer()
-            if isDownloading {
-                Button("Cancel") {
-                    modelManager.cancelDownload()
-                    isDownloading = false
-                }
-                .buttonStyle(.bordered)
-            } else if modelManager.isDownloaded(selectedModel) {
-                Button("Use \(selectedModel.rawValue)") {
-                    modelManager.selectModel(selectedModel)
-                    closeSheet()
-                }
-                .buttonStyle(.borderedProminent)
-            } else {
-                Button("Download") {
-                    modelManager.selectModel(selectedModel)
-                    startDownload()
-                }
-                .buttonStyle(.borderedProminent)
+            Button(isPrewarming ? "Loading…" : "Pre-load Model") {
+                prewarm()
             }
+            .buttonStyle(.bordered)
+            .disabled(isPrewarming)
+            Button("Use \(selectedModel.rawValue)") {
+                modelManager.selectModel(selectedModel)
+                closeSheet()
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 
-    private func startDownload() {
-        isDownloading = true
-        downloadError = nil
+    // MARK: - Actions
+
+    private func prewarm() {
+        modelManager.selectModel(selectedModel)
+        isPrewarming = true
+        prewarmStatus = "Downloading and compiling model…"
         Task {
             do {
-                try await modelManager.downloadSelectedModel()
+                _ = try await WhisperKit(model: selectedModel.whisperKitName, verbose: false)
                 await MainActor.run {
-                    isDownloading = false
-                    closeSheet()
+                    isPrewarming = false
+                    prewarmStatus = "✓ Model ready"
                 }
-            } catch is CancellationError {
-                isDownloading = false
             } catch {
                 await MainActor.run {
-                    isDownloading = false
-                    downloadError = error.localizedDescription
+                    isPrewarming = false
+                    prewarmStatus = "✗ \(error.localizedDescription)"
                 }
             }
         }

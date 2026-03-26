@@ -14,15 +14,15 @@
 		1870B967E488562E6551E2F2 /* SummaryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8009E920FB91831616BDC1FD /* SummaryEngine.swift */; };
 		29B9E8EA107ACD884B77613A /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5DFF25E171256C015392B0 /* SearchEngine.swift */; };
 		2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B935CBFDAA46A9FE07A6B5A /* ScreenCaptureKitCapture.swift */; };
+		2BC7E07D5B22256B343F7B2B /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8855497AAD103E0546ABADB5 /* GeminiProvider.swift */; };
 		2DEFA9ECB0A66429A958E4B8 /* MeetingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CADF3A54BCED319651C9AC /* MeetingStore.swift */; };
+		3055A0EA01B2ADE26050B931 /* CustomServerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
-		3FAC792296A3AEA4A1F22AEE /* CustomServerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2EC2587DEF3BE1B93D911C9 /* CustomServerProvider.swift */; };
-		AA1234567890ABCDEF123456 /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1234567890ABCDEF123456 /* GeminiProvider.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
 		561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B565F886405D70876367BB2D /* LiveTranscriptView.swift */; };
-		7FA883EF3295076E0BBDB8A2 /* SwiftWhisper in Frameworks */ = {isa = PBXBuildFile; productRef = F3708B7169D30B983BA721A1 /* SwiftWhisper */; };
+		7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = F979AADA93C8B3A477894A87 /* WhisperKit */; };
 		7FB48F758AB985BDCBAFF851 /* MicrophoneCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F902E1020C4FC6C2401E92 /* MicrophoneCapture.swift */; };
 		7FE3F16981AD5F54CD3B31BE /* Speaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1E2B84348CF7B813409F0F /* Speaker.swift */; };
 		833A3C45383F91821935CB27 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62950E39FB985A055D5464B8 /* OnboardingView.swift */; };
@@ -32,9 +32,8 @@
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
-		BE8B254989015D617A0BA897 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = B2036FE2180B0C88D6470DDE /* ZIPFoundation */; };
+		BE8B254989015D617A0BA897 /* LLM in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2FB6C5104C50E62453DCC6 /* LLM */; };
 		BFE28D65FA549CF3BA03EB01 /* QwenMLXProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */; };
-		C1868B2895C1401C2E77FAA5 /* LLM in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2FB6C5104C50E62453DCC6 /* LLM */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
@@ -75,6 +74,7 @@
 		6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
 		71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
 		8009E920FB91831616BDC1FD /* SummaryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEngine.swift; sourceTree = "<group>"; };
+		8855497AAD103E0546ABADB5 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
 		8B079BA5413B938636C31EC9 /* RecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSession.swift; sourceTree = "<group>"; };
 		8B42916D4665E4E55C140260 /* MeetingSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSegment.swift; sourceTree = "<group>"; };
 		9272F36873A483ABC9FDCB0F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
@@ -84,13 +84,12 @@
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B565F886405D70876367BB2D /* LiveTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptView.swift; sourceTree = "<group>"; };
 		B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
+		BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomServerProvider.swift; sourceTree = "<group>"; };
 		BE1E2B84348CF7B813409F0F /* Speaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speaker.swift; sourceTree = "<group>"; };
 		C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingEmbedding.swift; sourceTree = "<group>"; };
 		C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetailView.swift; sourceTree = "<group>"; };
 		CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerRenameView.swift; sourceTree = "<group>"; };
-		D2EC2587DEF3BE1B93D911C9 /* CustomServerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomServerProvider.swift; sourceTree = "<group>"; };
-		BB1234567890ABCDEF123456 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
 		E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
@@ -107,9 +106,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */,
-				7FA883EF3295076E0BBDB8A2 /* SwiftWhisper in Frameworks */,
-				BE8B254989015D617A0BA897 /* ZIPFoundation in Frameworks */,
-				C1868B2895C1401C2E77FAA5 /* LLM in Frameworks */,
+				7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */,
+				BE8B254989015D617A0BA897 /* LLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,9 +196,9 @@
 			isa = PBXGroup;
 			children = (
 				269098F6F8AD2D7EAE48AC4C /* ClaudeProvider.swift */,
-				D2EC2587DEF3BE1B93D911C9 /* CustomServerProvider.swift */,
+				BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */,
 				201C8D6048B8ABDC78FB3CDF /* EmbeddingEngine.swift */,
-				BB1234567890ABCDEF123456 /* GeminiProvider.swift */,
+				8855497AAD103E0546ABADB5 /* GeminiProvider.swift */,
 				F0B16CE774DDB719F2117948 /* KeychainHelper.swift */,
 				D4D989A419F160963B1D52B3 /* LLMProvider.swift */,
 				68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */,
@@ -302,8 +300,7 @@
 			name = Memgram;
 			packageProductDependencies = (
 				F7F968E28E3536B2BD9133D2 /* GRDB */,
-				F3708B7169D30B983BA721A1 /* SwiftWhisper */,
-				B2036FE2180B0C88D6470DDE /* ZIPFoundation */,
+				F979AADA93C8B3A477894A87 /* WhisperKit */,
 				9E2FB6C5104C50E62453DCC6 /* LLM */,
 			);
 			productName = Memgram;
@@ -337,8 +334,7 @@
 			packageReferences = (
 				94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				95AA3FE33531F063E9CFA4B3 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */,
-				00555C7BBC1912B5F73569FC /* XCRemoteSwiftPackageReference "SwiftWhisper" */,
-				F1F3BB6D6E0797F5A431B12D /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6CD5661289553449E8126190 /* Products */;
@@ -360,9 +356,9 @@
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
 				9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */,
 				D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */,
-				3FAC792296A3AEA4A1F22AEE /* CustomServerProvider.swift in Sources */,
+				3055A0EA01B2ADE26050B931 /* CustomServerProvider.swift in Sources */,
 				A24CDC605E52AC049DE52718 /* EmbeddingEngine.swift in Sources */,
-				AA1234567890ABCDEF123456 /* GeminiProvider.swift in Sources */,
+				2BC7E07D5B22256B343F7B2B /* GeminiProvider.swift in Sources */,
 				E02E7D769872AE7D33A392F5 /* KeychainHelper.swift in Sources */,
 				DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */,
 				E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */,
@@ -588,12 +584,12 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		00555C7BBC1912B5F73569FC /* XCRemoteSwiftPackageReference "SwiftWhisper" */ = {
+		6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/exPHAT/SwiftWhisper";
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
 			requirement = {
-				branch = master;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
 			};
 		};
 		94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
@@ -612,14 +608,6 @@
 				minimumVersion = 1.18.0;
 			};
 		};
-		F1F3BB6D6E0797F5A431B12D /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.9.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -628,20 +616,15 @@
 			package = 95AA3FE33531F063E9CFA4B3 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
 			productName = LLM;
 		};
-		B2036FE2180B0C88D6470DDE /* ZIPFoundation */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F1F3BB6D6E0797F5A431B12D /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
-			productName = ZIPFoundation;
-		};
-		F3708B7169D30B983BA721A1 /* SwiftWhisper */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 00555C7BBC1912B5F73569FC /* XCRemoteSwiftPackageReference "SwiftWhisper" */;
-			productName = SwiftWhisper;
-		};
 		F7F968E28E3536B2BD9133D2 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
 			productName = GRDB;
+		};
+		F979AADA93C8B3A477894A87 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
