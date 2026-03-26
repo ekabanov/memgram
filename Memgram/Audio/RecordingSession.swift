@@ -143,6 +143,12 @@ final class RecordingSession: ObservableObject {
             self.currentMeetingId = nil
             self.segmentCancellable = nil
             self.finalizationCancellable = nil
+
+            // Trigger summary + embedding in background (non-blocking)
+            Task {
+                await SummaryEngine.shared.summarize(meetingId: id)
+                await EmbeddingEngine.shared.embed(meetingId: id)
+            }
         }
 
         if transcriptionEngine.isIdle {

@@ -60,6 +60,15 @@ final class MeetingStore {
         }
     }
 
+    func saveSummary(meetingId: String, summary: String) throws {
+        try db.write { db in
+            try db.execute(
+                sql: "UPDATE meetings SET summary = ? WHERE id = ?",
+                arguments: [summary, meetingId]
+            )
+        }
+    }
+
     /// Discards a meeting that is currently recording (e.g. on crash recovery).
     /// Use `deleteMeeting` to remove a completed meeting from history.
     func discardMeeting(_ meetingId: String) throws {
@@ -95,6 +104,22 @@ final class MeetingStore {
         try db.write { db in
             try db.execute(sql: "DELETE FROM meetings WHERE id = ?", arguments: [id])
         }
+    }
+
+    func insertEmbedding(_ embedding: MeetingEmbedding) throws {
+        try db.write { db in try embedding.insert(db) }
+    }
+
+    func fetchEmbeddings(forMeeting meetingId: String) throws -> [MeetingEmbedding] {
+        try db.read { db in
+            try MeetingEmbedding
+                .filter(Column("meeting_id") == meetingId)
+                .fetchAll(db)
+        }
+    }
+
+    func fetchAllEmbeddings() throws -> [MeetingEmbedding] {
+        try db.read { db in try MeetingEmbedding.fetchAll(db) }
     }
 
     func interruptedMeetings() throws -> [Meeting] {
