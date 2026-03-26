@@ -9,9 +9,9 @@ import Hub
 @MainActor
 final class QwenMLXProvider: ObservableObject, LLMProvider {
     static let shared = QwenMLXProvider()
-    static let modelID = "mlx-community/Qwen2.5-7B-Instruct-4bit"
+    static let modelID = "mlx-community/Qwen3.5-9B-MLX-4bit"
 
-    let name = "Qwen 2.5 7B (local)"
+    let name = "Qwen 3.5 9B (local)"
 
     @Published var downloadProgress: Double = 0
     @Published var isLoaded = false
