@@ -34,6 +34,7 @@ struct MeetingListView: View {
         }
         .navigationTitle("Meetings")
         .onAppear { load() }
+        .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
         .alert("Delete Recording?", isPresented: $showDeleteAlert, presenting: meetingToDelete) { meeting in
             Button("Delete", role: .destructive) { delete(meeting) }
             Button("Cancel", role: .cancel) {}

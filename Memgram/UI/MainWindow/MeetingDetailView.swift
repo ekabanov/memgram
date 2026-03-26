@@ -110,6 +110,7 @@ struct MeetingDetailView: View {
                     onSpeakerRenamed: {
                         load()
                         refreshID = UUID()
+                        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                     }
                 )
                 Divider()
@@ -128,8 +129,13 @@ struct MeetingDetailView: View {
 
     private func saveTitle() {
         let trimmed = editableTitle.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { isEditingTitle = false; return }
+        guard !trimmed.isEmpty else {
+            editableTitle = meeting?.title ?? ""
+            isEditingTitle = false
+            return
+        }
         try? MeetingStore.shared.updateTitle(meetingId, title: trimmed)
+        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
         load()
     }
 }
