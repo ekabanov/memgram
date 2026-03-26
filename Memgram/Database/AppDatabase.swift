@@ -17,6 +17,9 @@ final class AppDatabase {
 
         var config = Configuration()
         config.journalMode = .wal
+        config.prepareDatabase { db in
+            try db.execute(sql: "PRAGMA foreign_keys = ON")
+        }
 
         dbQueue = try DatabaseQueue(
             path: dir.appendingPathComponent("memgram.db").path,
@@ -90,6 +93,7 @@ final class AppDatabase {
             try db.create(virtualTable: "segments_fts", using: FTS5()) { t in
                 t.tokenizer = .unicode61()
                 t.content = "segments"
+                t.contentRowID = "rowid"
                 t.column("text")
                 t.column("speaker")
             }
