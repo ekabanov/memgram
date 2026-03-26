@@ -91,12 +91,18 @@ final class TranscriptionEngine {
                     temperature: 0.0,
                     skipSpecialTokens: true
                 )
-                print("[TranscriptionEngine] Transcribing chunk — \(chunk.samples.count) samples (\(Int(Double(chunk.samples.count)/16000))s)")
+                let rms = chunk.samples.reduce(0.0) { $0 + $1 * $1 }
+                let energy = sqrt(rms / Float(max(1, chunk.samples.count)))
+                print("[TranscriptionEngine] Transcribing chunk — \(chunk.samples.count) samples (\(Int(Double(chunk.samples.count)/16000))s), RMS energy: \(String(format: "%.5f", energy))")
                 let results: [TranscriptionResult] = try await whisperKit.transcribe(
                     audioArray: chunk.samples,
                     decodeOptions: options
                 )
-                print("[TranscriptionEngine] ✓ Got \(results.count) result(s), \(results.flatMap(\.segments).count) segment(s)")
+                let allSegments = results.flatMap(\.segments)
+                print("[TranscriptionEngine] ✓ Got \(results.count) result(s), \(allSegments.count) segment(s)")
+                for seg in allSegments {
+                    print("[TranscriptionEngine]   seg: '\(seg.text)' [\(seg.start)→\(seg.end)s]")
+                }
 
                 for result in results {
                     for seg in result.segments {
@@ -125,7 +131,7 @@ final class TranscriptionEngine {
                     }
                 }
             } catch {
-                print("[TranscriptionEngine] Chunk failed: \(error)")
+                print("[TranscriptionEngine] ✗ Chunk transcription threw: \(error)")
             }
             self.isTranscribing = false
             if self.pendingChunks.isEmpty {
