@@ -16,6 +16,7 @@
 		2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B935CBFDAA46A9FE07A6B5A /* ScreenCaptureKitCapture.swift */; };
 		2DEFA9ECB0A66429A958E4B8 /* MeetingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CADF3A54BCED319651C9AC /* MeetingStore.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
+		3FAC792296A3AEA4A1F22AEE /* MLXProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2EC2587DEF3BE1B93D911C9 /* MLXProvider.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
@@ -84,6 +85,7 @@
 		C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetailView.swift; sourceTree = "<group>"; };
 		CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerRenameView.swift; sourceTree = "<group>"; };
+		D2EC2587DEF3BE1B93D911C9 /* MLXProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXProvider.swift; sourceTree = "<group>"; };
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
 		E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
@@ -194,6 +196,7 @@
 				F0B16CE774DDB719F2117948 /* KeychainHelper.swift */,
 				D4D989A419F160963B1D52B3 /* LLMProvider.swift */,
 				68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */,
+				D2EC2587DEF3BE1B93D911C9 /* MLXProvider.swift */,
 				4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */,
 				71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */,
 				9B5DFF25E171256C015392B0 /* SearchEngine.swift */,
@@ -352,6 +355,7 @@
 				DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */,
 				E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */,
 				561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */,
+				3FAC792296A3AEA4A1F22AEE /* MLXProvider.swift in Sources */,
 				DA6DBBEEAF18E108551B16C3 /* MainWindowView.swift in Sources */,
 				4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */,
 				C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */,

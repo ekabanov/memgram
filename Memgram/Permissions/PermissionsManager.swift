@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import ScreenCaptureKit
 import AppKit
 import SwiftUI
@@ -68,9 +69,19 @@ final class PermissionsManager: ObservableObject {
 
     @available(macOS 14.4, *)
     private func requestCoreAudioTapPermission() async -> Bool {
-        // CoreAudio ProcessTap on macOS 14.4+ doesn't require a separate permission dialog —
-        // the audio-input entitlement covers it. We verify capability by checking entitlements.
-        let granted = true
+        // Actually create a ProcessTap to trigger the TCC permission dialog now,
+        // during onboarding — not on the first recording attempt.
+        var tapID: AudioObjectID = kAudioObjectUnknown
+        let tapDesc = CATapDescription(stereoMixdownOfProcesses: [AudioObjectID(kAudioObjectSystemObject)])
+        tapDesc.name = "MemgramPermissionCheck"
+        tapDesc.isExclusive = false
+
+        let status = AudioHardwareCreateProcessTap(tapDesc, &tapID)
+        if tapID != kAudioObjectUnknown {
+            AudioHardwareDestroyProcessTap(tapID)
+        }
+
+        let granted = (status == noErr)
         await MainActor.run {
             systemAudioGranted = granted
             UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
