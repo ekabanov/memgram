@@ -36,6 +36,22 @@ enum WhisperModel: String, CaseIterable, Identifiable {
     /// Model variant name passed to WhisperKit
     var whisperKitName: String { rawValue }
 
+    /// Short label for buttons and compact UI
+    var shortName: String {
+        switch self {
+        case .tinyEn:       return "Tiny EN"
+        case .baseEn:       return "Base EN"
+        case .smallEn:      return "Small EN"
+        case .tiny:         return "Tiny"
+        case .base:         return "Base"
+        case .small:        return "Small"
+        case .largeV3Turbo: return "Large v3 Turbo Q"
+        case .largeV3:      return "Large v3 Q"
+        case .largeV3Full:  return "Large v3 Turbo"
+        case .largeV2:      return "Large v2"
+        }
+    }
+
     var isEnglishOnly: Bool {
         switch self {
         case .tinyEn, .baseEn, .smallEn: return true

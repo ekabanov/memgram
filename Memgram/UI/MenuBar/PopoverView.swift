@@ -86,7 +86,7 @@ struct PopoverView: View {
                 .font(.headline)
             Spacer()
             Button(action: { showModelDownload = true }) {
-                Label(modelManager.isModelReady ? modelManager.selectedModel.rawValue : "Setup",
+                Label(modelManager.isModelReady ? modelManager.selectedModel.shortName : "Setup",
                       systemImage: modelManager.isModelReady ? "waveform" : "arrow.down.circle")
                     .font(.caption)
             }

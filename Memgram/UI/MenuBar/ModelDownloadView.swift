@@ -110,7 +110,7 @@ struct ModelDownloadView: View {
             }
             .buttonStyle(.bordered)
             .disabled(isPrewarming)
-            Button("Use \(selectedModel.rawValue)") {
+            Button("Use \(selectedModel.shortName)") {
                 modelManager.selectModel(selectedModel)
                 closeSheet()
             }
