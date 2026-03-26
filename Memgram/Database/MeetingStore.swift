@@ -49,20 +49,19 @@ final class MeetingStore {
 
     func finalizeMeeting(_ meetingId: String, endedAt: Date, rawTranscript: String) throws {
         try db.write { db in
-            let duration = endedAt.timeIntervalSince(
-                (try? Meeting.fetchOne(db, key: meetingId))?.startedAt ?? endedAt
-            )
-            try db.execute(
-                sql: """
-                    UPDATE meetings
-                    SET status = 'done', ended_at = ?, duration_seconds = ?, raw_transcript = ?
-                    WHERE id = ?
-                """,
-                arguments: [endedAt.timeIntervalSinceReferenceDate, duration, rawTranscript, meetingId]
-            )
+            guard var meeting = try Meeting.fetchOne(db, key: meetingId) else {
+                throw DatabaseError(message: "Meeting \(meetingId) not found for finalization")
+            }
+            meeting.endedAt = endedAt
+            meeting.durationSeconds = endedAt.timeIntervalSince(meeting.startedAt)
+            meeting.status = .done
+            meeting.rawTranscript = rawTranscript
+            try meeting.update(db)
         }
     }
 
+    /// Discards a meeting that is currently recording (e.g. on crash recovery).
+    /// Use `deleteMeeting` to remove a completed meeting from history.
     func discardMeeting(_ meetingId: String) throws {
         try db.write { db in
             try db.execute(sql: "DELETE FROM meetings WHERE id = ?", arguments: [meetingId])
@@ -102,6 +101,7 @@ final class MeetingStore {
         try db.read { db in
             try Meeting
                 .filter(Column("status") == MeetingStatus.recording.rawValue)
+                .order(Column("started_at").desc)
                 .fetchAll(db)
         }
     }
