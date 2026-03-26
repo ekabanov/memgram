@@ -2,45 +2,43 @@ import Foundation
 import Combine
 
 enum WhisperModel: String, CaseIterable, Identifiable {
-    // English-only
-    case tinyEn   = "tiny.en"
-    case baseEn   = "base.en"
-    case smallEn  = "small.en"
-    case mediumEn = "medium.en"
-    // Multilingual
-    case tiny   = "tiny"
-    case base   = "base"
-    case small  = "small"
-    case medium = "medium"
-    // Large (multilingual)
-    case largeV2       = "large-v2"
-    case largeV3       = "large-v3"
-    case largeV3Turbo  = "large-v3-turbo"
+    // English-only (small / fast)
+    case tinyEn  = "openai_whisper-tiny.en"
+    case baseEn  = "openai_whisper-base.en"
+    case smallEn = "openai_whisper-small.en"
+    // Multilingual (small / fast)
+    case tiny    = "openai_whisper-tiny"
+    case base    = "openai_whisper-base"
+    case small   = "openai_whisper-small"
+    // Large (quantized — good quality, reasonable size)
+    case largeV3Turbo = "openai_whisper-large-v3-v20240930_turbo_632MB"   // recommended default
+    case largeV3      = "openai_whisper-large-v3-v20240930_626MB"
+    case largeV3Full  = "openai_whisper-large-v3_turbo_954MB"
+    case largeV2      = "openai_whisper-large-v2_949MB"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .tinyEn:       return "Tiny EN (75 MB) — English only, fastest"
-        case .baseEn:       return "Base EN (142 MB) — English only"
-        case .smallEn:      return "Small EN (466 MB) — English only"
-        case .mediumEn:     return "Medium EN (1.5 GB) — English only, best EN accuracy"
-        case .tiny:         return "Tiny (75 MB) — multilingual"
-        case .base:         return "Base (142 MB) — multilingual"
-        case .small:        return "Small (466 MB) — multilingual"
-        case .medium:       return "Medium (1.5 GB) — multilingual"
-        case .largeV2:      return "Large v2 (2.9 GB) — multilingual, high accuracy"
-        case .largeV3:      return "Large v3 (3.1 GB) — multilingual, best accuracy"
-        case .largeV3Turbo: return "Large v3 Turbo (1.6 GB) — multilingual, fast + accurate"
+        case .tinyEn:       return "Tiny EN (39 MB) — English only, fastest"
+        case .baseEn:       return "Base EN (74 MB) — English only, fast"
+        case .smallEn:      return "Small EN (244 MB) — English only, good"
+        case .tiny:         return "Tiny (39 MB) — multilingual"
+        case .base:         return "Base (74 MB) — multilingual"
+        case .small:        return "Small (244 MB) — multilingual"
+        case .largeV3Turbo: return "Large v3 Turbo Q (632 MB) — multilingual, recommended ✦"
+        case .largeV3:      return "Large v3 Q (626 MB) — multilingual, high accuracy"
+        case .largeV3Full:  return "Large v3 Turbo (954 MB) — multilingual, full precision"
+        case .largeV2:      return "Large v2 (949 MB) — multilingual"
         }
     }
 
-    /// Model variant name used by WhisperKit
+    /// Model variant name passed to WhisperKit
     var whisperKitName: String { rawValue }
 
     var isEnglishOnly: Bool {
         switch self {
-        case .tinyEn, .baseEn, .smallEn, .mediumEn: return true
+        case .tinyEn, .baseEn, .smallEn: return true
         default: return false
         }
     }
@@ -57,7 +55,6 @@ final class WhisperModelManager: ObservableObject {
         }
     }
 
-    /// WhisperKit downloads and caches models automatically — always ready to attempt.
     var isModelReady: Bool { true }
 
     private init() {

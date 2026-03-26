@@ -53,9 +53,9 @@ struct ModelDownloadView: View {
     }
 
     private let modelGroups: [ModelGroup] = [
-        ModelGroup(title: "English Only", models: [.tinyEn, .baseEn, .smallEn, .mediumEn]),
-        ModelGroup(title: "Multilingual", models: [.tiny, .base, .small, .medium]),
-        ModelGroup(title: "Large (multilingual)", models: [.largeV2, .largeV3, .largeV3Turbo])
+        ModelGroup(title: "English Only", models: [.tinyEn, .baseEn, .smallEn]),
+        ModelGroup(title: "Multilingual", models: [.tiny, .base, .small]),
+        ModelGroup(title: "Large (multilingual)", models: [.largeV3Turbo, .largeV3, .largeV3Full, .largeV2])
     ]
 
     private var modelPicker: some View {
