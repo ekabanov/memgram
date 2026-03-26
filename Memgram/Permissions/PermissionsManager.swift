@@ -30,6 +30,7 @@ final class PermissionsManager: ObservableObject {
     // MARK: - Sequential Permission Request
 
     func requestPermissionsSequentially() {
+        UserDefaults.standard.set(true, forKey: "hasShownOnboarding")
         showOnboardingSheet = true
     }
 
