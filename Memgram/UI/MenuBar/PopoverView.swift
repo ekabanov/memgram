@@ -161,17 +161,27 @@ struct PopoverView: View {
 
     // MARK: - Footer
 
-    private func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        NSApp.activate(ignoringOtherApps: true)
+    @ViewBuilder
+    private var settingsButton: some View {
+        if #available(macOS 14, *) {
+            SettingsLink {
+                Image(systemName: "gearshape").font(.caption)
+            }
+            .buttonStyle(.plain)
+        } else {
+            Button {
+                NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                NSApp.activate(ignoringOtherApps: true)
+            } label: {
+                Image(systemName: "gearshape").font(.caption)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var footerSection: some View {
         HStack {
-            Button(action: openSettings) {
-                Image(systemName: "gearshape").font(.caption)
-            }
-            .buttonStyle(.plain)
+            settingsButton
             .help("Settings")
             permissionsStatus
             Spacer()
