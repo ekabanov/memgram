@@ -132,9 +132,9 @@ private struct ProviderRow: View {
 private struct QwenConfigView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Qwen 3.5 9B (Local)", systemImage: "cpu")
+            Label("Qwen 2.5 7B (Local)", systemImage: "cpu")
                 .font(.headline)
-            Text("Runs entirely on your Mac using Apple MLX. Downloads ~8.5 GB of model weights on first use. Requires Apple Silicon (macOS 14+).")
+            Text("Runs entirely on your Mac using Apple MLX. Downloads ~4.1 GB of model weights on first use. Requires Apple Silicon (macOS 14+).")
                 .font(.body)
                 .foregroundColor(.secondary)
             #if canImport(MLXLLM)
@@ -163,7 +163,7 @@ private struct QwenDownloadStatusView: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Button("Download Model (~8.5 GB)") {
+                Button("Download Model (~4.1 GB)") {
                     provider.preload()
                 }
                 .buttonStyle(.borderedProminent)

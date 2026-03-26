@@ -4,7 +4,11 @@ final class SummaryEngine {
     static let shared = SummaryEngine()
     private init() {}
 
-    private let systemPrompt = "You are a concise meeting assistant. Be factual. Use speaker labels."
+    private let systemPrompt = """
+        You are a precise meeting secretary. Produce factual notes directly from the transcript. \
+        Be concise. Do not add commentary, preamble, or reasoning steps. \
+        Only include information that is explicitly stated in the transcript.
+        """
 
     func summarize(meetingId: String) async {
         print("[SummaryEngine] Starting summarisation for \(meetingId)")
@@ -29,8 +33,9 @@ final class SummaryEngine {
             } else {
                 summary = try await summarizeShort(transcript: transcript, provider: provider)
             }
-            print("[SummaryEngine] ✓ Summary generated (\(summary.count) chars) — saving")
-            try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: summary)
+            let cleanSummary = stripThinkingTags(summary)
+            print("[SummaryEngine] ✓ Summary generated (\(cleanSummary.count) chars) — saving")
+            try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
             NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             print("[SummaryEngine] ✓ Saved and notified")
         } catch {
@@ -40,13 +45,35 @@ final class SummaryEngine {
 
     // MARK: - Private
 
+    private func stripThinkingTags(_ text: String) -> String {
+        let stripped = text.replacingOccurrences(
+            of: "<think>[\\s\\S]*?</think>",
+            with: "",
+            options: .regularExpression
+        )
+        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func summarizeShort(transcript: String, provider: any LLMProvider) async throws -> String {
         let user = """
+        /no_think
+
         Transcript:
 
         \(transcript)
 
-        Provide: 1) 3-5 sentence summary 2) Key decisions 3) Action items with owner. Plain text, no markdown.
+        Write structured meeting notes in plain text with these sections:
+
+        SUMMARY
+        2-3 sentences on the main topic and outcome.
+
+        KEY DECISIONS
+        List each decision made, one per line. Write "None" if there are none.
+
+        ACTION ITEMS
+        List as "Owner: Task". Write "None" if there are none.
+
+        Rules: use speaker labels when attributing, no markdown, no filler text.
         """
         return try await provider.complete(system: systemPrompt, user: user)
     }
