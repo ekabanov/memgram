@@ -1,13 +1,14 @@
 import Foundation
 
 enum LLMBackend: String, CaseIterable, Identifiable {
-    case ollama, claude, openai
+    case ollama, claude, openai, mlx
     var id: String { rawValue }
     var displayName: String {
         switch self {
         case .ollama: return "Ollama (local)"
         case .claude: return "Claude API"
         case .openai: return "OpenAI API"
+        case .mlx:    return "MLX (local)"
         }
     }
 }

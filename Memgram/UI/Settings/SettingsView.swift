@@ -51,6 +51,23 @@ struct AISettingsTab: View {
                                 KeychainHelper.save(key: "claudeAPIKey", value: newValue)
                             }
                     }
+                } else if store.selectedBackend == .mlx {
+                    Section("MLX Server") {
+                        HStack {
+                            Text("Port")
+                            Spacer()
+                            TextField("8080", value: $store.mlxPort, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+                                .multilineTextAlignment(.trailing)
+                        }
+                        TextField("Model", text: $store.mlxModel)
+                            .textFieldStyle(.roundedBorder)
+                        Text("Start: python -m mlx_lm.server --model \(store.mlxModel) --port \(store.mlxPort)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .textSelection(.enabled)
+                    }
                 } else {
                     Section("OpenAI API Key") {
                         SecureField("sk-…", text: $openaiKey)
