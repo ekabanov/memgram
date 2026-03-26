@@ -11,46 +11,44 @@ final class LLMProviderStore: ObservableObject {
     @Published var ollamaModel: String {
         didSet { UserDefaults.standard.set(ollamaModel, forKey: "ollamaModel") }
     }
-    @Published var mlxPort: Int {
-        didSet { UserDefaults.standard.set(mlxPort, forKey: "mlxPort") }
+    @Published var customServerURL: String {
+        didSet { UserDefaults.standard.set(customServerURL, forKey: "customServerURL") }
     }
-    @Published var mlxModel: String {
-        didSet { UserDefaults.standard.set(mlxModel, forKey: "mlxModel") }
+    @Published var customServerModel: String {
+        didSet { UserDefaults.standard.set(customServerModel, forKey: "customServerModel") }
     }
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: "llmBackend") ?? ""
-        selectedBackend = LLMBackend(rawValue: saved) ?? .ollama
-        ollamaModel = UserDefaults.standard.string(forKey: "ollamaModel") ?? "llama3.2"
-        mlxPort  = UserDefaults.standard.integer(forKey: "mlxPort").nonZero ?? 8080
-        mlxModel = UserDefaults.standard.string(forKey: "mlxModel") ?? "mlx-community/Qwen3-8B-4bit"
+        selectedBackend   = LLMBackend(rawValue: saved) ?? .qwen
+        ollamaModel       = UserDefaults.standard.string(forKey: "ollamaModel") ?? "llama3.2"
+        customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
+        customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
     }
 
     var currentProvider: any LLMProvider {
         switch selectedBackend {
+        case .qwen:
+            if #available(macOS 14, *) { return QwenMLXProvider.shared }
+            return OllamaProvider(model: "qwen3:8b")
         case .ollama:
             return OllamaProvider(model: ollamaModel)
+        case .custom:
+            return CustomServerProvider(
+                baseURL:   customServerURL,
+                apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
+                modelName: customServerModel
+            )
         case .claude:
             return ClaudeProvider(apiKey: KeychainHelper.load(key: "claudeAPIKey") ?? "")
         case .openai:
             return OpenAIProvider(apiKey: KeychainHelper.load(key: "openaiAPIKey") ?? "")
-        case .qwen:
-            if #available(macOS 14.0, *) {
-                return QwenMLXProvider.shared
-            } else {
-                return OllamaProvider(model: ollamaModel)
-            }
-        case .custom, .gemini:
-            // Stubs — implemented in later tasks
-            return OllamaProvider(model: ollamaModel)
+        case .gemini:
+            return GeminiProvider(apiKey: KeychainHelper.load(key: "geminiAPIKey") ?? "")
         }
     }
 
     func fetchOllamaModels() async -> [String] {
-        return await OllamaProvider(model: ollamaModel).listModels()
+        await OllamaProvider(model: ollamaModel).listModels()
     }
-}
-
-private extension Int {
-    var nonZero: Int? { self == 0 ? nil : self }
 }

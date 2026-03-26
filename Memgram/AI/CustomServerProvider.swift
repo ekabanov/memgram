@@ -1,0 +1,54 @@
+import Foundation
+
+/// Connects to any OpenAI-compatible server (LM Studio, Ollama, vLLM, etc.)
+final class CustomServerProvider: LLMProvider {
+    let name = "Custom Server"
+    private let baseURL: String
+    private let apiKey: String
+    private let modelName: String
+
+    init(baseURL: String = "http://localhost:1234",
+         apiKey: String = "",
+         modelName: String = "local-model") {
+        self.baseURL   = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
+        self.apiKey    = apiKey
+        self.modelName = modelName
+    }
+
+    func complete(system: String, user: String) async throws -> String {
+        struct Message: Encodable { let role: String; let content: String }
+        struct Request: Encodable { let model: String; let messages: [Message] }
+        struct Choice: Decodable {
+            struct Msg: Decodable { let content: String }
+            let message: Msg
+        }
+        struct Response: Decodable { let choices: [Choice] }
+
+        let body = Request(model: modelName, messages: [
+            Message(role: "system", content: system),
+            Message(role: "user",   content: user)
+        ])
+        let response: Response = try await post(path: "/v1/chat/completions", body: body)
+        return response.choices.first?.message.content ?? ""
+    }
+
+    func embed(text: String) async throws -> [Float] {
+        try await OllamaProvider().embed(text: text)
+    }
+
+    private func post<B: Encodable, R: Decodable>(path: String, body: B) async throws -> R {
+        guard let url = URL(string: "\(baseURL)\(path)") else { throw URLError(.badURL) }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !apiKey.isEmpty {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, resp) = try await URLSession.shared.data(for: request)
+        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(R.self, from: data)
+    }
+}
