@@ -44,11 +44,7 @@ struct MainWindowView: View {
     }
 }
 
-// Stubs — replaced in Tasks 2 and 4
-struct MeetingDetailView: View {
-    let meetingId: String
-    var body: some View { Text("Meeting: \(meetingId)") }
-}
+// Stub — replaced in Task 4
 struct SearchView: View {
     var onSelectMeeting: ((String) -> Void)?
     @Environment(\.dismiss) private var dismiss

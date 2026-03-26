@@ -69,6 +69,15 @@ final class MeetingStore {
         }
     }
 
+    func updateTitle(_ meetingId: String, title: String) throws {
+        try db.write { db in
+            try db.execute(
+                sql: "UPDATE meetings SET title = ? WHERE id = ?",
+                arguments: [title, meetingId]
+            )
+        }
+    }
+
     /// Discards a meeting that is currently recording (e.g. on crash recovery).
     /// Use `deleteMeeting` to remove a completed meeting from history.
     func discardMeeting(_ meetingId: String) throws {
