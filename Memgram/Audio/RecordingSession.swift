@@ -139,12 +139,12 @@ final class RecordingSession: ObservableObject {
             let rawTranscript = self.segments
                 .map { "\($0.speaker): \($0.text)" }
                 .joined(separator: "\n")
+            print("[RecordingSession] Finalising meeting \(id) — \(self.segments.count) segments, transcript \(rawTranscript.count) chars")
             try? MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript)
             self.currentMeetingId = nil
             self.segmentCancellable = nil
             self.finalizationCancellable = nil
 
-            // Trigger summary + embedding in background (non-blocking)
             Task {
                 await SummaryEngine.shared.summarize(meetingId: id)
                 await EmbeddingEngine.shared.embed(meetingId: id)
@@ -152,8 +152,10 @@ final class RecordingSession: ObservableObject {
         }
 
         if transcriptionEngine.isIdle {
+            print("[RecordingSession] Transcription already idle — finalising immediately")
             finalize()
         } else {
+            print("[RecordingSession] Waiting for transcription queue to drain before finalising")
             finalizationCancellable = transcriptionEngine.allChunksDonePublisher
                 .first()
                 .receive(on: DispatchQueue.main)

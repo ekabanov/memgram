@@ -47,8 +47,8 @@ final class TranscriptionEngine {
 
     func prepare(modelURL: URL) throws {
         let w = Whisper(fromFileURL: modelURL)
-        // English-only models require explicit .english; multilingual models auto-detect
-        if modelURL.lastPathComponent.contains(".en.") {
+        let isEnglishOnly = modelURL.lastPathComponent.contains(".en.")
+        if isEnglishOnly {
             w.params.language = .english
         } else {
             w.params.language = .auto
@@ -57,6 +57,7 @@ final class TranscriptionEngine {
         w.params.no_context = false
         w.params.suppress_blank = true
         self.whisper = w
+        print("[TranscriptionEngine] Loaded model: \(modelURL.lastPathComponent) | language: \(isEnglishOnly ? "english" : "auto") | threads: \(w.params.n_threads)")
     }
 
     func reset() {

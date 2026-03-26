@@ -98,6 +98,7 @@ final class WhisperModelManager: NSObject, ObservableObject, URLSessionDownloadD
     }
 
     func selectModel(_ model: WhisperModel) {
+        print("[WhisperModelManager] Model selected: \(model.displayName)")
         selectedModel = model
         UserDefaults.standard.set(model.rawValue, forKey: "selectedWhisperModel")
     }
@@ -125,14 +126,20 @@ final class WhisperModelManager: NSObject, ObservableObject, URLSessionDownloadD
         defer { isDownloading = false; downloadPhase = "" }
 
         // Phase 1: main GGML weights
+        print("[WhisperModelManager] Downloading \(selectedModel.displayName) from \(selectedModel.downloadURL)")
         downloadPhase = "Downloading model"
         let tmpURL = try await downloadFile(from: selectedModel.downloadURL)
         let dest = Self.modelsDirectory.appendingPathComponent(selectedModel.filename)
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmpURL, to: dest)
+        print("[WhisperModelManager] ✓ Model saved to \(dest.path)")
 
         // Phase 2: CoreML encoder (not available for large models)
-        guard selectedModel.hasCoreMLEncoder else { return }
+        guard selectedModel.hasCoreMLEncoder else {
+            print("[WhisperModelManager] Skipping CoreML encoder (not available for \(selectedModel.rawValue))")
+            return
+        }
+        print("[WhisperModelManager] Downloading CoreML encoder for \(selectedModel.rawValue)")
         downloadProgress = 0
         downloadPhase = "Downloading CoreML encoder"
         let coreMLZipTmp = try await downloadFile(from: selectedModel.coreMLZipURL)
@@ -140,6 +147,7 @@ final class WhisperModelManager: NSObject, ObservableObject, URLSessionDownloadD
         let coreMLDest = Self.modelsDirectory.appendingPathComponent(selectedModel.coreMLDirectoryName)
         try? FileManager.default.removeItem(at: coreMLDest)
         try FileManager.default.unzipItem(at: coreMLZipTmp, to: Self.modelsDirectory)
+        print("[WhisperModelManager] ✓ CoreML encoder ready at \(coreMLDest.path)")
     }
 
     private func downloadFile(from url: URL) async throws -> URL {

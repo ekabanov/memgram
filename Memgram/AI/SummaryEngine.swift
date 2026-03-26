@@ -7,22 +7,34 @@ final class SummaryEngine {
     private let systemPrompt = "You are a concise meeting assistant. Be factual. Use speaker labels."
 
     func summarize(meetingId: String) async {
-        guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId),
-              let transcript = meeting.rawTranscript, !transcript.isEmpty else { return }
+        print("[SummaryEngine] Starting summarisation for \(meetingId)")
+
+        guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {
+            print("[SummaryEngine] ⚠️ Meeting not found: \(meetingId)")
+            return
+        }
+        guard let transcript = meeting.rawTranscript, !transcript.isEmpty else {
+            print("[SummaryEngine] ⚠️ rawTranscript is \(meeting.rawTranscript == nil ? "nil" : "empty") — skipping")
+            return
+        }
 
         let provider = await MainActor.run { LLMProviderStore.shared.currentProvider }
+        print("[SummaryEngine] Using provider: \(provider.name) | transcript length: \(transcript.count) chars")
 
         do {
             let summary: String
             if (meeting.durationSeconds ?? 0) > 3600 {
+                print("[SummaryEngine] Long meeting (>60min) — chunked summarisation")
                 summary = try await summarizeLong(meetingId: meetingId, provider: provider)
             } else {
                 summary = try await summarizeShort(transcript: transcript, provider: provider)
             }
+            print("[SummaryEngine] ✓ Summary generated (\(summary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: summary)
             NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            print("[SummaryEngine] ✓ Saved and notified")
         } catch {
-            print("[SummaryEngine] Failed to summarise meeting \(meetingId): \(error)")
+            print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
         }
     }
 
