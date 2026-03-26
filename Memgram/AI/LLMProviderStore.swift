@@ -34,8 +34,15 @@ final class LLMProviderStore: ObservableObject {
             return ClaudeProvider(apiKey: KeychainHelper.load(key: "claudeAPIKey") ?? "")
         case .openai:
             return OpenAIProvider(apiKey: KeychainHelper.load(key: "openaiAPIKey") ?? "")
-        case .mlx:
-            return MLXProvider(port: mlxPort, modelName: mlxModel)
+        case .qwen:
+            if #available(macOS 14.0, *) {
+                return QwenMLXProvider.shared
+            } else {
+                return OllamaProvider(model: ollamaModel)
+            }
+        case .custom, .gemini:
+            // Stubs — implemented in later tasks
+            return OllamaProvider(model: ollamaModel)
         }
     }
 

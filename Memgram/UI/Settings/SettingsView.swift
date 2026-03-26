@@ -51,22 +51,14 @@ struct AISettingsTab: View {
                                 KeychainHelper.save(key: "claudeAPIKey", value: newValue)
                             }
                     }
-                } else if store.selectedBackend == .mlx {
-                    Section("MLX Server") {
-                        HStack {
-                            Text("Port")
-                            Spacer()
-                            TextField("8080", value: $store.mlxPort, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 80)
-                                .multilineTextAlignment(.trailing)
-                        }
-                        TextField("Model", text: $store.mlxModel)
-                            .textFieldStyle(.roundedBorder)
-                        Text("Start: python -m mlx_lm.server --model \(store.mlxModel) --port \(store.mlxPort)")
+                } else if store.selectedBackend == .qwen {
+                    Section("Qwen 3.5 9B (Local)") {
+                        Text("Model: mlx-community/Qwen3.5-9B-MLX-4bit")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                            .textSelection(.enabled)
+                        Text("Weights are downloaded automatically on first use (~5 GB).")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 } else {
                     Section("OpenAI API Key") {
