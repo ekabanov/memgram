@@ -8,7 +8,7 @@ struct SettingsView: View {
             PrivacySettingsTab()
                 .tabItem { Label("Privacy", systemImage: "lock.shield") }
         }
-        .frame(width: 500, height: 360)
+        .frame(width: 620, height: 500)
     }
 }
 
@@ -16,83 +16,87 @@ struct SettingsView: View {
 
 struct AISettingsTab: View {
     @ObservedObject private var store = LLMProviderStore.shared
-    @State private var claudeKey: String = KeychainHelper.load(key: "claudeAPIKey") ?? ""
-    @State private var openaiKey: String = KeychainHelper.load(key: "openaiAPIKey") ?? ""
-    @State private var ollamaModels: [String] = []
-    @State private var connectionStatus: String = ""
+    @State private var connectionStatus = ""
     @State private var isTesting = false
 
     var body: some View {
-        Form {
-            Section("LLM Backend") {
-                Picker("Provider", selection: $store.selectedBackend) {
-                    ForEach(LLMBackend.allCases) { backend in
-                        Text(backend.displayName).tag(backend)
-                    }
-                }
-                .pickerStyle(.segmented)
+        HStack(spacing: 0) {
+            providerSidebar
+                .frame(width: 190)
+            Divider()
+            VStack(spacing: 0) {
+                configPanel
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
+                testBar
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
             }
+        }
+    }
 
-            Group {
-                if store.selectedBackend == .ollama {
-                    Section("Ollama") {
-                        Picker("Model", selection: $store.ollamaModel) {
-                            if ollamaModels.isEmpty {
-                                Text(store.ollamaModel).tag(store.ollamaModel)
-                            }
-                            ForEach(ollamaModels, id: \.self) { Text($0).tag($0) }
-                        }
-                        .onAppear { Task { ollamaModels = await store.fetchOllamaModels() } }
-                    }
-                } else if store.selectedBackend == .claude {
-                    Section("Claude API Key") {
-                        SecureField("sk-ant-…", text: $claudeKey)
-                            .onChange(of: claudeKey) { newValue in
-                                KeychainHelper.save(key: "claudeAPIKey", value: newValue)
-                            }
-                    }
-                } else if store.selectedBackend == .qwen {
-                    Section("Qwen 3.5 9B (Local)") {
-                        Text("Model: mlx-community/Qwen3.5-9B-MLX-4bit")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("Weights are downloaded automatically on first use (~5 GB).")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                } else {
-                    Section("OpenAI API Key") {
-                        SecureField("sk-…", text: $openaiKey)
-                            .onChange(of: openaiKey) { newValue in
-                                KeychainHelper.save(key: "openaiAPIKey", value: newValue)
-                            }
-                    }
-                }
-            }
+    // MARK: - Sidebar
 
-            Section {
-                HStack {
-                    Button(isTesting ? "Testing…" : "Test Connection") {
-                        Task { await testConnection() }
-                    }
-                    .disabled(isTesting)
-                    if !connectionStatus.isEmpty {
-                        Text(connectionStatus)
-                            .font(.caption)
-                            .foregroundColor(connectionStatus.hasPrefix("✓") ? .green : .red)
+    private var providerSidebar: some View {
+        List(selection: Binding(
+            get: { store.selectedBackend },
+            set: { store.selectedBackend = $0 }
+        )) {
+            ForEach(LLMBackendCategory.allCases, id: \.rawValue) { category in
+                Section(category.rawValue) {
+                    ForEach(LLMBackend.allCases.filter { $0.category == category }) { backend in
+                        ProviderRow(backend: backend)
+                            .tag(backend)
                     }
                 }
             }
         }
-        .padding()
+        .listStyle(.sidebar)
     }
 
-    private func testConnection() async {
+    // MARK: - Config panel
+
+    @ViewBuilder
+    private var configPanel: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                switch store.selectedBackend {
+                case .qwen:   QwenConfigView()
+                case .ollama: OllamaConfigView()
+                case .custom: CustomServerConfigView()
+                case .claude: APIKeyConfigView(service: "claude", label: "Claude API Key", placeholder: "sk-ant-…")
+                case .openai: APIKeyConfigView(service: "openai", label: "OpenAI API Key", placeholder: "sk-…")
+                case .gemini: APIKeyConfigView(service: "gemini", label: "Gemini API Key", placeholder: "AIza…")
+                }
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: - Test bar
+
+    private var testBar: some View {
+        HStack {
+            Button(isTesting ? "Testing…" : "Test Connection") {
+                Task { await test() }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isTesting)
+            if !connectionStatus.isEmpty {
+                Text(connectionStatus)
+                    .font(.caption)
+                    .foregroundColor(connectionStatus.hasPrefix("✓") ? .green : .red)
+            }
+            Spacer()
+        }
+    }
+
+    private func test() async {
         isTesting = true
         connectionStatus = ""
-        let provider = LLMProviderStore.shared.currentProvider
         do {
-            let reply = try await provider.complete(
+            let reply = try await store.currentProvider.complete(
                 system: "You are a test assistant.",
                 user: "Reply with exactly: OK"
             )
@@ -106,6 +110,146 @@ struct AISettingsTab: View {
     }
 }
 
+// MARK: - Sidebar row
+
+private struct ProviderRow: View {
+    let backend: LLMBackend
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(backend.displayName)
+                .font(.body)
+            Text(backend.badge)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Config sub-views
+
+private struct QwenConfigView: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Qwen 3.5 9B (Local)", systemImage: "cpu")
+                .font(.headline)
+            Text("Runs entirely on your Mac using Apple MLX. Downloads ~8.5 GB of model weights on first use. Requires Apple Silicon (macOS 14+).")
+                .font(.body)
+                .foregroundColor(.secondary)
+            #if canImport(MLXLLM)
+            QwenDownloadStatusView()
+            #else
+            Label("MLX not available in this build", systemImage: "exclamationmark.triangle")
+                .foregroundColor(.orange)
+            #endif
+        }
+    }
+}
+
+#if canImport(MLXLLM)
+private struct QwenDownloadStatusView: View {
+    @ObservedObject private var provider = QwenMLXProvider.shared
+
+    var body: some View {
+        if provider.isLoaded {
+            Label("Model loaded and ready", systemImage: "checkmark.circle.fill")
+                .foregroundColor(.green)
+        } else if provider.downloadProgress > 0 && provider.downloadProgress < 1 {
+            VStack(alignment: .leading, spacing: 4) {
+                ProgressView(value: provider.downloadProgress)
+                Text("Downloading… \(Int(provider.downloadProgress * 100))%")
+                    .font(.caption).foregroundColor(.secondary)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Button("Download Model (~8.5 GB)") {
+                    provider.preload()
+                }
+                .buttonStyle(.borderedProminent)
+                if let err = provider.loadError {
+                    Text(err).font(.caption).foregroundColor(.red)
+                }
+            }
+        }
+    }
+}
+#endif
+
+private struct OllamaConfigView: View {
+    @ObservedObject private var store = LLMProviderStore.shared
+    @State private var models: [String] = []
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Ollama", systemImage: "server.rack")
+                .font(.headline)
+            Text("Requires Ollama running locally (ollama.ai). Supports any installed model.")
+                .font(.body).foregroundColor(.secondary)
+            Picker("Model", selection: $store.ollamaModel) {
+                if models.isEmpty { Text(store.ollamaModel).tag(store.ollamaModel) }
+                ForEach(models, id: \.self) { Text($0).tag($0) }
+            }
+            .onAppear { Task { models = await store.fetchOllamaModels() } }
+        }
+    }
+}
+
+private struct CustomServerConfigView: View {
+    @ObservedObject private var store = LLMProviderStore.shared
+    @State private var apiKey: String = KeychainHelper.load(key: "customServerKey") ?? ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Custom Server", systemImage: "network")
+                .font(.headline)
+            Text("Any OpenAI-compatible server: LM Studio, vLLM, local Ollama, etc.")
+                .font(.body).foregroundColor(.secondary)
+            LabeledContent("Server URL") {
+                TextField("http://localhost:1234", text: $store.customServerURL)
+                    .textFieldStyle(.roundedBorder)
+            }
+            LabeledContent("Model name") {
+                TextField("local-model", text: $store.customServerModel)
+                    .textFieldStyle(.roundedBorder)
+            }
+            LabeledContent("API key (optional)") {
+                SecureField("leave empty if none", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: apiKey) { newValue in
+                        KeychainHelper.save(key: "customServerKey", value: newValue)
+                    }
+            }
+        }
+    }
+}
+
+private struct APIKeyConfigView: View {
+    let service: String
+    let label: String
+    let placeholder: String
+    @State private var key: String
+
+    init(service: String, label: String, placeholder: String) {
+        self.service     = service
+        self.label       = label
+        self.placeholder = placeholder
+        _key = State(initialValue: KeychainHelper.load(key: "\(service)APIKey") ?? "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(label, systemImage: "key")
+                .font(.headline)
+            SecureField(placeholder, text: $key)
+                .textFieldStyle(.roundedBorder)
+                .onChange(of: key) { newValue in
+                    KeychainHelper.save(key: "\(service)APIKey", value: newValue)
+                }
+        }
+    }
+}
+
 // MARK: - Privacy Settings
 
 struct PrivacySettingsTab: View {
@@ -116,14 +260,11 @@ struct PrivacySettingsTab: View {
                     .font(.title2)
                     .foregroundColor(.accentColor)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Your Privacy")
-                        .font(.headline)
+                    Text("Your Privacy").font(.headline)
                     Text("Audio is never stored. Memgram discards all audio immediately after transcription. Only text transcripts are saved to your local device.")
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                    Text("No data is sent to any server unless you configure a cloud LLM provider (Claude API or OpenAI) in the AI settings.")
-                        .font(.body)
-                        .foregroundColor(.secondary)
+                        .font(.body).foregroundColor(.secondary)
+                    Text("No data is sent to any server unless you configure a cloud LLM provider in the AI settings.")
+                        .font(.body).foregroundColor(.secondary)
                 }
             }
             Divider()
