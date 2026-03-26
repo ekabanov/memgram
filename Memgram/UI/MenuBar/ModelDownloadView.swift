@@ -15,13 +15,13 @@ struct ModelDownloadView: View {
             footer
                 .padding(16)
         }
-        .frame(width: 480, height: 360)
+        .frame(width: 500, height: 540)
     }
 
     private var content: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             Image(systemName: "waveform.and.magnifyingglass")
-                .font(.system(size: 44))
+                .font(.system(size: 36))
                 .foregroundStyle(.blue, .purple)
 
             VStack(spacing: 8) {
@@ -46,33 +46,65 @@ struct ModelDownloadView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(24)
+        .padding(16)
     }
 
+    private struct ModelGroup {
+        let title: String
+        let models: [WhisperModel]
+    }
+
+    private let modelGroups: [ModelGroup] = [
+        ModelGroup(title: "English Only", models: [.tinyEn, .baseEn, .smallEn, .mediumEn]),
+        ModelGroup(title: "Multilingual", models: [.tiny, .base, .small, .medium]),
+        ModelGroup(title: "Large (multilingual)", models: [.largeV2, .largeV3, .largeV3Turbo])
+    ]
+
     private var modelPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(WhisperModel.allCases) { model in
-                HStack {
-                    Image(systemName: selectedModel == model ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(selectedModel == model ? .accentColor : .secondary)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(model.displayName)
-                            .font(.body)
-                        if modelManager.isDownloaded(model) {
-                            Text(modelManager.isCoreMLReady(model) ? "Downloaded + CoreML" : "Downloaded")
-                                .font(.caption)
-                                .foregroundColor(.green)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(modelGroups, id: \.title) { group in
+                    Text(group.title.uppercased())
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 12)
+                        .padding(.bottom, 4)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(group.models) { model in
+                            HStack(spacing: 10) {
+                                Image(systemName: selectedModel == model ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(selectedModel == model ? .accentColor : Color(NSColor.separatorColor))
+                                    .frame(width: 18)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(model.displayName)
+                                        .font(.body)
+                                    if modelManager.isDownloaded(model) {
+                                        Text(modelManager.isCoreMLReady(model) ? "Downloaded + CoreML" : "Downloaded")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectedModel = model }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+
+                            if model != group.models.last {
+                                Divider().padding(.leading, 40)
+                            }
                         }
                     }
-                    Spacer()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                    .padding(.horizontal, 0)
                 }
-                .contentShape(Rectangle())
-                .onTapGesture { selectedModel = model }
             }
         }
-        .padding(12)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(8)
+        .frame(maxHeight: 340)
     }
 
     private var downloadingView: some View {
