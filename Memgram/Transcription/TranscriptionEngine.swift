@@ -44,13 +44,17 @@ final class TranscriptionEngine {
         subject.eraseToAnyPublisher()
     }
 
-    /// Load (and if needed download) the WhisperKit model. Called before recording starts.
+    /// Load (and if needed download) the WhisperKit model, then warm up CoreML compilation.
     func prepare(modelName: String) async throws {
         print("[TranscriptionEngine] Loading WhisperKit model: \(modelName)")
-        whisperKit = try await WhisperKit(
-            model: modelName,
-            verbose: false
-        )
+        let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
+        self.whisperKit = wk
+        print("[TranscriptionEngine] ✓ WhisperKit loaded — triggering CoreML warm-up (first run only)…")
+
+        // Run a silent 1-second dummy transcription to force CoreML compilation now,
+        // rather than stalling the first real recording chunk.
+        let silence = [Float](repeating: 0, count: 16000)
+        _ = try? await wk.transcribe(audioArray: silence)
         print("[TranscriptionEngine] ✓ WhisperKit ready — model: \(modelName)")
     }
 
