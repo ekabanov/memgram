@@ -18,6 +18,9 @@ packages:
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation
     from: "0.9.0"
+  MLXSwiftExamples:
+    url: https://github.com/ml-explore/mlx-swift-examples
+    from: "1.18.0"
 
 targets:
   Memgram:
@@ -62,5 +65,9 @@ targets:
         product: SwiftWhisper
       - package: ZIPFoundation
         product: ZIPFoundation
+      - package: MLXSwiftExamples
+        product: MLXLLM
+      - package: MLXSwiftExamples
+        product: MLXLMCommon
     scheme:
       testTargets: []
