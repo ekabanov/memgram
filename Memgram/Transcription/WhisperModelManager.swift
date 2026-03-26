@@ -3,19 +3,36 @@ import Combine
 import ZIPFoundation
 
 enum WhisperModel: String, CaseIterable, Identifiable {
+    // English-only (faster, English only)
     case tinyEn   = "tiny.en"
     case baseEn   = "base.en"
     case smallEn  = "small.en"
     case mediumEn = "medium.en"
+    // Multilingual
+    case tiny   = "tiny"
+    case base   = "base"
+    case small  = "small"
+    case medium = "medium"
+    // Large (multilingual, no CoreML encoder available)
+    case largeV2       = "large-v2"
+    case largeV3       = "large-v3"
+    case largeV3Turbo  = "large-v3-turbo"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .tinyEn:   return "Tiny (75 MB) — fast, lower accuracy"
-        case .baseEn:   return "Base (142 MB) — balanced"
-        case .smallEn:  return "Small (466 MB) — good accuracy"
-        case .mediumEn: return "Medium (1.5 GB) — best accuracy"
+        case .tinyEn:       return "Tiny EN (75 MB) — English only, fastest"
+        case .baseEn:       return "Base EN (142 MB) — English only"
+        case .smallEn:      return "Small EN (466 MB) — English only"
+        case .mediumEn:     return "Medium EN (1.5 GB) — English only, best EN accuracy"
+        case .tiny:         return "Tiny (75 MB) — multilingual"
+        case .base:         return "Base (142 MB) — multilingual"
+        case .small:        return "Small (466 MB) — multilingual"
+        case .medium:       return "Medium (1.5 GB) — multilingual"
+        case .largeV2:      return "Large v2 (2.9 GB) — multilingual, high accuracy"
+        case .largeV3:      return "Large v3 (3.1 GB) — multilingual, best accuracy"
+        case .largeV3Turbo: return "Large v3 Turbo (1.6 GB) — multilingual, fast + accurate"
         }
     }
 
@@ -25,11 +42,26 @@ enum WhisperModel: String, CaseIterable, Identifiable {
         URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(filename)")!
     }
 
+    /// CoreML encoders only exist for non-large models in the ggerganov/whisper.cpp repo.
+    var hasCoreMLEncoder: Bool {
+        switch self {
+        case .largeV2, .largeV3, .largeV3Turbo: return false
+        default: return true
+        }
+    }
+
     var coreMLZipURL: URL {
         URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-\(rawValue)-encoder.mlmodelc.zip")!
     }
 
     var coreMLDirectoryName: String { "ggml-\(rawValue)-encoder.mlmodelc" }
+
+    var isEnglishOnly: Bool {
+        switch self {
+        case .tinyEn, .baseEn, .smallEn, .mediumEn: return true
+        default: return false
+        }
+    }
 }
 
 @MainActor
@@ -99,7 +131,8 @@ final class WhisperModelManager: NSObject, ObservableObject, URLSessionDownloadD
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmpURL, to: dest)
 
-        // Phase 2: CoreML encoder (enables Neural Engine acceleration)
+        // Phase 2: CoreML encoder (not available for large models)
+        guard selectedModel.hasCoreMLEncoder else { return }
         downloadProgress = 0
         downloadPhase = "Downloading CoreML encoder"
         let coreMLZipTmp = try await downloadFile(from: selectedModel.coreMLZipURL)

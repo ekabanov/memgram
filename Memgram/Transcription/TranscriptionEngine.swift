@@ -47,7 +47,12 @@ final class TranscriptionEngine {
 
     func prepare(modelURL: URL) throws {
         let w = Whisper(fromFileURL: modelURL)
-        w.params.language = .english
+        // English-only models require explicit .english; multilingual models auto-detect
+        if modelURL.lastPathComponent.contains(".en.") {
+            w.params.language = .english
+        } else {
+            w.params.language = .auto
+        }
         w.params.n_threads = Int32(max(1, ProcessInfo.processInfo.activeProcessorCount - 1))
         w.params.no_context = false
         w.params.suppress_blank = true
