@@ -7,7 +7,6 @@ struct PopoverView: View {
     @ObservedObject private var modelManager = WhisperModelManager.shared
     @State private var lastError: String?
     @State private var showModelDownload = false
-    @State private var showRecoveryAlert = false
 
     var body: some View {
         VStack(spacing: 0) {
