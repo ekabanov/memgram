@@ -87,13 +87,16 @@ final class TranscriptionEngine {
             do {
                 let options = DecodingOptions(
                     task: .transcribe,
-                    language: nil,   // auto-detect
-                    temperature: 0
+                    language: nil,
+                    temperature: 0.0,
+                    skipSpecialTokens: true
                 )
+                print("[TranscriptionEngine] Transcribing chunk — \(chunk.samples.count) samples (\(Int(Double(chunk.samples.count)/16000))s)")
                 let results: [TranscriptionResult] = try await whisperKit.transcribe(
                     audioArray: chunk.samples,
                     decodeOptions: options
-                ) ?? []
+                )
+                print("[TranscriptionEngine] ✓ Got \(results.count) result(s), \(results.flatMap(\.segments).count) segment(s)")
 
                 for result in results {
                     for seg in result.segments {

@@ -54,14 +54,22 @@ final class RecordingSession: ObservableObject {
         )
         currentMeetingId = meeting.id
 
-        // Load WhisperKit model (downloads if not cached — first run may take a moment)
-        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
-        try? await transcriptionEngine.prepare(modelName: modelName)
         transcriptionEngine.reset()
         segments = []
 
         let mic = MicrophoneCapture()
         let sys = makeSystemAudioCapture()
+
+        // Start model loading in background so recording starts immediately.
+        // Chunks arriving before the model is ready are silently skipped.
+        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
+        Task {
+            do {
+                try await self.transcriptionEngine.prepare(modelName: modelName)
+            } catch {
+                print("[RecordingSession] ✗ WhisperKit load failed for '\(modelName)': \(error)")
+            }
+        }
 
         try mic.start()
         do {
