@@ -100,7 +100,8 @@ final class MeetingStore {
     func interruptedMeetings() throws -> [Meeting] {
         try db.read { db in
             try Meeting
-                .filter(Column("status") == MeetingStatus.recording.rawValue)
+                .filter(Column("status") == MeetingStatus.recording.rawValue
+                     || Column("status") == MeetingStatus.transcribing.rawValue)
                 .order(Column("started_at").desc)
                 .fetchAll(db)
         }

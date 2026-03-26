@@ -112,7 +112,6 @@ final class RecordingSession: ObservableObject {
         guard isRecording else { return }
 
         let meetingId = currentMeetingId
-        let capturedSegments = segments
 
         if let id = meetingId {
             try? MeetingStore.shared.updateStatus(id, status: .transcribing)
@@ -124,7 +123,6 @@ final class RecordingSession: ObservableObject {
         micCapture = nil
         sysCapture = nil
         chunkCancellable = nil
-        segmentCancellable = nil
         levelCancellables.removeAll()
         micLevel = 0
         sysLevel = 0
@@ -137,12 +135,14 @@ final class RecordingSession: ObservableObject {
         guard let id = meetingId else { return }
 
         let finalize = { [weak self] in
-            let rawTranscript = capturedSegments
+            guard let self else { return }
+            let rawTranscript = self.segments
                 .map { "\($0.speaker): \($0.text)" }
                 .joined(separator: "\n")
             try? MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript)
-            self?.currentMeetingId = nil
-            self?.finalizationCancellable = nil
+            self.currentMeetingId = nil
+            self.segmentCancellable = nil
+            self.finalizationCancellable = nil
         }
 
         if transcriptionEngine.isIdle {
