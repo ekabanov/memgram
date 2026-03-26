@@ -20,8 +20,9 @@ final class SummaryEngine {
                 summary = try await summarizeShort(transcript: transcript, provider: provider)
             }
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: summary)
+            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
         } catch {
-            // Summary failed silently — meeting remains unsummarised
+            print("[SummaryEngine] Failed to summarise meeting \(meetingId): \(error)")
         }
     }
 
