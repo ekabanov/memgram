@@ -161,8 +161,18 @@ struct PopoverView: View {
 
     // MARK: - Footer
 
+    private func openSettings() {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     private var footerSection: some View {
         HStack {
+            Button(action: openSettings) {
+                Image(systemName: "gearshape").font(.caption)
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
             permissionsStatus
             Spacer()
             if session.isRecording {
