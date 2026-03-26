@@ -7,6 +7,7 @@ struct MeetingListView: View {
     @State private var meetings: [Meeting] = []
     @State private var meetingToDelete: Meeting?
     @State private var showDeleteAlert = false
+    @State private var deleteError: String?
 
     var body: some View {
         List(selection: $selectedMeetingId) {
@@ -39,6 +40,14 @@ struct MeetingListView: View {
         } message: { meeting in
             Text("\"\(meeting.title)\" will be permanently deleted.")
         }
+        .alert("Could Not Delete", isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "")
+        }
     }
 
     private struct ListSection { let title: String; let meetings: [Meeting] }
@@ -48,7 +57,7 @@ struct MeetingListView: View {
         let now = Date()
         let todayStart     = cal.startOfDay(for: now)
         let yesterdayStart = cal.date(byAdding: .day, value: -1, to: todayStart)!
-        let weekStart      = cal.date(byAdding: .day, value: -7, to: todayStart)!
+        let weekStart      = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now))!
 
         var today: [Meeting] = [], yesterday: [Meeting] = [],
             thisWeek: [Meeting] = [], earlier: [Meeting] = []
@@ -71,9 +80,13 @@ struct MeetingListView: View {
     }
 
     private func delete(_ meeting: Meeting) {
-        try? MeetingStore.shared.deleteMeeting(meeting.id)
-        if selectedMeetingId == meeting.id { selectedMeetingId = nil }
-        load()
+        do {
+            try MeetingStore.shared.deleteMeeting(meeting.id)
+            if selectedMeetingId == meeting.id { selectedMeetingId = nil }
+            load()
+        } catch {
+            deleteError = error.localizedDescription
+        }
     }
 }
 
