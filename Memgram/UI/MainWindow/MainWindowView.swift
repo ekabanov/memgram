@@ -44,12 +44,3 @@ struct MainWindowView: View {
     }
 }
 
-// Stub — replaced in Task 4
-struct SearchView: View {
-    var onSelectMeeting: ((String) -> Void)?
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        VStack { Text("Search").font(.title); Button("Close") { dismiss() } }
-            .frame(width: 400, height: 300)
-    }
-}
