@@ -1,0 +1,66 @@
+name: Memgram
+options:
+  bundleIdPrefix: com.memgram
+  deploymentTarget:
+    macOS: "13.0"
+  defaultConfig: Debug
+  xcodeVersion: "15"
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: "6.0.0"
+  SwiftWhisper:
+    url: https://github.com/exPHAT/SwiftWhisper
+    branch: master
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: "0.9.0"
+
+targets:
+  Memgram:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: Memgram
+        excludes:
+          - Resources/Info.plist
+          - Resources/Memgram.entitlements
+    resources:
+      - path: Memgram/Resources
+        excludes:
+          - Memgram.entitlements
+    info:
+      path: Memgram/Resources/Info.plist
+      properties:
+        NSMicrophoneUsageDescription: "Memgram uses your microphone to capture your voice in meetings."
+        NSAudioCaptureUsageDescription: "Memgram captures system audio to transcribe meeting calls."
+        NSScreenCaptureUsageDescription: "Memgram captures system audio from your screen to transcribe calls. (Used on older macOS only. No video is ever recorded or stored.)"
+        CFBundleIdentifier: com.memgram.app
+        CFBundleName: Memgram
+        CFBundleDisplayName: Memgram
+        LSUIElement: true
+        NSPrincipalClass: NSApplication
+        LSMinimumSystemVersion: "13.0"
+    entitlements:
+      path: Memgram/Resources/Memgram.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.memgram.app
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        SWIFT_STRICT_CONCURRENCY: minimal
+    dependencies:
+      - package: GRDB
+        product: GRDB
+      - package: SwiftWhisper
+        product: SwiftWhisper
+      - package: ZIPFoundation
+        product: ZIPFoundation
+    scheme:
+      testTargets: []

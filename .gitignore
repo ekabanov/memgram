@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# User-specific Xcode settings (keep shared schemes)
+Memgram.xcodeproj/xcuserdata/
+Memgram.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Archives
+*.xcarchive
