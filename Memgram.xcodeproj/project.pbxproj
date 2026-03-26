@@ -16,7 +16,6 @@
 		2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B935CBFDAA46A9FE07A6B5A /* ScreenCaptureKitCapture.swift */; };
 		2DEFA9ECB0A66429A958E4B8 /* MeetingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CADF3A54BCED319651C9AC /* MeetingStore.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
-		335413DB8274C0DB2FDC6ACD /* MainWindowPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24CF87A1E77D6ACB80269A9 /* MainWindowPlaceholderView.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
@@ -78,7 +77,6 @@
 		95BDF9934A5067BEC5703004 /* StereoMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StereoMixer.swift; sourceTree = "<group>"; };
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B24CF87A1E77D6ACB80269A9 /* MainWindowPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowPlaceholderView.swift; sourceTree = "<group>"; };
 		B565F886405D70876367BB2D /* LiveTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptView.swift; sourceTree = "<group>"; };
 		B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
 		BE1E2B84348CF7B813409F0F /* Speaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speaker.swift; sourceTree = "<group>"; };
@@ -216,7 +214,6 @@
 		A7230F46BC0762CBE3254DEA /* MainWindow */ = {
 			isa = PBXGroup;
 			children = (
-				B24CF87A1E77D6ACB80269A9 /* MainWindowPlaceholderView.swift */,
 				F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */,
 				C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */,
 				E2DACCFEC6DB30395795F347 /* MeetingListView.swift */,
@@ -355,7 +352,6 @@
 				DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */,
 				E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */,
 				561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */,
-				335413DB8274C0DB2FDC6ACD /* MainWindowPlaceholderView.swift in Sources */,
 				DA6DBBEEAF18E108551B16C3 /* MainWindowView.swift in Sources */,
 				4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */,
 				C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */,
