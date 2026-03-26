@@ -61,7 +61,6 @@ struct AISettingsTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 switch store.selectedBackend {
-                case .qwen:   QwenConfigView()
                 case .ollama: OllamaConfigView()
                 case .custom: CustomServerConfigView()
                 case .claude: APIKeyConfigView(service: "claude", label: "Claude API Key", placeholder: "sk-ant-…")
@@ -129,52 +128,6 @@ private struct ProviderRow: View {
 
 // MARK: - Config sub-views
 
-private struct QwenConfigView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Qwen 3.5 9B (Local)", systemImage: "cpu")
-                .font(.headline)
-            Text("Runs entirely on your Mac using Apple MLX. Downloads ~4.5 GB of model weights on first use. Requires Apple Silicon (macOS 14+).")
-                .font(.body)
-                .foregroundColor(.secondary)
-            #if canImport(MLXLLM)
-            QwenDownloadStatusView()
-            #else
-            Label("MLX not available in this build", systemImage: "exclamationmark.triangle")
-                .foregroundColor(.orange)
-            #endif
-        }
-    }
-}
-
-#if canImport(MLXLLM)
-private struct QwenDownloadStatusView: View {
-    @ObservedObject private var provider = QwenMLXProvider.shared
-
-    var body: some View {
-        if provider.isLoaded {
-            Label("Model loaded and ready", systemImage: "checkmark.circle.fill")
-                .foregroundColor(.green)
-        } else if provider.downloadProgress > 0 && provider.downloadProgress < 1 {
-            VStack(alignment: .leading, spacing: 4) {
-                ProgressView(value: provider.downloadProgress)
-                Text("Downloading… \(Int(provider.downloadProgress * 100))%")
-                    .font(.caption).foregroundColor(.secondary)
-            }
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Button("Download Model (~4.5 GB)") {
-                    provider.preload()
-                }
-                .buttonStyle(.borderedProminent)
-                if let err = provider.loadError {
-                    Text(err).font(.caption).foregroundColor(.red)
-                }
-            }
-        }
-    }
-}
-#endif
 
 private struct OllamaConfigView: View {
     @ObservedObject private var store = LLMProviderStore.shared

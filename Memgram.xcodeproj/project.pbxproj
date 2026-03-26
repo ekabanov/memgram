@@ -32,8 +32,6 @@
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
-		BE8B254989015D617A0BA897 /* LLM in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2FB6C5104C50E62453DCC6 /* LLM */; };
-		BFE28D65FA549CF3BA03EB01 /* QwenMLXProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
@@ -78,7 +76,6 @@
 		8B079BA5413B938636C31EC9 /* RecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSession.swift; sourceTree = "<group>"; };
 		8B42916D4665E4E55C140260 /* MeetingSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSegment.swift; sourceTree = "<group>"; };
 		9272F36873A483ABC9FDCB0F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
-		9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenMLXProvider.swift; sourceTree = "<group>"; };
 		95BDF9934A5067BEC5703004 /* StereoMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StereoMixer.swift; sourceTree = "<group>"; };
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -107,7 +104,6 @@
 			files = (
 				11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */,
 				7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */,
-				BE8B254989015D617A0BA897 /* LLM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -204,7 +200,6 @@
 				68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */,
 				4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */,
 				71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */,
-				9561DF0704A6D6FF5B241EC2 /* QwenMLXProvider.swift */,
 				9B5DFF25E171256C015392B0 /* SearchEngine.swift */,
 				8009E920FB91831616BDC1FD /* SummaryEngine.swift */,
 			);
@@ -301,7 +296,6 @@
 			packageProductDependencies = (
 				F7F968E28E3536B2BD9133D2 /* GRDB */,
 				F979AADA93C8B3A477894A87 /* WhisperKit */,
-				9E2FB6C5104C50E62453DCC6 /* LLM */,
 			);
 			productName = Memgram;
 			productReference = 9B83A48D9B5013FC9151290B /* Memgram.app */;
@@ -333,7 +327,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
-				95AA3FE33531F063E9CFA4B3 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */,
 				6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -379,7 +372,6 @@
 				F4079DD0A1D5E98E12EE09D4 /* OpenAIProvider.swift in Sources */,
 				F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */,
 				501FEB83850E856B56431C2B /* PopoverView.swift in Sources */,
-				BFE28D65FA549CF3BA03EB01 /* QwenMLXProvider.swift in Sources */,
 				326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */,
 				2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */,
 				29B9E8EA107ACD884B77613A /* SearchEngine.swift in Sources */,
@@ -600,22 +592,9 @@
 				minimumVersion = 6.0.0;
 			};
 		};
-		95AA3FE33531F063E9CFA4B3 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ml-explore/mlx-swift-examples";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.18.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		9E2FB6C5104C50E62453DCC6 /* LLM */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 95AA3FE33531F063E9CFA4B3 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */;
-			productName = LLM;
-		};
 		F7F968E28E3536B2BD9133D2 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
