@@ -19,7 +19,8 @@ final class MeetingStore {
             status: .recording,
             summary: nil,
             actionItems: nil,
-            rawTranscript: nil
+            rawTranscript: nil,
+            ckSystemFields: nil
         )
         try db.write { db in try meeting.insert(db) }
         return meeting

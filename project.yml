@@ -50,6 +50,11 @@ targets:
         LSMinimumSystemVersion: "14.0"
     entitlements:
       path: Memgram/Resources/Memgram.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.memgram.app
+        com.apple.developer.icloud-services:
+          - CloudKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.memgram.app

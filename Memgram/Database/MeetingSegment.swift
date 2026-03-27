@@ -11,6 +11,7 @@ struct MeetingSegment: Codable, FetchableRecord, PersistableRecord {
     var startSeconds: Double
     var endSeconds: Double
     var text: String
+    var ckSystemFields: Data?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -20,5 +21,6 @@ struct MeetingSegment: Codable, FetchableRecord, PersistableRecord {
         case startSeconds = "start_seconds"
         case endSeconds   = "end_seconds"
         case text
+        case ckSystemFields  = "ck_system_fields"
     }
 }

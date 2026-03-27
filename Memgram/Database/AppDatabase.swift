@@ -129,6 +129,18 @@ final class AppDatabase {
             """)
         }
 
+        migrator.registerMigration("v2_cloudkit_sync") { db in
+            try db.alter(table: "meetings") { t in
+                t.add(column: "ck_system_fields", .blob)
+            }
+            try db.alter(table: "segments") { t in
+                t.add(column: "ck_system_fields", .blob)
+            }
+            try db.alter(table: "speakers") { t in
+                t.add(column: "ck_system_fields", .blob)
+            }
+        }
+
         try migrator.migrate(dbQueue)
     }
 }

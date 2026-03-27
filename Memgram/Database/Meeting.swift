@@ -17,6 +17,7 @@ struct Meeting: Codable, FetchableRecord, PersistableRecord {
     var summary: String?
     var actionItems: String?
     var rawTranscript: String?
+    var ckSystemFields: Data?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -28,5 +29,6 @@ struct Meeting: Codable, FetchableRecord, PersistableRecord {
         case summary
         case actionItems     = "action_items"
         case rawTranscript   = "raw_transcript"
+        case ckSystemFields  = "ck_system_fields"
     }
 }
