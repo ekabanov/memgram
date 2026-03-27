@@ -15,8 +15,8 @@ struct SegmentRowView: View {
                 // Speaker chip — opens rename popover
                 Button(segment.speaker) { showRename = true }
                     .buttonStyle(.plain)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
                     .background(speakerColor.opacity(0.15))
                     .foregroundColor(speakerColor)
                     .cornerRadius(4)
@@ -52,8 +52,14 @@ struct SegmentRowView: View {
 
     // MARK: - Helpers
 
+    private static let speakerPalette: [Color] = [
+        .blue, .purple, .orange, .teal, .pink, .indigo, .mint, .brown
+    ]
+
     private var speakerColor: Color {
-        segment.speaker.lowercased() == "you" ? .blue : Color.secondary
+        if segment.speaker.lowercased() == "you" { return .blue }
+        let hash = abs(segment.speaker.hashValue)
+        return Self.speakerPalette[(hash % (Self.speakerPalette.count - 1)) + 1]
     }
 
     private func formatTime(_ seconds: Double) -> String {
