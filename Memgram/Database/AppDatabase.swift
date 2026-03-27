@@ -3,8 +3,16 @@ import GRDB
 
 final class AppDatabase {
     static let shared: AppDatabase = {
+        if let db = try? AppDatabase() { return db }
+        // First open failed — database may be corrupt. Rename it and start fresh.
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let dbURL = appSupport.appendingPathComponent("Memgram/memgram.db")
+        let backupName = "memgram.db.corrupted-\(Int(Date().timeIntervalSince1970))"
+        let backupURL = appSupport.appendingPathComponent("Memgram/\(backupName)")
+        try? FileManager.default.moveItem(at: dbURL, to: backupURL)
+        print("[AppDatabase] ⚠️ Database corrupted — moved to \(backupName), starting fresh")
         do { return try AppDatabase() }
-        catch { fatalError("Cannot open database: \(error)") }
+        catch { fatalError("[AppDatabase] Cannot open database even after recovery: \(error)") }
     }()
 
     private let dbQueue: DatabaseQueue

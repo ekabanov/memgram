@@ -41,8 +41,10 @@ final class StereoMixer {
         DispatchQueue.main.async {
             self.levelTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
                 guard let self else { return }
+                self.lock.lock()
                 let m = self._latestMicLevel
                 let s = self._latestSysLevel
+                self.lock.unlock()
                 self.micLevel = m
                 self.sysLevel = s
             }
@@ -75,8 +77,8 @@ final class StereoMixer {
         for i in 0..<frames { mixed[i] *= scale }
 
         let level = rmsLevel(mixed)
-        _latestMicLevel = level
         lock.lock()
+        _latestMicLevel = level
         micAccumulator.append(contentsOf: mixed)
         let shouldFlush = micAccumulator.count >= Self.framesPerChunk && sysAccumulator.count >= Self.framesPerChunk
         lock.unlock()
@@ -88,9 +90,8 @@ final class StereoMixer {
         guard let data = buf.floatChannelData?[0] else { return }
         let frames = Int(buf.frameLength)
         let samples = Array(UnsafeBufferPointer(start: data, count: frames))
-        _latestSysLevel = rmsLevel(samples)
-
         lock.lock()
+        _latestSysLevel = rmsLevel(samples)
         sysAccumulator.append(contentsOf: samples)
         let shouldFlush = micAccumulator.count >= Self.framesPerChunk && sysAccumulator.count >= Self.framesPerChunk
         lock.unlock()
