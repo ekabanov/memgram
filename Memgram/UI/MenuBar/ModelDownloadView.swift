@@ -4,37 +4,63 @@ import WhisperKit
 struct ModelDownloadView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var modelManager = WhisperModelManager.shared
-    @State private var selectedModel: WhisperModel = WhisperModelManager.shared.selectedModel
     @State private var isPrewarming = false
     @State private var prewarmStatus = ""
 
+    private var model: WhisperModel { modelManager.autoSelectedModel }
+    private var ramLabel: String {
+        let gb = WhisperModelManager.ramGB
+        return String(format: "%.0f GB RAM detected", gb)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
-            footer
-                .padding(16)
+            footer.padding(16)
         }
-        .frame(width: 500, height: 540)
+        .frame(width: 460, height: 340)
     }
 
     private var content: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 20) {
             Image(systemName: "waveform.and.magnifyingglass")
                 .font(.system(size: 36))
                 .foregroundStyle(.blue, .purple)
 
             VStack(spacing: 6) {
-                Text("Transcription Model")
+                Text("Transcription Language")
                     .font(.title3.bold())
-                Text("WhisperKit downloads and caches models automatically on first use.\nAll processing is local — no audio leaves your Mac.")
+                Text("Memgram transcribes entirely on your Mac.\nNo audio ever leaves your device.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
 
-            modelPicker
+            // Language selector
+            Picker("Language", selection: $modelManager.preferMultilingual) {
+                Text("English").tag(false)
+                Text("Multilingual").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 260)
+
+            // Auto-selected model info
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: "cpu")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    Text(ramLabel)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Text("Model: **\(model.shortName)** (\(model.sizeMB) MB)")
+                    .font(.body)
+            }
+            .padding(12)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
 
             if !prewarmStatus.isEmpty {
                 Text(prewarmStatus)
@@ -42,62 +68,8 @@ struct ModelDownloadView: View {
                     .foregroundColor(prewarmStatus.hasPrefix("✓") ? .green : .secondary)
             }
         }
-        .padding(16)
+        .padding(20)
     }
-
-    // MARK: - Model picker (grouped)
-
-    private struct ModelGroup {
-        let title: String
-        let models: [WhisperModel]
-    }
-
-    private let modelGroups: [ModelGroup] = [
-        ModelGroup(title: "English Only", models: [.tinyEn, .baseEn, .smallEn]),
-        ModelGroup(title: "Multilingual", models: [.tiny, .base, .small]),
-        ModelGroup(title: "Large (multilingual)", models: [.largeV3Turbo, .largeV3, .largeV3Full, .largeV2])
-    ]
-
-    private var modelPicker: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(modelGroups, id: \.title) { group in
-                    Text(group.title.uppercased())
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 12)
-                        .padding(.bottom, 4)
-
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(group.models) { model in
-                            HStack(spacing: 10) {
-                                Image(systemName: selectedModel == model ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(selectedModel == model ? .accentColor : Color(NSColor.separatorColor))
-                                    .frame(width: 18)
-                                Text(model.displayName)
-                                    .font(.body)
-                                Spacer()
-                            }
-                            .contentShape(Rectangle())
-                            .onTapGesture { selectedModel = model }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-
-                            if model != group.models.last {
-                                Divider().padding(.leading, 40)
-                            }
-                        }
-                    }
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(8)
-                }
-            }
-        }
-        .frame(maxHeight: 340)
-    }
-
-    // MARK: - Footer
 
     private var footer: some View {
         HStack {
@@ -105,28 +77,20 @@ struct ModelDownloadView: View {
                 .buttonStyle(.plain)
                 .foregroundColor(.secondary)
             Spacer()
-            Button(isPrewarming ? "Loading…" : "Pre-load Model") {
-                prewarm()
-            }
-            .buttonStyle(.bordered)
-            .disabled(isPrewarming)
-            Button("Use \(selectedModel.shortName)") {
-                modelManager.selectModel(selectedModel)
-                closeSheet()
-            }
-            .buttonStyle(.borderedProminent)
+            Button(isPrewarming ? "Loading…" : "Pre-load Model") { prewarm() }
+                .buttonStyle(.bordered)
+                .disabled(isPrewarming)
+            Button("Done") { closeSheet() }
+                .buttonStyle(.borderedProminent)
         }
     }
 
-    // MARK: - Actions
-
     private func prewarm() {
-        modelManager.selectModel(selectedModel)
         isPrewarming = true
-        prewarmStatus = "Downloading and compiling model…"
+        prewarmStatus = "Downloading and compiling…"
         Task {
             do {
-                _ = try await WhisperKit(model: selectedModel.whisperKitName, verbose: false)
+                _ = try await WhisperKit(model: model.whisperKitName, verbose: false, logLevel: .none)
                 await MainActor.run {
                     isPrewarming = false
                     prewarmStatus = "✓ Model ready"

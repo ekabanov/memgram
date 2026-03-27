@@ -1,61 +1,31 @@
 import Foundation
 import Combine
 
+// Internal model cases kept for WhisperKit name mapping — not exposed in UI
 enum WhisperModel: String, CaseIterable, Identifiable {
-    // English-only (small / fast)
-    case tinyEn  = "openai_whisper-tiny.en"
-    case baseEn  = "openai_whisper-base.en"
-    case smallEn = "openai_whisper-small.en"
-    // Multilingual (small / fast)
-    case tiny    = "openai_whisper-tiny"
-    case base    = "openai_whisper-base"
-    case small   = "openai_whisper-small"
-    // Large (quantized — good quality, reasonable size)
-    case largeV3Turbo = "openai_whisper-large-v3-v20240930_turbo_632MB"   // recommended default
-    case largeV3      = "openai_whisper-large-v3-v20240930_626MB"
+    case smallEn      = "openai_whisper-small.en"
+    case small        = "openai_whisper-small"
+    case largeV3Turbo = "openai_whisper-large-v3-v20240930_turbo_632MB"
     case largeV3Full  = "openai_whisper-large-v3_turbo_954MB"
-    case largeV2      = "openai_whisper-large-v2_949MB"
 
     var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .tinyEn:       return "Tiny EN (39 MB) — English only, fastest"
-        case .baseEn:       return "Base EN (74 MB) — English only, fast"
-        case .smallEn:      return "Small EN (244 MB) — English only, good"
-        case .tiny:         return "Tiny (39 MB) — multilingual"
-        case .base:         return "Base (74 MB) — multilingual"
-        case .small:        return "Small (244 MB) — multilingual"
-        case .largeV3Turbo: return "Large v3 Turbo Q (632 MB) — multilingual, recommended ✦"
-        case .largeV3:      return "Large v3 Q (626 MB) — multilingual, high accuracy"
-        case .largeV3Full:  return "Large v3 Turbo (954 MB) — multilingual, full precision"
-        case .largeV2:      return "Large v2 (949 MB) — multilingual"
-        }
-    }
-
-    /// Model variant name passed to WhisperKit
     var whisperKitName: String { rawValue }
 
-    /// Short label for buttons and compact UI
     var shortName: String {
         switch self {
-        case .tinyEn:       return "Tiny EN"
-        case .baseEn:       return "Base EN"
         case .smallEn:      return "Small EN"
-        case .tiny:         return "Tiny"
-        case .base:         return "Base"
         case .small:        return "Small"
         case .largeV3Turbo: return "Large v3 Turbo Q"
-        case .largeV3:      return "Large v3 Q"
         case .largeV3Full:  return "Large v3 Turbo"
-        case .largeV2:      return "Large v2"
         }
     }
 
-    var isEnglishOnly: Bool {
+    var sizeMB: Int {
         switch self {
-        case .tinyEn, .baseEn, .smallEn: return true
-        default: return false
+        case .smallEn:      return 244
+        case .small:        return 244
+        case .largeV3Turbo: return 632
+        case .largeV3Full:  return 954
         }
     }
 }
@@ -64,23 +34,39 @@ enum WhisperModel: String, CaseIterable, Identifiable {
 final class WhisperModelManager: ObservableObject {
     static let shared = WhisperModelManager()
 
-    @Published var selectedModel: WhisperModel = .largeV3Turbo {
-        didSet {
-            UserDefaults.standard.set(selectedModel.rawValue, forKey: "selectedWhisperModel")
-            print("[WhisperModelManager] Model selected: \(selectedModel.displayName)")
-        }
+    /// True = multilingual; False = English-only (faster, higher accuracy for English)
+    @Published var preferMultilingual: Bool {
+        didSet { UserDefaults.standard.set(preferMultilingual, forKey: "preferMultilingual") }
     }
+
+    /// Model chosen automatically based on language preference and available RAM.
+    var selectedModel: WhisperModel { autoSelectedModel }
 
     var isModelReady: Bool { true }
 
-    private init() {
-        if let saved = UserDefaults.standard.string(forKey: "selectedWhisperModel"),
-           let model = WhisperModel(rawValue: saved) {
-            selectedModel = model
+    /// How much physical RAM this machine has (GiB).
+    static var ramGB: Double {
+        Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+    }
+
+    /// Automatically pick the best model the hardware can comfortably run.
+    ///
+    /// Thresholds (Apple Silicon Mac line-up: 8 / 16 / 24 / 32 GB+):
+    ///  < 8 GB  → Small (244 MB) — unlikely on modern Apple Silicon but safe fallback
+    ///  8 GB    → Large v3 Turbo Q (632 MB) — fits easily, excellent quality
+    ///  ≥ 16 GB → Large v3 Turbo full (954 MB) — full precision, best quality
+    var autoSelectedModel: WhisperModel {
+        let ram = Self.ramGB
+        if ram >= 16 {
+            return .largeV3Full
+        } else if ram >= 8 {
+            return .largeV3Turbo
+        } else {
+            return preferMultilingual ? .small : .smallEn
         }
     }
 
-    func selectModel(_ model: WhisperModel) {
-        selectedModel = model
+    private init() {
+        preferMultilingual = UserDefaults.standard.bool(forKey: "preferMultilingual")
     }
 }
