@@ -6,6 +6,11 @@ final class MeetingStore {
     private let db = AppDatabase.shared
     private init() {}
 
+    private var sync: CloudSyncEngine? {
+        if #available(macOS 14.0, *) { return CloudSyncEngine.shared }
+        return nil
+    }
+
     // MARK: - Write
 
     @discardableResult
@@ -23,6 +28,7 @@ final class MeetingStore {
             ckSystemFields: nil
         )
         try db.write { db in try meeting.insert(db) }
+        sync?.enqueueSave(table: "meetings", id: meeting.id)
         return meeting
     }
 
@@ -37,6 +43,7 @@ final class MeetingStore {
             text: segment.text
         )
         try db.write { db in try dbSegment.insert(db) }
+        sync?.enqueueSave(table: "segments", id: dbSegment.id)
     }
 
     func updateStatus(_ meetingId: String, status: MeetingStatus) throws {
@@ -46,6 +53,7 @@ final class MeetingStore {
                 arguments: [status.rawValue, meetingId]
             )
         }
+        sync?.enqueueSave(table: "meetings", id: meetingId)
     }
 
     func finalizeMeeting(_ meetingId: String, endedAt: Date, rawTranscript: String) throws {
@@ -59,6 +67,7 @@ final class MeetingStore {
             meeting.rawTranscript = rawTranscript
             try meeting.update(db)
         }
+        sync?.enqueueSave(table: "meetings", id: meetingId)
     }
 
     func saveSummary(meetingId: String, summary: String) throws {
@@ -68,6 +77,7 @@ final class MeetingStore {
                 arguments: [summary, meetingId]
             )
         }
+        sync?.enqueueSave(table: "meetings", id: meetingId)
     }
 
     func updateTitle(_ meetingId: String, title: String) throws {
@@ -77,6 +87,7 @@ final class MeetingStore {
                 arguments: [title, meetingId]
             )
         }
+        sync?.enqueueSave(table: "meetings", id: meetingId)
     }
 
     func renameSpeaker(_ oldName: String, to newName: String, inMeeting meetingId: String) throws {
@@ -86,6 +97,7 @@ final class MeetingStore {
                 arguments: [newName, meetingId, oldName]
             )
         }
+        sync?.enqueueSaveSegments(meetingId: meetingId)
     }
 
     func renameSpeakerGlobally(_ oldName: String, to newName: String) throws {
@@ -95,14 +107,35 @@ final class MeetingStore {
                 arguments: [newName, oldName]
             )
         }
+        if let sync = sync {
+            do {
+                let segments = try db.read { db in
+                    try MeetingSegment.filter(Column("speaker") == newName).fetchAll(db)
+                }
+                for seg in segments {
+                    sync.enqueueSave(table: "segments", id: seg.id)
+                }
+            } catch {}
+        }
     }
 
     /// Discards a meeting that is currently recording (e.g. on crash recovery).
     /// Use `deleteMeeting` to remove a completed meeting from history.
     func discardMeeting(_ meetingId: String) throws {
+        if let sync = sync {
+            let segments = try db.read { db in
+                try MeetingSegment.filter(Column("meeting_id") == meetingId).fetchAll(db)
+            }
+            for seg in segments { sync.enqueueDelete(table: "segments", id: seg.id) }
+            let speakers = try db.read { db in
+                try Speaker.filter(Column("meeting_id") == meetingId).fetchAll(db)
+            }
+            for sp in speakers { sync.enqueueDelete(table: "speakers", id: sp.id) }
+        }
         try db.write { db in
             try db.execute(sql: "DELETE FROM meetings WHERE id = ?", arguments: [meetingId])
         }
+        sync?.enqueueDelete(table: "meetings", id: meetingId)
     }
 
     // MARK: - Read
@@ -129,9 +162,20 @@ final class MeetingStore {
     }
 
     func deleteMeeting(_ id: String) throws {
+        if let sync = sync {
+            let segments = try db.read { db in
+                try MeetingSegment.filter(Column("meeting_id") == id).fetchAll(db)
+            }
+            for seg in segments { sync.enqueueDelete(table: "segments", id: seg.id) }
+            let speakers = try db.read { db in
+                try Speaker.filter(Column("meeting_id") == id).fetchAll(db)
+            }
+            for sp in speakers { sync.enqueueDelete(table: "speakers", id: sp.id) }
+        }
         try db.write { db in
             try db.execute(sql: "DELETE FROM meetings WHERE id = ?", arguments: [id])
         }
+        sync?.enqueueDelete(table: "meetings", id: id)
     }
 
     func insertEmbedding(_ embedding: MeetingEmbedding) throws {

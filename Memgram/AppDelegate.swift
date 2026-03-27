@@ -31,6 +31,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingSession.shared.loadInterruptedMeetings()
         SummaryEngine.shared.cleanExistingSummaries()
 
+        if #available(macOS 14.0, *) {
+            CloudSyncEngine.shared.start()
+        }
+
         // Keep menu bar icon in sync with recording state
         sessionCancellable = RecordingSession.shared.$isRecording
             .receive(on: DispatchQueue.main)
