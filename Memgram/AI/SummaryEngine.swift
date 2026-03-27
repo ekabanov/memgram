@@ -129,7 +129,7 @@ final class SummaryEngine: ObservableObject {
 
     // MARK: - Private
 
-    private func stripThinkingTags(_ text: String) -> String {
+    private nonisolated func stripThinkingTags(_ text: String) -> String {
         // Reasoning models output: <think>chain of thought</think>actual answer
         // Strategy: if </think> exists, return everything after it.
         // If only <think> exists (unclosed), return everything before it.
@@ -149,17 +149,20 @@ final class SummaryEngine: ObservableObject {
     /// Re-strips thinking tags from all existing meetings that have summaries.
     /// Call once on launch to clean up summaries generated before this fix.
     func cleanExistingSummaries() {
-        Task {
+        // Run DB operations off the main actor to avoid blocking the main thread
+        Task.detached(priority: .background) {
             let meetings = (try? MeetingStore.shared.fetchAll()) ?? []
+            var cleaned = false
             for meeting in meetings {
                 guard let summary = meeting.summary,
                       summary.contains("<think>") else { continue }
-                let cleaned = stripThinkingTags(summary)
-                try? MeetingStore.shared.saveSummary(meetingId: meeting.id, summary: cleaned)
+                let cleanedSummary = stripThinkingTags(summary)
+                try? MeetingStore.shared.saveSummary(meetingId: meeting.id, summary: cleanedSummary)
                 print("[SummaryEngine] Cleaned <think> tags from meeting \(meeting.id)")
+                cleaned = true
             }
-            if !meetings.filter({ $0.summary?.contains("<think>") == true }).isEmpty {
-                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            if cleaned {
+                await MainActor.run { NotificationCenter.default.post(name: .meetingDidUpdate, object: nil) }
             }
         }
     }
