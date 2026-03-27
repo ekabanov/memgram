@@ -56,6 +56,24 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **⚠️ MLXSwiftLM pinning:** Pinned to commit `4051621` — `main` branch broke `swift-transformers` compat with WhisperKit. When WhisperKit supports `swift-transformers >= 1.2.0`, switch to `branch: main`.
 
+## iCloud Sync
+
+`CloudSyncEngine` (`Memgram/Sync/CloudSyncEngine.swift`) wraps `CKSyncEngine` (macOS 14+) for syncing meetings, segments, and speakers via CloudKit private database.
+
+- **Container:** `iCloud.com.memgram.app`, custom zone `MemgramZone`
+- **Record IDs:** `"{table}_{uuid}"` format (e.g. `meetings_ABC-123`)
+- **Enqueue pattern:** Each `MeetingStore` write method calls `sync?.enqueueSave/enqueueDelete` after the GRDB write. No TransactionObserver.
+- **System fields:** Stored as `ck_system_fields` blob column (NSKeyedArchiver-encoded CKRecord metadata). Used to send updates as modifications, not creates.
+- **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings to satisfy FK constraints.
+- **Initial upload:** On first launch (no sync state in UserDefaults), all existing records are enqueued for upload.
+- **What does NOT sync:** `embeddings`, `segments_fts` (rebuilt by triggers), WhisperKit/LLM models.
+- **State persistence:** `CKSyncEngine.State.Serialization` JSON-encoded in UserDefaults key `CKSyncEngineState`. Note: on this machine, UserDefaults writes to `~/Library/Preferences/com.memgram.app.plist` (not the sandboxed container path).
+
+**Pitfalls:**
+- Never use raw SQL with `Date.timeIntervalSinceReferenceDate` in GRDB — always use Codable `update(db)`/`insert(db)`.
+- `PRAGMA foreign_keys = OFF` is silently ignored inside GRDB `db.write {}` transactions.
+- xcodegen regenerates `.entitlements` from `project.yml` — all entitlements must be in `entitlements.properties`, not added via Xcode UI.
+
 ## Key Implementation Details
 
 - **SWIFT_STRICT_CONCURRENCY: minimal** — cross-actor accesses compile without errors.
