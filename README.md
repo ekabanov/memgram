@@ -14,6 +14,7 @@ Memgram is a private, offline-first macOS meeting recorder. It silently captures
 - **Inline search** — filter transcript segments by text or speaker; global semantic search (Cmd+F)
 - **Summary tab** — rendered Markdown with Copy and Regenerate (choose model inline)
 - **Auto-titling** — LLM generates a 4–8 word title from the summary
+- **iCloud sync** — meetings, transcripts, and speaker names sync across Macs via CloudKit
 
 ## Requirements
 
@@ -73,6 +74,12 @@ MicrophoneCapture (16kHz mono)
 
 SQLite at `~/Library/Application Support/Memgram/memgram.db`. Audio discarded after transcription.
 
+### iCloud Sync
+
+Meetings, transcript segments, and speaker names sync automatically via CloudKit (`CKSyncEngine`, macOS 14+). Data lives in a custom zone (`MemgramZone`) in the CloudKit private database. Embeddings and FTS indexes are not synced — they are regenerated locally.
+
+On first launch with sync enabled, all existing local data is uploaded. Subsequent changes are synced incrementally. Conflict resolution is last-writer-wins.
+
 ## Package Dependencies
 
 | Package | Purpose |
@@ -88,7 +95,7 @@ SQLite at `~/Library/Application Support/Memgram/memgram.db`. Audio discarded af
 
 - Audio is never stored (discarded immediately after transcription)
 - Transcripts stored locally in SQLite only
-- Network requests only when using cloud LLM providers
+- Network requests only when using cloud LLM providers or syncing via iCloud
 - CoreAudio ProcessTap (macOS 14.4+) for system audio — no screen content captured
 
 ## Build
