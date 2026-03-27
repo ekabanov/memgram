@@ -18,14 +18,28 @@ final class PermissionsManager: ObservableObject {
     // MARK: - Permission State
 
     private func checkStoredPermissions() {
-        // Check actual system state, not just what we stored
+        // Mic: check actual TCC state (not cached)
         let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
         microphoneGranted = (micStatus == .authorized)
         UserDefaults.standard.set(microphoneGranted, forKey: "microphonePermissionGranted")
 
-        // System audio: for CoreAudio tap (14.4+) the audio-input entitlement suffices.
-        // For SCKit (<14.4) we rely on what was granted during onboarding.
-        systemAudioGranted = UserDefaults.standard.bool(forKey: "systemAudioPermissionGranted")
+        // System audio: verify actual TCC state by attempting a lightweight tap.
+        // UserDefaults is unreliable — TCC resets on unsigned rebuilds and permission revocations.
+        if #available(macOS 14.4, *) {
+            var tapID: AudioObjectID = kAudioObjectUnknown
+            let tapDesc = CATapDescription(stereoMixdownOfProcesses: [AudioObjectID(kAudioObjectSystemObject)])
+            tapDesc.name = "MemgramPermCheck"
+            tapDesc.isExclusive = false
+            let status = AudioHardwareCreateProcessTap(tapDesc, &tapID)
+            if tapID != kAudioObjectUnknown {
+                AudioHardwareDestroyProcessTap(tapID)
+            }
+            systemAudioGranted = (status == noErr)
+            UserDefaults.standard.set(systemAudioGranted, forKey: "systemAudioPermissionGranted")
+        } else {
+            // SCKit path: no lightweight check available, use cached value
+            systemAudioGranted = UserDefaults.standard.bool(forKey: "systemAudioPermissionGranted")
+        }
     }
 
     // MARK: - Sequential Permission Request
