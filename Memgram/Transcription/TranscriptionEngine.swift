@@ -56,6 +56,7 @@ final class TranscriptionEngine {
         let silence = [Float](repeating: 0, count: 16000)
         _ = try? await wk.transcribe(audioArray: silence)
         print("[TranscriptionEngine] ✓ WhisperKit ready — model: \(modelName)")
+        drainIfIdle()  // process any chunks that arrived before the model was ready
     }
 
     func reset() {
@@ -66,8 +67,6 @@ final class TranscriptionEngine {
 
     /// Called with each 30s stereo chunk from StereoMixer (left=mic, right=system).
     func transcribe(_ buffer: AVAudioPCMBuffer) {
-        guard whisperKit != nil else { return }
-
         let leftEnergy  = channelRMS(buffer, channel: 0)
         let rightEnergy = channelRMS(buffer, channel: 1)
         guard let samples = toMonoFloats(buffer) else { return }
@@ -83,7 +82,11 @@ final class TranscriptionEngine {
     }
 
     private func drainIfIdle() {
-        guard !isTranscribing, !pendingChunks.isEmpty, let whisperKit else { return }
+        guard !isTranscribing, !pendingChunks.isEmpty else { return }
+        guard let whisperKit else {
+            // Model not loaded yet — chunks are buffered, will drain when prepare() completes
+            return
+        }
         let chunk = pendingChunks.removeFirst()
         isTranscribing = true
         Task { [weak self] in

@@ -109,8 +109,11 @@ final class RecordingSession: ObservableObject {
         segmentCancellable = transcriptionEngine.segmentPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] segment in
-                self?.segments.append(segment)
-                try? MeetingStore.shared.appendSegment(segment, toMeeting: meetingId)
+                self?.segments.append(segment)          // UI update stays on main
+                let id = meetingId
+                Task.detached(priority: .utility) {    // DB write off main
+                    try? MeetingStore.shared.appendSegment(segment, toMeeting: id)
+                }
             }
 
         isRecording = true
@@ -168,6 +171,15 @@ final class RecordingSession: ObservableObject {
                 .first()
                 .receive(on: DispatchQueue.main)
                 .sink { _ in finalize() }
+
+            // Safety net: if WhisperKit hangs and allChunksDonePublisher never fires,
+            // finalize after 120 seconds regardless.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
+                guard let self, self.finalizationCancellable != nil else { return }
+                print("[RecordingSession] ⚠️ Transcription drain timed out — finalising anyway")
+                self.finalizationCancellable = nil
+                finalize()
+            }
         }
     }
 }
