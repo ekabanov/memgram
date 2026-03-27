@@ -11,6 +11,7 @@ struct MainWindowView: View {
         } detail: {
             if let id = selectedMeetingId {
                 MeetingDetailView(meetingId: id)
+                    .id(id)  // Force recreation on selection change to prevent stale data
             } else {
                 emptyState
             }
