@@ -42,6 +42,24 @@ enum LLMBackend: String, CaseIterable, Identifiable {
         case .claude, .openai, .gemini: return "API key"
         }
     }
+
+    /// Returns true if this backend has enough configuration to attempt a request.
+    var isConfigured: Bool {
+        switch self {
+        case .qwen, .ollama:
+            return true  // always available — Qwen auto-downloads, Ollama just needs the daemon
+        case .custom:
+            // Show if the user has changed the URL from the default placeholder
+            let url = UserDefaults.standard.string(forKey: "customServerURL") ?? ""
+            return !url.isEmpty
+        case .claude:
+            return !(KeychainHelper.load(key: "claudeAPIKey") ?? "").isEmpty
+        case .openai:
+            return !(KeychainHelper.load(key: "openaiAPIKey") ?? "").isEmpty
+        case .gemini:
+            return !(KeychainHelper.load(key: "geminiAPIKey") ?? "").isEmpty
+        }
+    }
 }
 
 protocol LLMProvider {

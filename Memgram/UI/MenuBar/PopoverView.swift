@@ -7,7 +7,6 @@ struct PopoverView: View {
     @ObservedObject private var modelManager = WhisperModelManager.shared
     @ObservedObject private var llmStore = LLMProviderStore.shared
     @State private var lastError: String?
-    @State private var showModelDownload = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,9 +51,6 @@ struct PopoverView: View {
         .sheet(isPresented: $permissions.showOnboardingSheet) {
             OnboardingView()
         }
-        .sheet(isPresented: $showModelDownload) {
-            ModelDownloadView()
-        }
         .alert(
             "Interrupted Recording",
             isPresented: Binding(
@@ -68,12 +64,6 @@ struct PopoverView: View {
         } message: { meeting in
             Text("\"\(meeting.title)\" was interrupted. Recover it as a completed meeting, or discard it?")
         }
-        .onAppear {
-            if !modelManager.isModelReady &&
-               !UserDefaults.standard.bool(forKey: "hasShownModelDownload") {
-                showModelDownload = true
-            }
-        }
     }
 
     // MARK: - Header
@@ -86,16 +76,14 @@ struct PopoverView: View {
             Text("Memgram")
                 .font(.headline)
             Spacer()
-            Button(action: { showModelDownload = true }) {
-                Label(modelManager.selectedModel.shortName,
-                      systemImage: "waveform")
-                    .font(.caption)
+            Picker("", selection: $modelManager.preferMultilingual) {
+                Text("English").tag(false)
+                Text("International").tag(true)
             }
-            .buttonStyle(.bordered)
+            .pickerStyle(.segmented)
             .controlSize(.small)
-            .help("Transcription model")
-            llmSettingsButton
-            .help("LLM for summaries")
+            .frame(width: 150)
+            .help("Transcription language")
             Button(action: { appDelegate?.openMainWindow() }) {
                 Label("Open", systemImage: "macwindow")
                     .font(.caption)

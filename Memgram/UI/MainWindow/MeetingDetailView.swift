@@ -262,7 +262,7 @@ struct MeetingDetailView: View {
             if meeting != nil {
                 HStack(spacing: 8) {
                     Picker("", selection: $selectedSummaryBackend) {
-                        ForEach(LLMBackend.allCases) { backend in
+                        ForEach(LLMBackend.allCases.filter(\.isConfigured)) { backend in
                             Text(backend.displayName).tag(backend)
                         }
                     }
