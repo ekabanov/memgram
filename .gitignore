@@ -24,3 +24,6 @@ Memgram.xcodeproj/project.xcworkspace/xcuserdata/
 
 # Archives
 *.xcarchive
+
+# Superpowers planning files (internal tooling)
+docs/superpowers/
