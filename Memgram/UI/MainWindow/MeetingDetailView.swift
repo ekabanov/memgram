@@ -19,8 +19,8 @@ struct MeetingDetailView: View {
     @State private var copiedFeedback = false
 
     enum DetailTab: String, CaseIterable, Identifiable {
-        case transcript = "Transcript"
         case summary    = "Summary"
+        case transcript = "Transcript"
         var id: String { rawValue }
     }
 
