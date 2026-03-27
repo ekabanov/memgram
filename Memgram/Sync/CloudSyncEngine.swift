@@ -30,6 +30,7 @@ final class CloudSyncEngine: Sendable {
 
     func start() {
         let isFirstLaunch = UserDefaults.standard.data(forKey: stateKey) == nil
+        logger.info("[CloudSync] Starting. isFirstLaunch=\(isFirstLaunch)")
 
         var config = CKSyncEngine.Configuration(
             database: container.privateCloudDatabase,
@@ -40,24 +41,26 @@ final class CloudSyncEngine: Sendable {
 
         let engine = CKSyncEngine(config)
         self.syncEngine = engine
+        logger.info("[CloudSync] Engine created")
 
-        Task {
-            await ensureZoneExists()
-            if isFirstLaunch {
-                enqueueAllExistingRecords()
-            }
+        // Ensure zone exists via CKSyncEngine (not direct API)
+        engine.state.add(pendingDatabaseChanges: [
+            .saveZone(CKRecordZone(zoneName: zoneName))
+        ])
+
+        if isFirstLaunch {
+            enqueueAllExistingRecords()
         }
-    }
 
-    // MARK: - Zone Management
-
-    fileprivate func ensureZoneExists() async {
-        let zone = CKRecordZone(zoneID: zoneID)
-        do {
-            _ = try await container.privateCloudDatabase.save(zone)
-            logger.info("Zone ensured: \(self.zoneName)")
-        } catch {
-            logger.error("Failed to ensure zone: \(error)")
+        // Explicitly trigger fetch — needed on fresh state to pull existing records
+        Task {
+            do {
+                logger.info("[CloudSync] Fetching changes...")
+                try await engine.fetchChanges()
+                logger.info("[CloudSync] Fetch complete")
+            } catch {
+                logger.error("[CloudSync] Fetch failed: \(error)")
+            }
         }
     }
 
@@ -230,92 +233,79 @@ final class CloudSyncEngine: Sendable {
         do {
             switch table {
             case "meetings":
-                let title = record["title"] as? String ?? "Untitled"
-                let startedAt = record["startedAt"] as? Date ?? Date()
-                let endedAt = record["endedAt"] as? Date
-                let durationSeconds = record["durationSeconds"] as? Double
-                let statusRaw = record["status"] as? String ?? MeetingStatus.done.rawValue
-                let status = MeetingStatus(rawValue: statusRaw) ?? .done
-                let summary = record["summary"] as? String
-                let actionItems = record["actionItems"] as? String
-                let rawTranscript = record["rawTranscript"] as? String
-
+                let meeting = Meeting(
+                    id: id,
+                    title: record["title"] as? String ?? "Untitled",
+                    startedAt: record["startedAt"] as? Date ?? Date(),
+                    endedAt: record["endedAt"] as? Date,
+                    durationSeconds: record["durationSeconds"] as? Double,
+                    status: MeetingStatus(rawValue: record["status"] as? String ?? "done") ?? .done,
+                    summary: record["summary"] as? String,
+                    actionItems: record["actionItems"] as? String,
+                    rawTranscript: record["rawTranscript"] as? String,
+                    ckSystemFields: systemFieldsData
+                )
                 try db.write { db in
                     if try Meeting.fetchOne(db, key: id) != nil {
-                        try db.execute(
-                            sql: """
-                                UPDATE meetings
-                                SET title = ?, started_at = ?, ended_at = ?, duration_seconds = ?,
-                                    status = ?, summary = ?, action_items = ?, raw_transcript = ?,
-                                    ck_system_fields = ?
-                                WHERE id = ?
-                                """,
-                            arguments: [title, startedAt.timeIntervalSinceReferenceDate, endedAt?.timeIntervalSinceReferenceDate,
-                                        durationSeconds, statusRaw, summary, actionItems, rawTranscript,
-                                        systemFieldsData, id]
-                        )
+                        try meeting.update(db)
                     } else {
-                        let meeting = Meeting(
-                            id: id, title: title, startedAt: startedAt, endedAt: endedAt,
-                            durationSeconds: durationSeconds, status: status,
-                            summary: summary, actionItems: actionItems, rawTranscript: rawTranscript,
-                            ckSystemFields: systemFieldsData
-                        )
                         try meeting.insert(db)
                     }
                 }
 
             case "segments":
                 let meetingId = record["meetingId"] as? String ?? ""
-                let speaker = record["speaker"] as? String ?? ""
-                let channel = record["channel"] as? String ?? ""
-                let startSeconds = record["startSeconds"] as? Double ?? 0
-                let endSeconds = record["endSeconds"] as? Double ?? 0
-                let text = record["text"] as? String ?? ""
-
+                let segment = MeetingSegment(
+                    id: id,
+                    meetingId: meetingId,
+                    speaker: record["speaker"] as? String ?? "",
+                    channel: record["channel"] as? String ?? "",
+                    startSeconds: record["startSeconds"] as? Double ?? 0,
+                    endSeconds: record["endSeconds"] as? Double ?? 0,
+                    text: record["text"] as? String ?? "",
+                    ckSystemFields: systemFieldsData
+                )
                 try db.write { db in
+                    // Create placeholder meeting if it hasn't arrived yet (FK constraint)
+                    if !meetingId.isEmpty, try Meeting.fetchOne(db, key: meetingId) == nil {
+                        let placeholder = Meeting(
+                            id: meetingId, title: "Syncing…", startedAt: Date(),
+                            endedAt: nil, durationSeconds: nil, status: .done,
+                            summary: nil, actionItems: nil, rawTranscript: nil,
+                            ckSystemFields: nil
+                        )
+                        try placeholder.insert(db)
+                    }
                     if try MeetingSegment.fetchOne(db, key: id) != nil {
-                        try db.execute(
-                            sql: """
-                                UPDATE segments
-                                SET meeting_id = ?, speaker = ?, channel = ?,
-                                    start_seconds = ?, end_seconds = ?, text = ?,
-                                    ck_system_fields = ?
-                                WHERE id = ?
-                                """,
-                            arguments: [meetingId, speaker, channel, startSeconds, endSeconds, text,
-                                        systemFieldsData, id]
-                        )
+                        try segment.update(db)
                     } else {
-                        let segment = MeetingSegment(
-                            id: id, meetingId: meetingId, speaker: speaker, channel: channel,
-                            startSeconds: startSeconds, endSeconds: endSeconds, text: text,
-                            ckSystemFields: systemFieldsData
-                        )
                         try segment.insert(db)
                     }
                 }
 
             case "speakers":
                 let meetingId = record["meetingId"] as? String ?? ""
-                let label = record["label"] as? String ?? ""
-                let customName = record["customName"] as? String
-
+                let speaker = Speaker(
+                    id: id,
+                    meetingId: meetingId,
+                    label: record["label"] as? String ?? "",
+                    customName: record["customName"] as? String,
+                    ckSystemFields: systemFieldsData
+                )
                 try db.write { db in
+                    // Create placeholder meeting if it hasn't arrived yet (FK constraint)
+                    if !meetingId.isEmpty, try Meeting.fetchOne(db, key: meetingId) == nil {
+                        let placeholder = Meeting(
+                            id: meetingId, title: "Syncing…", startedAt: Date(),
+                            endedAt: nil, durationSeconds: nil, status: .done,
+                            summary: nil, actionItems: nil, rawTranscript: nil,
+                            ckSystemFields: nil
+                        )
+                        try placeholder.insert(db)
+                    }
                     if try Speaker.fetchOne(db, key: id) != nil {
-                        try db.execute(
-                            sql: """
-                                UPDATE speakers
-                                SET meeting_id = ?, label = ?, custom_name = ?, ck_system_fields = ?
-                                WHERE id = ?
-                                """,
-                            arguments: [meetingId, label, customName, systemFieldsData, id]
-                        )
+                        try speaker.update(db)
                     } else {
-                        let speaker = Speaker(
-                            id: id, meetingId: meetingId, label: label, customName: customName,
-                            ckSystemFields: systemFieldsData
-                        )
                         try speaker.insert(db)
                     }
                 }
@@ -405,6 +395,7 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
     var engine: CloudSyncEngine!
 
     func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) {
+        engine.logger.info("[CloudSync] Event: \(String(describing: event))")
         switch event {
         case .stateUpdate(let stateUpdate):
             engine.saveState(stateUpdate.stateSerialization)
@@ -416,11 +407,14 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
             for deletion in fetchedChanges.deletions {
                 if deletion.zoneID == engine.zoneID {
                     engine.logger.warning("Zone deleted remotely, recreating...")
-                    Task { await engine.ensureZoneExists() }
+                    syncEngine.state.add(pendingDatabaseChanges: [
+                        .saveZone(CKRecordZone(zoneName: engine.zoneName))
+                    ])
                 }
             }
 
         case .fetchedRecordZoneChanges(let fetchedChanges):
+            engine.logger.info("[CloudSync] Fetched \(fetchedChanges.modifications.count) modifications, \(fetchedChanges.deletions.count) deletions")
             for modification in fetchedChanges.modifications {
                 engine.applyRemoteRecord(modification.record)
             }
@@ -445,7 +439,9 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
 
                 case .zoneNotFound:
                     engine.logger.warning("Zone not found during save, recreating...")
-                    Task { await engine.ensureZoneExists() }
+                    syncEngine.state.add(pendingDatabaseChanges: [
+                        .saveZone(CKRecordZone(zoneName: engine.zoneName))
+                    ])
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
 
                 case .unknownItem:
