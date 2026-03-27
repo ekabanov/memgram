@@ -15,7 +15,7 @@ struct MeetingDetailView: View {
     @State private var isEditingTitle = false
     @State private var selectedTab: DetailTab = .summary
     @ObservedObject private var summaryEngine = SummaryEngine.shared
-    @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
+    @State private var selectedSummaryBackend: LLMBackend = .qwen  // always default to local Qwen
     @State private var showDeleteConfirm = false
     @State private var deleteError: String?
     @State private var copiedFeedback = false
