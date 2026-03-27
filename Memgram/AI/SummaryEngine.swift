@@ -5,9 +5,10 @@ final class SummaryEngine {
     private init() {}
 
     private let systemPrompt = """
-        You are a precise meeting secretary. Produce factual notes directly from the transcript. \
-        Be concise. Do not add commentary, preamble, or reasoning steps. \
-        Only include information that is explicitly stated in the transcript.
+        You are a meeting notes assistant. Create comprehensive, well-structured notes from meeting \
+        transcripts. Capture all significant topics and details — do not omit important information, \
+        structure it well instead. Use speaker names when attributing statements. \
+        Do not add commentary or reasoning steps beyond what is in the transcript.
         """
 
     func summarize(meetingId: String) async {
@@ -88,18 +89,46 @@ final class SummaryEngine {
 
         \(transcript)
 
-        Write structured meeting notes in plain text with these sections:
+        Write comprehensive meeting notes in plain text. Do not omit significant topics or details — \
+        a longer meeting deserves longer notes. Cover everything that was discussed.
 
-        SUMMARY
-        2-3 sentences on the main topic and outcome.
+        Use these sections:
+
+        PARTICIPANTS
+        Who was in the meeting and their roles (if mentioned).
+
+        TOPICS DISCUSSED
+        For each major topic covered, write a paragraph capturing the key points, information shared, \
+        and positions expressed. Be thorough — this is the main section.
 
         KEY DECISIONS
-        List each decision made, one per line. Write "None" if there are none.
+        List each decision reached. Write "None" if there were none.
 
         ACTION ITEMS
-        List as "Owner: Task". Write "None" if there are none.
+        List as "Owner: Task". Write "None" if there were none.
 
-        Rules: use speaker labels when attributing, no markdown, no filler text.
+        Rules: plain text only, no markdown, no meta-commentary about the transcript.
+        """
+        return try await provider.complete(system: systemPrompt, user: user)
+    }
+
+    private func summarizeFinal(chunkSummaries: [String], provider: any LLMProvider) async throws -> String {
+        let combined = chunkSummaries.enumerated()
+            .map { "Segment \($0.offset + 1):\n\($0.element)" }
+            .joined(separator: "\n\n")
+        let user = """
+        /no_think
+
+        The following are notes from consecutive segments of a long meeting:
+
+        \(combined)
+
+        Merge these into comprehensive combined meeting notes covering all segments. \
+        Integrate information across segments — do not repeat the same point multiple times. \
+        Cover all significant topics and details.
+
+        Use these sections: PARTICIPANTS, TOPICS DISCUSSED, KEY DECISIONS, ACTION ITEMS.
+        Plain text only, no markdown.
         """
         return try await provider.complete(system: systemPrompt, user: user)
     }
@@ -115,10 +144,7 @@ final class SummaryEngine {
             chunkSummaries.append(summary)
         }
 
-        let combined = chunkSummaries.enumerated()
-            .map { "Segment \($0.offset + 1):\n\($0.element)" }
-            .joined(separator: "\n\n")
-        return try await summarizeShort(transcript: combined, provider: provider)
+        return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider)
     }
 
     private func chunkByTime(_ segments: [MeetingSegment], windowMinutes: Double) -> [[MeetingSegment]] {

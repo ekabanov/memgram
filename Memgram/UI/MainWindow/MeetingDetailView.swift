@@ -122,7 +122,7 @@ struct MeetingDetailView: View {
     }
 
     private func parseSummary(_ raw: String) -> [SummarySection] {
-        let headers = ["SUMMARY", "KEY DECISIONS", "ACTION ITEMS"]
+        let headers = ["PARTICIPANTS", "TOPICS DISCUSSED", "SUMMARY", "KEY DECISIONS", "ACTION ITEMS"]
         var sections: [SummarySection] = []
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -167,28 +167,34 @@ struct MeetingDetailView: View {
 
     private func sectionIcon(_ title: String) -> String {
         switch title.uppercased() {
-        case "SUMMARY":       return "text.alignleft"
-        case "KEY DECISIONS":  return "checkmark.seal"
-        case "ACTION ITEMS":   return "checklist"
-        default:               return "doc.text"
+        case "PARTICIPANTS":      return "person.2"
+        case "TOPICS DISCUSSED":  return "text.alignleft"
+        case "SUMMARY":           return "text.alignleft"
+        case "KEY DECISIONS":     return "checkmark.seal"
+        case "ACTION ITEMS":      return "checklist"
+        default:                  return "doc.text"
         }
     }
 
     private func sectionColor(_ title: String) -> Color {
         switch title.uppercased() {
-        case "SUMMARY":       return .blue
-        case "KEY DECISIONS":  return .orange
-        case "ACTION ITEMS":   return .green
-        default:               return .secondary
+        case "PARTICIPANTS":      return .purple
+        case "TOPICS DISCUSSED":  return .blue
+        case "SUMMARY":           return .blue
+        case "KEY DECISIONS":     return .orange
+        case "ACTION ITEMS":      return .green
+        default:                  return .secondary
         }
     }
 
     private func sectionDisplayTitle(_ title: String) -> String {
         switch title.uppercased() {
-        case "SUMMARY":       return "Summary"
-        case "KEY DECISIONS":  return "Key Decisions"
-        case "ACTION ITEMS":   return "Action Items"
-        default:               return title.capitalized
+        case "PARTICIPANTS":      return "Participants"
+        case "TOPICS DISCUSSED":  return "Topics Discussed"
+        case "SUMMARY":           return "Summary"
+        case "KEY DECISIONS":     return "Key Decisions"
+        case "ACTION ITEMS":      return "Action Items"
+        default:                  return title.capitalized
         }
     }
 
