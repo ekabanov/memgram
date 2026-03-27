@@ -17,6 +17,8 @@ struct MeetingDetailView: View {
     @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
     @State private var showDeleteConfirm = false
     @State private var copiedFeedback = false
+    @State private var localQuery = ""
+    @State private var showLocalSearch = false
 
     enum DetailTab: String, CaseIterable, Identifiable {
         case summary    = "Summary"
@@ -37,6 +39,8 @@ struct MeetingDetailView: View {
 
             Divider()
 
+            localSearchBar
+
             // Tab content
             ScrollView {
                 Group {
@@ -53,6 +57,9 @@ struct MeetingDetailView: View {
         .onChange(of: meetingId) { _ in
             selectedTab = .summary
             load()
+        }
+        .onChange(of: selectedTab) { _ in
+            withAnimation { showLocalSearch = false; localQuery = "" }
         }
         .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
         .alert("Delete Meeting?", isPresented: $showDeleteConfirm) {
@@ -146,8 +153,50 @@ struct MeetingDetailView: View {
             .frame(width: 200)
             .padding(.leading, 24)
             Spacer()
+            if selectedTab == .transcript {
+                Button {
+                    withAnimation { showLocalSearch.toggle() }
+                    if !showLocalSearch { localQuery = "" }
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(showLocalSearch ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Search in transcript")
+                .padding(.trailing, 12)
+            }
         }
         .padding(.vertical, 8)
+    }
+
+    @ViewBuilder
+    private var localSearchBar: some View {
+        if showLocalSearch {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                TextField("Search in transcript…", text: $localQuery)
+                    .textFieldStyle(.plain)
+                if !localQuery.isEmpty {
+                    Button { localQuery = "" } label: {
+                        Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    let count = filteredSegments.count
+                    Text("\(count) result\(count == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Button { withAnimation { showLocalSearch = false; localQuery = "" } } label: {
+                    Text("Done").font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor))
+            Divider()
+        }
     }
 
     // MARK: - Transcript tab
@@ -159,9 +208,17 @@ struct MeetingDetailView: View {
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.top, 40)
+        } else if !localQuery.trimmingCharacters(in: .whitespaces).isEmpty && filteredSegments.isEmpty {
+            VStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                Text("No results for \"\(localQuery)\"")
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 40)
         } else {
             LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(segments) { segment in
+                ForEach(filteredSegments) { segment in
                     SegmentRowView(
                         segment: segment,
                         meetingStartedAt: meeting?.startedAt ?? Date(),
@@ -379,6 +436,15 @@ struct MeetingDetailView: View {
     }
 
     // MARK: - Helpers
+
+    private var filteredSegments: [MeetingSegment] {
+        let q = localQuery.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return segments }
+        return segments.filter {
+            $0.text.localizedCaseInsensitiveContains(q) ||
+            $0.speaker.localizedCaseInsensitiveContains(q)
+        }
+    }
 
     private func formatDuration(_ seconds: Double) -> String {
         let m = Int(seconds / 60), s = Int(seconds.truncatingRemainder(dividingBy: 60))
