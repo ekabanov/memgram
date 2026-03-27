@@ -18,7 +18,7 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .qwen:   return "Default (Qwen 3.5)"
+        case .qwen:   return "Default (Qwen 3.5 9B)"
         case .ollama: return "Ollama"
         case .custom: return "Custom Server"
         case .claude: return "Claude"
@@ -49,9 +49,7 @@ enum LLMBackend: String, CaseIterable, Identifiable {
         case .qwen, .ollama:
             return true  // always available — Qwen auto-downloads, Ollama just needs the daemon
         case .custom:
-            // Show if the user has changed the URL from the default placeholder
-            let url = UserDefaults.standard.string(forKey: "customServerURL") ?? ""
-            return !url.isEmpty
+            return true  // always show — same logic as Ollama; connection errors surface separately
         case .claude:
             return !(KeychainHelper.load(key: "claudeAPIKey") ?? "").isEmpty
         case .openai:
