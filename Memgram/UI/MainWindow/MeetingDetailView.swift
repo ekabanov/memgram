@@ -17,6 +17,7 @@ struct MeetingDetailView: View {
     @ObservedObject private var summaryEngine = SummaryEngine.shared
     @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
     @State private var showDeleteConfirm = false
+    @State private var deleteError: String?
     @State private var copiedFeedback = false
     @State private var localQuery = ""
     @State private var showLocalSearch = false
@@ -69,6 +70,14 @@ struct MeetingDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("\"\(editableTitle)\" will be permanently deleted.")
+        }
+        .alert("Could Not Delete", isPresented: Binding(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "")
         }
     }
 
@@ -315,9 +324,13 @@ struct MeetingDetailView: View {
     }
 
     private func performDelete() {
-        try? MeetingStore.shared.deleteMeeting(meetingId)
-        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-        onDelete?()
+        do {
+            try MeetingStore.shared.deleteMeeting(meetingId)
+            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            onDelete?()
+        } catch {
+            deleteError = error.localizedDescription
+        }
     }
 
     private var isRegenerating: Bool { summaryEngine.activeMeetingIds.contains(meetingId) }

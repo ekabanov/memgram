@@ -25,7 +25,7 @@ final class EmbeddingEngine {
                 )
                 try MeetingStore.shared.insertEmbedding(embedding)
             } catch {
-                // Skip failed chunks
+                print("[EmbeddingEngine] Failed to embed chunk: \(error)")
             }
         }
     }

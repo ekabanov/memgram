@@ -72,11 +72,10 @@ final class SummaryEngine: ObservableObject {
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
             // Clear the active indicator and notify UI BEFORE title generation so progress clears immediately
             await MainActor.run {
-                activeMeetingIds.remove(meetingId)
                 NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             }
             print("[SummaryEngine] ✓ Saved and notified")
-            // Auto-title runs after UI is unblocked (defer is now a no-op for this meetingId)
+            // Auto-title runs after UI is unblocked (defer handles cleanup on all paths)
             await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
         } catch {
             print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
@@ -129,7 +128,7 @@ final class SummaryEngine: ObservableObject {
 
     // MARK: - Private
 
-    private nonisolated func stripThinkingTags(_ text: String) -> String {
+    nonisolated func stripThinkingTags(_ text: String) -> String {
         // Reasoning models output: <think>chain of thought</think>actual answer
         // Strategy: if </think> exists, return everything after it.
         // If only <think> exists (unclosed), return everything before it.

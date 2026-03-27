@@ -28,32 +28,9 @@ final class LLMProviderStore: ObservableObject {
     }
 
     var currentProvider: any LLMProvider {
-        let provider: any LLMProvider
-        switch selectedBackend {
-        case .qwen:
-            #if canImport(MLXLLM)
-            if #available(macOS 14, *) { provider = QwenLocalProvider.shared }
-            else { provider = OllamaProvider(model: "qwen3:8b") }
-            #else
-            provider = OllamaProvider(model: "qwen3:8b")
-            #endif
-        case .ollama:
-            provider = OllamaProvider(model: ollamaModel)
-        case .custom:
-            provider = CustomServerProvider(
-                baseURL:   customServerURL,
-                apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
-                modelName: customServerModel
-            )
-        case .claude:
-            provider = ClaudeProvider(apiKey: KeychainHelper.load(key: "claudeAPIKey") ?? "")
-        case .openai:
-            provider = OpenAIProvider(apiKey: KeychainHelper.load(key: "openaiAPIKey") ?? "")
-        case .gemini:
-            provider = GeminiProvider(apiKey: KeychainHelper.load(key: "geminiAPIKey") ?? "")
-        }
-        print("[LLMProviderStore] currentProvider → \(provider.name)")
-        return provider
+        let p = providerFor(selectedBackend)
+        print("[LLMProviderStore] currentProvider → \(p.name)")
+        return p
     }
 
     /// Returns the provider for a specific backend without changing selectedBackend.

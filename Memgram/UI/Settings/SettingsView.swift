@@ -102,13 +102,7 @@ struct AISettingsTab: View {
                 system: "You are a test assistant.",
                 user: "Reply with exactly: OK"
             )
-            var cleanReply = reply
-            if let closeRange = cleanReply.range(of: "</think>", options: .caseInsensitive) {
-                cleanReply = String(cleanReply[closeRange.upperBound...])
-            } else if let openRange = cleanReply.range(of: "<think>", options: .caseInsensitive) {
-                cleanReply = String(cleanReply[..<openRange.lowerBound])
-            }
-            cleanReply = cleanReply.trimmingCharacters(in: .whitespacesAndNewlines)
+            let cleanReply = SummaryEngine.shared.stripThinkingTags(reply)
             connectionStatus = cleanReply.hasPrefix("OK")
                 ? "Connected"
                 : "Responded: \(String(cleanReply.prefix(50)))"
