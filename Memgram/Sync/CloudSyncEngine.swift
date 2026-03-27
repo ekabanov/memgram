@@ -1,0 +1,489 @@
+import CloudKit
+import Foundation
+import GRDB
+import os
+
+// MARK: - CloudSyncEngine
+
+@available(macOS 14.0, *)
+final class CloudSyncEngine: Sendable {
+
+    static let shared = CloudSyncEngine()
+
+    fileprivate let container = CKContainer(identifier: "iCloud.com.memgram.app")
+    fileprivate let zoneName = "MemgramZone"
+    fileprivate let stateKey = "CKSyncEngineState"
+    fileprivate let logger = Logger(subsystem: "com.memgram.app", category: "CloudSync")
+    fileprivate let db = AppDatabase.shared
+
+    fileprivate var zoneID: CKRecordZone.ID { CKRecordZone.ID(zoneName: zoneName) }
+
+    nonisolated(unsafe) private var syncEngine: CKSyncEngine?
+    private let delegate: SyncDelegate
+
+    private init() {
+        delegate = SyncDelegate()
+        delegate.engine = self
+    }
+
+    // MARK: - Lifecycle
+
+    func start() {
+        let isFirstLaunch = UserDefaults.standard.data(forKey: stateKey) == nil
+
+        var config = CKSyncEngine.Configuration(
+            database: container.privateCloudDatabase,
+            stateSerialization: restoredState(),
+            delegate: delegate
+        )
+        config.automaticallySync = true
+
+        let engine = CKSyncEngine(config)
+        self.syncEngine = engine
+
+        Task {
+            await ensureZoneExists()
+            if isFirstLaunch {
+                enqueueAllExistingRecords()
+            }
+        }
+    }
+
+    // MARK: - Zone Management
+
+    fileprivate func ensureZoneExists() async {
+        let zone = CKRecordZone(zoneID: zoneID)
+        do {
+            _ = try await container.privateCloudDatabase.save(zone)
+            logger.info("Zone ensured: \(self.zoneName)")
+        } catch {
+            logger.error("Failed to ensure zone: \(error)")
+        }
+    }
+
+    // MARK: - Enqueue Helpers
+
+    func enqueueSave(table: String, id: String) {
+        guard let engine = syncEngine else { return }
+        let recordID = makeRecordID(table: table, id: id)
+        engine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+    }
+
+    func enqueueDelete(table: String, id: String) {
+        guard let engine = syncEngine else { return }
+        let recordID = makeRecordID(table: table, id: id)
+        engine.state.add(pendingRecordZoneChanges: [.deleteRecord(recordID)])
+    }
+
+    func enqueueSaveSegments(meetingId: String) {
+        do {
+            let segments = try MeetingStore.shared.fetchSegments(forMeeting: meetingId)
+            for segment in segments {
+                enqueueSave(table: "segments", id: segment.id)
+            }
+        } catch {
+            logger.error("Failed to fetch segments for enqueue: \(error)")
+        }
+    }
+
+    // MARK: - Initial Upload
+
+    fileprivate func enqueueAllExistingRecords() {
+        do {
+            let meetings = try MeetingStore.shared.fetchAll()
+            for meeting in meetings {
+                enqueueSave(table: "meetings", id: meeting.id)
+                enqueueSaveSegments(meetingId: meeting.id)
+            }
+            let speakers: [Speaker] = try db.read { db in try Speaker.fetchAll(db) }
+            for speaker in speakers {
+                enqueueSave(table: "speakers", id: speaker.id)
+            }
+            logger.info("Enqueued all existing records for first-launch sync")
+        } catch {
+            logger.error("Failed to enqueue existing records: \(error)")
+        }
+    }
+
+    // MARK: - State Persistence
+
+    fileprivate func saveState(_ stateSerialization: CKSyncEngine.State.Serialization) {
+        do {
+            let data = try JSONEncoder().encode(stateSerialization)
+            UserDefaults.standard.set(data, forKey: stateKey)
+        } catch {
+            logger.error("Failed to save sync engine state: \(error)")
+        }
+    }
+
+    private func restoredState() -> CKSyncEngine.State.Serialization? {
+        guard let data = UserDefaults.standard.data(forKey: stateKey) else { return nil }
+        do {
+            return try JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: data)
+        } catch {
+            logger.error("Failed to decode sync engine state: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Record ID Helpers
+
+    fileprivate func makeRecordID(table: String, id: String) -> CKRecord.ID {
+        CKRecord.ID(recordName: "\(table)_\(id)", zoneID: zoneID)
+    }
+
+    fileprivate func parseRecordID(_ recordID: CKRecord.ID) -> (table: String, id: String)? {
+        let name = recordID.recordName
+        guard let underscoreIndex = name.firstIndex(of: "_") else { return nil }
+        let table = String(name[name.startIndex..<underscoreIndex])
+        let id = String(name[name.index(after: underscoreIndex)...])
+        guard !table.isEmpty, !id.isEmpty else { return nil }
+        return (table, id)
+    }
+
+    // MARK: - System Fields
+
+    fileprivate func encodeSystemFields(_ record: CKRecord) -> Data {
+        let archiver = NSKeyedArchiver(requiringSecureCoding: true)
+        record.encodeSystemFields(with: archiver)
+        archiver.finishEncoding()
+        return archiver.encodedData
+    }
+
+    private func decodeSystemFields(_ data: Data) -> CKRecord? {
+        do {
+            let unarchiver = try NSKeyedUnarchiver(forReadingFrom: data)
+            unarchiver.requiresSecureCoding = true
+            let record = CKRecord(coder: unarchiver)
+            unarchiver.finishDecoding()
+            return record
+        } catch {
+            logger.error("Failed to decode system fields: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Record Conversion
+
+    fileprivate func buildRecord(table: String, id: String) -> CKRecord? {
+        do {
+            switch table {
+            case "meetings":
+                guard let meeting: Meeting = try db.read({ db in try Meeting.fetchOne(db, key: id) }) else { return nil }
+                let record = existingOrNewRecord(type: "Meeting", table: table, id: id, systemFields: meeting.ckSystemFields)
+                record["title"] = meeting.title
+                record["startedAt"] = meeting.startedAt
+                record["endedAt"] = meeting.endedAt
+                record["durationSeconds"] = meeting.durationSeconds
+                record["status"] = meeting.status.rawValue
+                record["summary"] = meeting.summary
+                record["actionItems"] = meeting.actionItems
+                record["rawTranscript"] = meeting.rawTranscript
+                return record
+
+            case "segments":
+                guard let segment: MeetingSegment = try db.read({ db in try MeetingSegment.fetchOne(db, key: id) }) else { return nil }
+                let record = existingOrNewRecord(type: "Segment", table: table, id: id, systemFields: segment.ckSystemFields)
+                record["meetingId"] = segment.meetingId
+                record["speaker"] = segment.speaker
+                record["channel"] = segment.channel
+                record["startSeconds"] = segment.startSeconds
+                record["endSeconds"] = segment.endSeconds
+                record["text"] = segment.text
+                return record
+
+            case "speakers":
+                guard let speaker: Speaker = try db.read({ db in try Speaker.fetchOne(db, key: id) }) else { return nil }
+                let record = existingOrNewRecord(type: "Speaker", table: table, id: id, systemFields: speaker.ckSystemFields)
+                record["meetingId"] = speaker.meetingId
+                record["label"] = speaker.label
+                record["customName"] = speaker.customName
+                return record
+
+            default:
+                logger.warning("Unknown table: \(table)")
+                return nil
+            }
+        } catch {
+            logger.error("Failed to build record for \(table)/\(id): \(error)")
+            return nil
+        }
+    }
+
+    private func existingOrNewRecord(type: String, table: String, id: String, systemFields: Data?) -> CKRecord {
+        if let data = systemFields, let record = decodeSystemFields(data) {
+            return record
+        }
+        return CKRecord(recordType: type, recordID: makeRecordID(table: table, id: id))
+    }
+
+    // MARK: - Apply Remote Changes
+
+    fileprivate func applyRemoteRecord(_ record: CKRecord) {
+        guard let parsed = parseRecordID(record.recordID) else {
+            logger.warning("Could not parse record ID: \(record.recordID.recordName)")
+            return
+        }
+        let (table, id) = parsed
+        let systemFieldsData = encodeSystemFields(record)
+
+        do {
+            switch table {
+            case "meetings":
+                let title = record["title"] as? String ?? "Untitled"
+                let startedAt = record["startedAt"] as? Date ?? Date()
+                let endedAt = record["endedAt"] as? Date
+                let durationSeconds = record["durationSeconds"] as? Double
+                let statusRaw = record["status"] as? String ?? MeetingStatus.done.rawValue
+                let status = MeetingStatus(rawValue: statusRaw) ?? .done
+                let summary = record["summary"] as? String
+                let actionItems = record["actionItems"] as? String
+                let rawTranscript = record["rawTranscript"] as? String
+
+                try db.write { db in
+                    if try Meeting.fetchOne(db, key: id) != nil {
+                        try db.execute(
+                            sql: """
+                                UPDATE meetings
+                                SET title = ?, started_at = ?, ended_at = ?, duration_seconds = ?,
+                                    status = ?, summary = ?, action_items = ?, raw_transcript = ?,
+                                    ck_system_fields = ?
+                                WHERE id = ?
+                                """,
+                            arguments: [title, startedAt.timeIntervalSinceReferenceDate, endedAt?.timeIntervalSinceReferenceDate,
+                                        durationSeconds, statusRaw, summary, actionItems, rawTranscript,
+                                        systemFieldsData, id]
+                        )
+                    } else {
+                        let meeting = Meeting(
+                            id: id, title: title, startedAt: startedAt, endedAt: endedAt,
+                            durationSeconds: durationSeconds, status: status,
+                            summary: summary, actionItems: actionItems, rawTranscript: rawTranscript,
+                            ckSystemFields: systemFieldsData
+                        )
+                        try meeting.insert(db)
+                    }
+                }
+
+            case "segments":
+                let meetingId = record["meetingId"] as? String ?? ""
+                let speaker = record["speaker"] as? String ?? ""
+                let channel = record["channel"] as? String ?? ""
+                let startSeconds = record["startSeconds"] as? Double ?? 0
+                let endSeconds = record["endSeconds"] as? Double ?? 0
+                let text = record["text"] as? String ?? ""
+
+                try db.write { db in
+                    if try MeetingSegment.fetchOne(db, key: id) != nil {
+                        try db.execute(
+                            sql: """
+                                UPDATE segments
+                                SET meeting_id = ?, speaker = ?, channel = ?,
+                                    start_seconds = ?, end_seconds = ?, text = ?,
+                                    ck_system_fields = ?
+                                WHERE id = ?
+                                """,
+                            arguments: [meetingId, speaker, channel, startSeconds, endSeconds, text,
+                                        systemFieldsData, id]
+                        )
+                    } else {
+                        let segment = MeetingSegment(
+                            id: id, meetingId: meetingId, speaker: speaker, channel: channel,
+                            startSeconds: startSeconds, endSeconds: endSeconds, text: text,
+                            ckSystemFields: systemFieldsData
+                        )
+                        try segment.insert(db)
+                    }
+                }
+
+            case "speakers":
+                let meetingId = record["meetingId"] as? String ?? ""
+                let label = record["label"] as? String ?? ""
+                let customName = record["customName"] as? String
+
+                try db.write { db in
+                    if try Speaker.fetchOne(db, key: id) != nil {
+                        try db.execute(
+                            sql: """
+                                UPDATE speakers
+                                SET meeting_id = ?, label = ?, custom_name = ?, ck_system_fields = ?
+                                WHERE id = ?
+                                """,
+                            arguments: [meetingId, label, customName, systemFieldsData, id]
+                        )
+                    } else {
+                        let speaker = Speaker(
+                            id: id, meetingId: meetingId, label: label, customName: customName,
+                            ckSystemFields: systemFieldsData
+                        )
+                        try speaker.insert(db)
+                    }
+                }
+
+            default:
+                logger.warning("Unknown table for remote record: \(table)")
+                return
+            }
+
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            }
+        } catch {
+            logger.error("Failed to apply remote record \(table)/\(id): \(error)")
+        }
+    }
+
+    fileprivate func applyRemoteDeletion(_ recordID: CKRecord.ID) {
+        guard let parsed = parseRecordID(recordID) else {
+            logger.warning("Could not parse record ID for deletion: \(recordID.recordName)")
+            return
+        }
+        let (table, id) = parsed
+
+        do {
+            switch table {
+            case "meetings":
+                try db.write { db in
+                    try db.execute(sql: "DELETE FROM meetings WHERE id = ?", arguments: [id])
+                }
+            case "segments":
+                try db.write { db in
+                    try db.execute(sql: "DELETE FROM segments WHERE id = ?", arguments: [id])
+                }
+            case "speakers":
+                try db.write { db in
+                    try db.execute(sql: "DELETE FROM speakers WHERE id = ?", arguments: [id])
+                }
+            default:
+                logger.warning("Unknown table for deletion: \(table)")
+                return
+            }
+
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            }
+        } catch {
+            logger.error("Failed to apply remote deletion \(table)/\(id): \(error)")
+        }
+    }
+
+    // MARK: - Update System Fields After Successful Save
+
+    fileprivate func updateSystemFields(for record: CKRecord) {
+        guard let parsed = parseRecordID(record.recordID) else { return }
+        let (table, id) = parsed
+        let data = encodeSystemFields(record)
+
+        do {
+            switch table {
+            case "meetings":
+                try db.write { db in
+                    try db.execute(sql: "UPDATE meetings SET ck_system_fields = ? WHERE id = ?", arguments: [data, id])
+                }
+            case "segments":
+                try db.write { db in
+                    try db.execute(sql: "UPDATE segments SET ck_system_fields = ? WHERE id = ?", arguments: [data, id])
+                }
+            case "speakers":
+                try db.write { db in
+                    try db.execute(sql: "UPDATE speakers SET ck_system_fields = ? WHERE id = ?", arguments: [data, id])
+                }
+            default:
+                break
+            }
+        } catch {
+            logger.error("Failed to update system fields for \(table)/\(id): \(error)")
+        }
+    }
+}
+
+// MARK: - SyncDelegate
+
+@available(macOS 14.0, *)
+private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
+
+    var engine: CloudSyncEngine!
+
+    func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) {
+        switch event {
+        case .stateUpdate(let stateUpdate):
+            engine.saveState(stateUpdate.stateSerialization)
+
+        case .accountChange(let accountChange):
+            engine.logger.info("Account change: \(String(describing: accountChange.changeType))")
+
+        case .fetchedDatabaseChanges(let fetchedChanges):
+            for deletion in fetchedChanges.deletions {
+                if deletion.zoneID == engine.zoneID {
+                    engine.logger.warning("Zone deleted remotely, recreating...")
+                    Task { await engine.ensureZoneExists() }
+                }
+            }
+
+        case .fetchedRecordZoneChanges(let fetchedChanges):
+            for modification in fetchedChanges.modifications {
+                engine.applyRemoteRecord(modification.record)
+            }
+            for deletion in fetchedChanges.deletions {
+                engine.applyRemoteDeletion(deletion.recordID)
+            }
+
+        case .sentRecordZoneChanges(let sentChanges):
+            for savedRecord in sentChanges.savedRecords {
+                engine.updateSystemFields(for: savedRecord)
+            }
+            for failedSave in sentChanges.failedRecordSaves {
+                let recordID = failedSave.record.recordID
+                let ckError = failedSave.error
+
+                switch ckError.code {
+                case .serverRecordChanged:
+                    if let serverRecord = ckError.serverRecord {
+                        engine.applyRemoteRecord(serverRecord)
+                    }
+                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+
+                case .zoneNotFound:
+                    engine.logger.warning("Zone not found during save, recreating...")
+                    Task { await engine.ensureZoneExists() }
+                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+
+                case .unknownItem:
+                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+
+                default:
+                    engine.logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
+                }
+            }
+
+        case .sentDatabaseChanges(let sentChanges):
+            for failedSave in sentChanges.failedZoneSaves {
+                engine.logger.error("Zone save failed: \(failedSave.error.localizedDescription)")
+            }
+
+        case .willFetchChanges, .willFetchRecordZoneChanges, .didFetchRecordZoneChanges,
+             .didFetchChanges, .willSendChanges, .didSendChanges:
+            break
+
+        @unknown default:
+            engine.logger.info("Unknown sync engine event")
+        }
+    }
+
+    func nextRecordZoneChangeBatch(
+        _ context: CKSyncEngine.SendChangesContext,
+        syncEngine: CKSyncEngine
+    ) async -> CKSyncEngine.RecordZoneChangeBatch? {
+        let scope = context.options.scope
+        let pendingChanges = syncEngine.state.pendingRecordZoneChanges.filter { change in
+            scope.contains(change)
+        }
+
+        guard !pendingChanges.isEmpty else { return nil }
+
+        return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
+            guard let parsed = self.engine.parseRecordID(recordID) else { return nil }
+            return self.engine.buildRecord(table: parsed.table, id: parsed.id)
+        }
+    }
+}
