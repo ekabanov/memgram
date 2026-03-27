@@ -46,20 +46,20 @@ final class SummaryEngine {
     // MARK: - Private
 
     private func stripThinkingTags(_ text: String) -> String {
-        var result = text
-        // Remove closed <think>...</think> blocks
-        result = result.replacingOccurrences(
-            of: "<think>[\\s\\S]*?</think>",
-            with: "",
-            options: .regularExpression
-        )
-        // Remove unclosed <think> blocks (everything from <think> to end of string)
-        result = result.replacingOccurrences(
-            of: "<think>[\\s\\S]*$",
-            with: "",
-            options: .regularExpression
-        )
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Reasoning models output: <think>chain of thought</think>actual answer
+        // Strategy: if </think> exists, return everything after it.
+        // If only <think> exists (unclosed), return everything before it.
+        if let closeRange = text.range(of: "</think>", options: .caseInsensitive) {
+            let afterTag = String(text[closeRange.upperBound...])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !afterTag.isEmpty { return afterTag }
+        }
+        if let openRange = text.range(of: "<think>", options: .caseInsensitive) {
+            let beforeTag = String(text[..<openRange.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !beforeTag.isEmpty { return beforeTag }
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Re-strips thinking tags from all existing meetings that have summaries.
