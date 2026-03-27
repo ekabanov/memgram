@@ -28,14 +28,34 @@ final class PermissionsManager: ObservableObject {
         if #available(macOS 14.4, *) {
             let processIDs = Self.audioProcessObjectIDs()
             if processIDs.isEmpty {
-                // No audio processes to tap — can't verify, trust cached value
-                systemAudioGranted = UserDefaults.standard.bool(forKey: "systemAudioPermissionGranted")
+                // No audio processes to tap — can't verify. Default to false (safe)
+                // and schedule a re-check once audio processes are available.
+                systemAudioGranted = false
+                scheduleSystemAudioRecheck()
             } else {
                 systemAudioGranted = Self.probeAudioTapPermission(processIDs: processIDs)
                 UserDefaults.standard.set(systemAudioGranted, forKey: "systemAudioPermissionGranted")
             }
         } else {
             systemAudioGranted = UserDefaults.standard.bool(forKey: "systemAudioPermissionGranted")
+        }
+    }
+
+    @available(macOS 14.4, *)
+    private func scheduleSystemAudioRecheck() {
+        Task {
+            // Retry a few times over ~5s waiting for audio processes to appear
+            for _ in 0..<5 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                let processIDs = Self.audioProcessObjectIDs()
+                guard !processIDs.isEmpty else { continue }
+                let granted = Self.probeAudioTapPermission(processIDs: processIDs)
+                await MainActor.run {
+                    systemAudioGranted = granted
+                    UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
+                }
+                return
+            }
         }
     }
 
