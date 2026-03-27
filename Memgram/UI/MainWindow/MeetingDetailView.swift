@@ -71,13 +71,10 @@ struct MeetingDetailView: View {
     private func regenerateSummary() {
         guard !isRegenerating else { return }
         isRegenerating = true
-        // Temporarily switch to the chosen backend, summarise, then restore
-        let previous = LLMProviderStore.shared.selectedBackend
-        LLMProviderStore.shared.selectedBackend = selectedSummaryBackend
+        let backend = selectedSummaryBackend
         Task {
-            await SummaryEngine.shared.summarize(meetingId: meetingId)
+            await SummaryEngine.shared.summarize(meetingId: meetingId, overrideBackend: backend)
             await MainActor.run {
-                LLMProviderStore.shared.selectedBackend = previous
                 isRegenerating = false
                 load()
             }

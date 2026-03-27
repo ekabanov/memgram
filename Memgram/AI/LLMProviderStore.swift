@@ -56,6 +56,33 @@ final class LLMProviderStore: ObservableObject {
         return provider
     }
 
+    /// Returns the provider for a specific backend without changing selectedBackend.
+    func providerFor(_ backend: LLMBackend) -> any LLMProvider {
+        switch backend {
+        case .qwen:
+            #if canImport(MLXLLM)
+            if #available(macOS 14, *) { return QwenLocalProvider.shared }
+            else { return OllamaProvider(model: "qwen3:8b") }
+            #else
+            return OllamaProvider(model: "qwen3:8b")
+            #endif
+        case .ollama:
+            return OllamaProvider(model: ollamaModel)
+        case .custom:
+            return CustomServerProvider(
+                baseURL:   customServerURL,
+                apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
+                modelName: customServerModel
+            )
+        case .claude:
+            return ClaudeProvider(apiKey: KeychainHelper.load(key: "claudeAPIKey") ?? "")
+        case .openai:
+            return OpenAIProvider(apiKey: KeychainHelper.load(key: "openaiAPIKey") ?? "")
+        case .gemini:
+            return GeminiProvider(apiKey: KeychainHelper.load(key: "geminiAPIKey") ?? "")
+        }
+    }
+
     func fetchOllamaModels() async -> [String] {
         await OllamaProvider(model: ollamaModel).listModels()
     }

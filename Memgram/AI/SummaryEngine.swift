@@ -7,11 +7,18 @@ final class SummaryEngine {
     private let systemPrompt = """
         You are a meeting notes assistant. Create comprehensive, well-structured notes from meeting \
         transcripts. Capture all significant topics and details — do not omit important information, \
-        structure it well instead. Use speaker names when attributing statements. \
-        Do not add commentary or reasoning steps beyond what is in the transcript.
+        structure it well instead. Use speaker names when attributing statements.
+
+        Follow these additional rules:
+        - Silently correct obvious transcription spelling errors (e.g. misheard names, technical terms).
+        - Mark genuinely uncertain or potentially misheard claims with [possibly: alternate interpretation].
+        - Add brief context in [brackets] for acronyms, company names, or technical terms that benefit \
+          from explanation — but only when it adds value.
+        - Do not add commentary or reasoning steps beyond what is in the transcript.
         """
 
-    func summarize(meetingId: String) async {
+    /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
+    func summarize(meetingId: String, overrideBackend: LLMBackend? = nil) async {
         print("[SummaryEngine] Starting summarisation for \(meetingId)")
 
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {
@@ -23,7 +30,10 @@ final class SummaryEngine {
             return
         }
 
-        let provider = await MainActor.run { LLMProviderStore.shared.currentProvider }
+        let provider = await MainActor.run {
+            overrideBackend.map { LLMProviderStore.shared.providerFor($0) }
+                ?? LLMProviderStore.shared.currentProvider
+        }
         print("[SummaryEngine] Using provider: \(provider.name) | transcript length: \(transcript.count) chars")
 
         do {
