@@ -18,26 +18,23 @@ final class PermissionsManager: ObservableObject {
     // MARK: - Permission State
 
     private func checkStoredPermissions() {
-        // Mic: check actual TCC state (not cached)
+        // Mic: check actual TCC state
         let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
         microphoneGranted = (micStatus == .authorized)
         UserDefaults.standard.set(microphoneGranted, forKey: "microphonePermissionGranted")
 
-        // System audio: verify actual TCC state by attempting a lightweight tap.
-        // UserDefaults is unreliable — TCC resets on unsigned rebuilds and permission revocations.
+        // System audio: attempt a real tap with current process IDs to verify TCC state.
+        // Falls back to UserDefaults when no audio processes are running (early startup).
         if #available(macOS 14.4, *) {
-            var tapID: AudioObjectID = kAudioObjectUnknown
-            let tapDesc = CATapDescription(stereoMixdownOfProcesses: [AudioObjectID(kAudioObjectSystemObject)])
-            tapDesc.name = "MemgramPermCheck"
-            tapDesc.isExclusive = false
-            let status = AudioHardwareCreateProcessTap(tapDesc, &tapID)
-            if tapID != kAudioObjectUnknown {
-                AudioHardwareDestroyProcessTap(tapID)
+            let processIDs = Self.audioProcessObjectIDs()
+            if processIDs.isEmpty {
+                // No audio processes to tap — can't verify, trust cached value
+                systemAudioGranted = UserDefaults.standard.bool(forKey: "systemAudioPermissionGranted")
+            } else {
+                systemAudioGranted = Self.probeAudioTapPermission(processIDs: processIDs)
+                UserDefaults.standard.set(systemAudioGranted, forKey: "systemAudioPermissionGranted")
             }
-            systemAudioGranted = (status == noErr)
-            UserDefaults.standard.set(systemAudioGranted, forKey: "systemAudioPermissionGranted")
         } else {
-            // SCKit path: no lightweight check available, use cached value
             systemAudioGranted = UserDefaults.standard.bool(forKey: "systemAudioPermissionGranted")
         }
     }
@@ -83,19 +80,20 @@ final class PermissionsManager: ObservableObject {
 
     @available(macOS 14.4, *)
     private func requestCoreAudioTapPermission() async -> Bool {
-        // Actually create a ProcessTap to trigger the TCC permission dialog now,
-        // during onboarding — not on the first recording attempt.
-        var tapID: AudioObjectID = kAudioObjectUnknown
-        let tapDesc = CATapDescription(stereoMixdownOfProcesses: [AudioObjectID(kAudioObjectSystemObject)])
-        tapDesc.name = "MemgramPermissionCheck"
-        tapDesc.isExclusive = false
-
-        let status = AudioHardwareCreateProcessTap(tapDesc, &tapID)
-        if tapID != kAudioObjectUnknown {
-            AudioHardwareDestroyProcessTap(tapID)
+        // Use real audio process IDs — kAudioObjectSystemObject is NOT a valid process object.
+        // If no processes are running now, wait briefly and try again.
+        var processIDs = Self.audioProcessObjectIDs()
+        if processIDs.isEmpty {
+            try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+            processIDs = Self.audioProcessObjectIDs()
         }
 
-        let granted = (status == noErr)
+        // If still no processes, fall back to SCKit to at least trigger the dialog
+        guard !processIDs.isEmpty else {
+            return await requestScreenCapturePermission()
+        }
+
+        let granted = Self.probeAudioTapPermission(processIDs: processIDs)
         await MainActor.run {
             systemAudioGranted = granted
             UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
@@ -103,9 +101,39 @@ final class PermissionsManager: ObservableObject {
         return granted
     }
 
+    /// Attempt to create and immediately destroy a tap. Returns true if TCC allows it.
+    @available(macOS 14.4, *)
+    private static func probeAudioTapPermission(processIDs: [AudioObjectID]) -> Bool {
+        var tapID: AudioObjectID = kAudioObjectUnknown
+        let tapDesc = CATapDescription(stereoMixdownOfProcesses: processIDs)
+        tapDesc.name = "MemgramPermCheck"
+        tapDesc.isExclusive = false
+        let status = AudioHardwareCreateProcessTap(tapDesc, &tapID)
+        if tapID != kAudioObjectUnknown {
+            AudioHardwareDestroyProcessTap(tapID)
+        }
+        return status == noErr
+    }
+
+    /// Returns all currently running audio process object IDs.
+    @available(macOS 14.4, *)
+    static func audioProcessObjectIDs() -> [AudioObjectID] {
+        var addr = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyProcessObjectList,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size) == noErr,
+              size > 0 else { return [] }
+        let count = Int(size) / MemoryLayout<AudioObjectID>.size
+        var ids = [AudioObjectID](repeating: 0, count: count)
+        AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &ids)
+        return ids
+    }
+
     private func requestScreenCapturePermission() async -> Bool {
         do {
-            // Triggers the system permission dialog for screen/audio capture
             _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             await MainActor.run {
                 systemAudioGranted = true
@@ -113,9 +141,7 @@ final class PermissionsManager: ObservableObject {
             }
             return true
         } catch {
-            await MainActor.run {
-                systemAudioGranted = false
-            }
+            await MainActor.run { systemAudioGranted = false }
             return false
         }
     }

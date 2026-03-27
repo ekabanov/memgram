@@ -5,6 +5,7 @@ struct PopoverView: View {
     @ObservedObject private var permissions = PermissionsManager.shared
     @ObservedObject private var session = RecordingSession.shared
     @ObservedObject private var modelManager = WhisperModelManager.shared
+    @ObservedObject private var llmStore = LLMProviderStore.shared
     @State private var lastError: String?
     @State private var showModelDownload = false
 
@@ -86,12 +87,15 @@ struct PopoverView: View {
                 .font(.headline)
             Spacer()
             Button(action: { showModelDownload = true }) {
-                Label(modelManager.isModelReady ? modelManager.selectedModel.shortName : "Setup",
-                      systemImage: modelManager.isModelReady ? "waveform" : "arrow.down.circle")
+                Label(modelManager.selectedModel.shortName,
+                      systemImage: "waveform")
                     .font(.caption)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
+            .help("Transcription model")
+            llmSettingsButton
+            .help("LLM for summaries")
             Button(action: { appDelegate?.openMainWindow() }) {
                 Label("Open", systemImage: "macwindow")
                     .font(.caption)
@@ -185,6 +189,29 @@ struct PopoverView: View {
         }
     }
 
+    /// LLM selector button — uses SettingsLink so it actually opens the Settings scene.
+    @ViewBuilder
+    private var llmSettingsButton: some View {
+        if #available(macOS 14, *) {
+            SettingsLink {
+                Label(llmStore.selectedBackend.displayName, systemImage: "sparkles")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        } else {
+            Button {
+                NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                NSApp.activate(ignoringOtherApps: true)
+            } label: {
+                Label(llmStore.selectedBackend.displayName, systemImage: "sparkles")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+    }
+
     private var footerSection: some View {
         HStack {
             settingsButton
@@ -194,11 +221,16 @@ struct PopoverView: View {
             if session.isRecording {
                 Button("Stop") { Task { await session.stop() } }
                     .buttonStyle(.bordered)
-            } else if !permissions.microphoneGranted {
+            } else if !permissions.microphoneGranted || !permissions.systemAudioGranted {
                 Button("Fix Permissions") {
                     Task {
-                        let granted = await permissions.requestMicrophonePermission()
-                        if !granted { permissions.openSystemPreferences() }
+                        if !permissions.microphoneGranted {
+                            let micGranted = await permissions.requestMicrophonePermission()
+                            if !micGranted { permissions.openSystemPreferences(); return }
+                        }
+                        if !permissions.systemAudioGranted {
+                            _ = await permissions.requestSystemAudioPermission()
+                        }
                     }
                 }
                 .buttonStyle(.bordered)
