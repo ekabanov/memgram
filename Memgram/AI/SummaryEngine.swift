@@ -25,9 +25,18 @@ final class SummaryEngine {
             print("[SummaryEngine] ⚠️ Meeting not found: \(meetingId)")
             return
         }
-        guard let transcript = meeting.rawTranscript, !transcript.isEmpty else {
-            print("[SummaryEngine] ⚠️ rawTranscript is \(meeting.rawTranscript == nil ? "nil" : "empty") — skipping")
-            return
+        // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings)
+        let transcript: String
+        if let raw = meeting.rawTranscript, !raw.isEmpty {
+            transcript = raw
+        } else {
+            let segs = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
+            guard !segs.isEmpty else {
+                print("[SummaryEngine] ⚠️ No transcript or segments found — skipping")
+                return
+            }
+            transcript = segs.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
+            print("[SummaryEngine] ⚠️ rawTranscript missing — rebuilt from \(segs.count) DB segments")
         }
 
         let provider = await MainActor.run {
@@ -47,8 +56,10 @@ final class SummaryEngine {
             let cleanSummary = stripThinkingTags(summary)
             print("[SummaryEngine] ✓ Summary generated (\(cleanSummary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
-            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            await MainActor.run { NotificationCenter.default.post(name: .meetingDidUpdate, object: nil) }
             print("[SummaryEngine] ✓ Saved and notified")
+            // Auto-title from the fresh summary if still using the default placeholder
+            await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
         } catch {
             print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
         }

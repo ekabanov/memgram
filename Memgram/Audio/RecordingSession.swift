@@ -154,8 +154,7 @@ final class RecordingSession: ObservableObject {
             self.finalizationCancellable = nil
 
             Task {
-                await SummaryEngine.shared.summarize(meetingId: id)
-                await SummaryEngine.shared.generateTitle(meetingId: id)
+                await SummaryEngine.shared.summarize(meetingId: id)  // title generated inside
                 await EmbeddingEngine.shared.embed(meetingId: id)
             }
         }

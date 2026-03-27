@@ -59,7 +59,8 @@ struct MeetingDetailView: View {
             load()
         }
         .onChange(of: selectedTab) { _ in
-            withAnimation { showLocalSearch = false; localQuery = "" }
+            showLocalSearch = false
+            localQuery = ""
         }
         .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
         .alert("Delete Meeting?", isPresented: $showDeleteConfirm) {
@@ -247,24 +248,8 @@ struct MeetingDetailView: View {
     @ViewBuilder
     private var summaryTabContent: some View {
         LazyVStack(alignment: .leading, spacing: 24) {
-            if let m = meeting, let summary = m.summary, !summary.isEmpty {
-                let parsed = parseSummary(summary)
-                ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
-                    styledSummarySection(section)
-                }
-                // Action items inline in summary if present
-                let items = actionItems(from: m)
-                if !items.isEmpty {
-                    actionItemsSection(items, meetingId: m.id)
-                }
-            } else {
-                Text("No summary yet.")
-                    .foregroundColor(.secondary)
-            }
-
-            // Regenerate row
-            if let m = meeting, let transcript = m.rawTranscript, !transcript.isEmpty {
-                Divider()
+            // Regenerate row — shown at the TOP before summary content
+            if meeting != nil {
                 HStack(spacing: 8) {
                     Picker("", selection: $selectedSummaryBackend) {
                         ForEach(LLMBackend.allCases) { backend in
@@ -275,7 +260,7 @@ struct MeetingDetailView: View {
                     .frame(width: 180)
                     .controlSize(.small)
 
-                    Button(isRegenerating ? "Generating…" : (m.summary == nil ? "Generate Summary" : "Regenerate")) {
+                    Button(isRegenerating ? "Generating…" : (meeting?.summary == nil ? "Generate Summary" : "Regenerate")) {
                         regenerateSummary()
                     }
                     .buttonStyle(.bordered)
@@ -286,6 +271,21 @@ struct MeetingDetailView: View {
                         ProgressView().controlSize(.small)
                     }
                 }
+                Divider()
+            }
+
+            if let m = meeting, let summary = m.summary, !summary.isEmpty {
+                let parsed = parseSummary(summary)
+                ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
+                    styledSummarySection(section)
+                }
+                let items = actionItems(from: m)
+                if !items.isEmpty {
+                    actionItemsSection(items, meetingId: m.id)
+                }
+            } else if !isRegenerating {
+                Text("No summary yet. Click Generate Summary to create one.")
+                    .foregroundColor(.secondary)
             }
         }
     }
