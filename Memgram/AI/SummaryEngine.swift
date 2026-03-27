@@ -156,7 +156,7 @@ final class SummaryEngine: ObservableObject {
             for meeting in meetings {
                 guard let summary = meeting.summary,
                       summary.contains("<think>") else { continue }
-                let cleanedSummary = stripThinkingTags(summary)
+                let cleanedSummary = self.stripThinkingTags(summary)
                 try? MeetingStore.shared.saveSummary(meetingId: meeting.id, summary: cleanedSummary)
                 print("[SummaryEngine] Cleaned <think> tags from meeting \(meeting.id)")
                 cleaned = true
