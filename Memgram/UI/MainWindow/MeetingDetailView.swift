@@ -280,6 +280,12 @@ struct MeetingDetailView: View {
                     if isRegenerating { ProgressView().controlSize(.small) }
                 }
                 Divider()
+                if let err = summaryEngine.lastError, err.meetingId == meetingId {
+                    Label(err.message, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             if let summary = meeting?.summary, !summary.isEmpty {

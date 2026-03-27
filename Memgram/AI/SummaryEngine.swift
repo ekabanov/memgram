@@ -7,6 +7,7 @@ final class SummaryEngine: ObservableObject {
 
     /// Meeting IDs currently being summarised. Observed by UI for progress indicators.
     @Published private(set) var activeMeetingIds: Set<String> = []
+    @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
         You are a meeting notes assistant. Create comprehensive, well-structured notes from meeting \
@@ -33,6 +34,7 @@ final class SummaryEngine: ObservableObject {
     func summarize(meetingId: String, overrideBackend: LLMBackend? = nil) async {
         activeMeetingIds.insert(meetingId)
         defer { activeMeetingIds.remove(meetingId) }
+        lastError = nil
         print("[SummaryEngine] Starting summarisation for \(meetingId)")
 
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {
@@ -79,6 +81,9 @@ final class SummaryEngine: ObservableObject {
             await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
         } catch {
             print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
+            await MainActor.run {
+                self.lastError = (meetingId: meetingId, message: error.localizedDescription)
+            }
         }
     }
 
@@ -204,16 +209,16 @@ final class SummaryEngine: ObservableObject {
         let user = """
         /no_think
 
-        The following are notes from consecutive segments of a long meeting:
+        The following are notes from consecutive segments of a long meeting, each formatted in Markdown:
 
         \(combined)
 
-        Merge these into comprehensive combined meeting notes covering all segments. \
+        Merge these into comprehensive combined meeting notes in **Markdown format**. \
         Integrate information across segments — do not repeat the same point multiple times. \
         Cover all significant topics and details.
 
-        Use these sections: PARTICIPANTS, TOPICS DISCUSSED, KEY DECISIONS, ACTION ITEMS.
-        Plain text only, no markdown.
+        Use these sections with ## headings: ## Participants, ## Topics Discussed (with ### subheadings \
+        per topic), ## Key Decisions, ## Action Items.
         """
         return try await provider.complete(system: systemPrompt, user: user)
     }
