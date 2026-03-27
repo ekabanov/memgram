@@ -54,6 +54,45 @@ final class SummaryEngine {
         }
     }
 
+    /// Generate a short title (4-8 words) from the first 2 minutes of transcript.
+    /// Only runs if the meeting currently has a generic default title (starts with "Meeting ").
+    func generateTitle(meetingId: String, overrideBackend: LLMBackend? = nil) async {
+        guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else { return }
+
+        // Only auto-title if the current title looks like the default
+        guard meeting.title.hasPrefix("Meeting ") else {
+            print("[SummaryEngine] Skipping auto-title — meeting has custom title")
+            return
+        }
+
+        let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
+        let first2min = segments.filter { $0.startSeconds < 120 }
+        guard !first2min.isEmpty else { return }
+
+        let excerpt = first2min.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
+
+        let provider = await MainActor.run {
+            overrideBackend.map { LLMProviderStore.shared.providerFor($0) }
+                ?? LLMProviderStore.shared.currentProvider
+        }
+
+        do {
+            let raw = try await provider.complete(
+                system: "Generate a short meeting title of 4-8 words. Output only the title, nothing else. No quotes, no punctuation at the end.",
+                user: "Transcript excerpt (first 2 minutes):\n\n\(excerpt)\n\nGenerate a concise title:"
+            )
+            let generated = stripThinkingTags(raw)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            guard !generated.isEmpty, generated.count < 120 else { return }
+            try MeetingStore.shared.updateTitle(meetingId, title: generated)
+            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            print("[SummaryEngine] ✓ Auto-title: \"\(generated)\"")
+        } catch {
+            print("[SummaryEngine] ✗ Auto-title failed: \(error)")
+        }
+    }
+
     // MARK: - Private
 
     private func stripThinkingTags(_ text: String) -> String {

@@ -155,6 +155,7 @@ final class RecordingSession: ObservableObject {
 
             Task {
                 await SummaryEngine.shared.summarize(meetingId: id)
+                await SummaryEngine.shared.generateTitle(meetingId: id)
                 await EmbeddingEngine.shared.embed(meetingId: id)
             }
         }
