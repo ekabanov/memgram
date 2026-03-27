@@ -53,6 +53,8 @@ final class RecordingSession: ObservableObject {
             title: "Meeting \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))"
         )
         currentMeetingId = meeting.id
+        // Notify the list immediately so the new meeting appears while recording
+        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
 
         transcriptionEngine.reset()
         segments = []

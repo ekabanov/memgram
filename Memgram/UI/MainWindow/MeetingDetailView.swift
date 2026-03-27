@@ -261,22 +261,23 @@ struct MeetingDetailView: View {
             // Regenerate row — always at the top
             if meeting != nil {
                 HStack(spacing: 8) {
-                    Picker("", selection: $selectedSummaryBackend) {
-                        ForEach(LLMBackend.allCases.filter(\.isConfigured)) { backend in
-                            Text(backend.displayName).tag(backend)
+                    let configuredBackends = LLMBackend.allCases.filter(\.isConfigured)
+                    if configuredBackends.count > 1 {
+                        Picker("", selection: $selectedSummaryBackend) {
+                            ForEach(configuredBackends) { backend in
+                                Text(backend.displayName).tag(backend)
+                            }
                         }
+                        .labelsHidden()
+                        .frame(width: 180)
+                        .controlSize(.small)
                     }
-                    .labelsHidden()
-                    .frame(width: 180)
-                    .controlSize(.small)
-
                     Button(isRegenerating ? "Generating…" : (meeting?.summary == nil ? "Generate Summary" : "Regenerate")) {
                         regenerateSummary()
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(isRegenerating)
-
                     if isRegenerating { ProgressView().controlSize(.small) }
                 }
                 Divider()
@@ -292,7 +293,18 @@ struct MeetingDetailView: View {
                 Markdown(summary)
                     .markdownTheme(.gitHub)
                     .textSelection(.enabled)
-            } else if !isRegenerating {
+            } else if isRegenerating {
+                // Skeleton placeholder while generating
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach([1.0, 0.85, 0.92, 0.6, 0.78, 0.88, 0.5], id: \.self) { width in
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.secondary.opacity(0.15))
+                            .frame(maxWidth: .infinity * width, alignment: .leading)
+                            .frame(height: 13)
+                    }
+                }
+                .padding(.top, 4)
+            } else {
                 Text("No summary yet. Click Generate Summary to create one.")
                     .foregroundColor(.secondary)
             }
