@@ -10,17 +10,14 @@ struct MeetingDetailView: View {
     @State private var editableTitle = ""
     @State private var isEditingTitle = false
     @State private var refreshID = UUID()
+    @State private var isRegenerating = false
+    @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
                 header
-                if let m = meeting, let summary = m.summary, !summary.isEmpty {
-                    let parsed = parseSummary(summary)
-                    ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
-                        styledSummarySection(section)
-                    }
-                }
+                summaryBlock
                 if let m = meeting {
                     let items = actionItems(from: m)
                     if !items.isEmpty {
@@ -36,6 +33,55 @@ struct MeetingDetailView: View {
         .id(refreshID)
         .onAppear { load() }
         .onChange(of: meetingId) { _ in load() }
+        .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
+    }
+
+    // MARK: - Summary block (with regenerate)
+
+    @ViewBuilder
+    private var summaryBlock: some View {
+        if let m = meeting, let summary = m.summary, !summary.isEmpty {
+            let parsed = parseSummary(summary)
+            ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
+                styledSummarySection(section)
+            }
+        }
+        // Regenerate row — shown when there's a transcript to summarise
+        if let m = meeting, let transcript = m.rawTranscript, !transcript.isEmpty {
+            HStack(spacing: 8) {
+                Picker("", selection: $selectedSummaryBackend) {
+                    ForEach(LLMBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 180)
+                .controlSize(.small)
+
+                Button(isRegenerating ? "Generating…" : (meeting?.summary == nil ? "Generate Summary" : "Regenerate")) {
+                    regenerateSummary()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(isRegenerating)
+            }
+        }
+    }
+
+    private func regenerateSummary() {
+        guard !isRegenerating else { return }
+        isRegenerating = true
+        // Temporarily switch to the chosen backend, summarise, then restore
+        let previous = LLMProviderStore.shared.selectedBackend
+        LLMProviderStore.shared.selectedBackend = selectedSummaryBackend
+        Task {
+            await SummaryEngine.shared.summarize(meetingId: meetingId)
+            await MainActor.run {
+                LLMProviderStore.shared.selectedBackend = previous
+                isRegenerating = false
+                load()
+            }
+        }
     }
 
     // MARK: - Header

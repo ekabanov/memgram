@@ -77,7 +77,13 @@ struct MeetingListView: View {
     }
 
     private func load() {
-        meetings = (try? MeetingStore.shared.fetchAll()) ?? []
+        let all = (try? MeetingStore.shared.fetchAll()) ?? []
+        // Hide meetings with no transcript and no summary — empty recordings
+        meetings = all.filter { m in
+            let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
+            let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
+            return hasTranscript || hasSummary || m.status == .recording || m.status == .transcribing
+        }
     }
 
     private func delete(_ meeting: Meeting) {
@@ -106,6 +112,13 @@ struct MeetingRowView: View {
                 Text(subtitle)
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+            Spacer()
+            if let summary = meeting.summary, !summary.isEmpty {
+                Image(systemName: "sparkles")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .help("Summary available")
             }
         }
         .padding(.vertical, 2)
