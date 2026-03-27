@@ -1,6 +1,7 @@
 // Memgram/UI/MainWindow/MeetingDetailView.swift
 import SwiftUI
 import AppKit
+import MarkdownUI
 
 extension MeetingSegment: Identifiable {}
 
@@ -247,8 +248,8 @@ struct MeetingDetailView: View {
 
     @ViewBuilder
     private var summaryTabContent: some View {
-        LazyVStack(alignment: .leading, spacing: 24) {
-            // Regenerate row — shown at the TOP before summary content
+        LazyVStack(alignment: .leading, spacing: 16) {
+            // Regenerate row — always at the top
             if meeting != nil {
                 HStack(spacing: 8) {
                     Picker("", selection: $selectedSummaryBackend) {
@@ -267,22 +268,15 @@ struct MeetingDetailView: View {
                     .controlSize(.small)
                     .disabled(isRegenerating)
 
-                    if isRegenerating {
-                        ProgressView().controlSize(.small)
-                    }
+                    if isRegenerating { ProgressView().controlSize(.small) }
                 }
                 Divider()
             }
 
-            if let m = meeting, let summary = m.summary, !summary.isEmpty {
-                let parsed = parseSummary(summary)
-                ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
-                    styledSummarySection(section)
-                }
-                let items = actionItems(from: m)
-                if !items.isEmpty {
-                    actionItemsSection(items, meetingId: m.id)
-                }
+            if let summary = meeting?.summary, !summary.isEmpty {
+                Markdown(summary)
+                    .markdownTheme(.gitHub)
+                    .textSelection(.enabled)
             } else if !isRegenerating {
                 Text("No summary yet. Click Generate Summary to create one.")
                     .foregroundColor(.secondary)

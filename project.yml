@@ -18,6 +18,9 @@ packages:
   MLXSwiftLM:
     url: https://github.com/ml-explore/mlx-swift-lm
     revision: "405162196eb484eeaa4afcc7bd354f9b559a11d5"
+  MarkdownUI:
+    url: https://github.com/gonzalezreal/swift-markdown-ui
+    from: "2.0.0"
 
 targets:
   Memgram:
@@ -62,5 +65,7 @@ targets:
         product: WhisperKit
       - package: MLXSwiftLM
         product: MLXLLM
+      - package: MarkdownUI
+        product: MarkdownUI
     scheme:
       testTargets: []

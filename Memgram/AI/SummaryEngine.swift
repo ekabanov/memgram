@@ -19,6 +19,7 @@ final class SummaryEngine: ObservableObject {
         - Add brief context in [brackets] for acronyms, company names, or technical terms that benefit \
           from explanation — but only when it adds value.
         - Do not add commentary or reasoning steps beyond what is in the transcript.
+        - Format output as Markdown. Use bullet points and bold for clarity.
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
@@ -160,25 +161,25 @@ final class SummaryEngine: ObservableObject {
 
         \(transcript)
 
-        Write comprehensive meeting notes in plain text. Do not omit significant topics or details — \
-        a longer meeting deserves longer notes. Cover everything that was discussed.
+        Write comprehensive meeting notes in **Markdown format**. Do not omit significant topics or \
+        details — a longer meeting deserves longer notes. Cover everything that was discussed.
 
-        Use these sections:
+        Use these sections with ## headings:
 
-        PARTICIPANTS
+        ## Participants
         Who was in the meeting and their roles (if mentioned).
 
-        TOPICS DISCUSSED
-        For each major topic covered, write a paragraph capturing the key points, information shared, \
-        and positions expressed. Be thorough — this is the main section.
+        ## Topics Discussed
+        For each major topic covered, use a ### subheading and write bullet points capturing the key \
+        points, information shared, and positions expressed. Be thorough — this is the main section.
 
-        KEY DECISIONS
-        List each decision reached. Write "None" if there were none.
+        ## Key Decisions
+        Bullet list of each decision reached. Write "None" if there were none.
 
-        ACTION ITEMS
-        List as "Owner: Task". Write "None" if there were none.
+        ## Action Items
+        Bullet list as "**Owner:** Task". Write "None" if there were none.
 
-        Rules: plain text only, no markdown, no meta-commentary about the transcript.
+        Rules: use markdown formatting (bold, bullets, headings). No meta-commentary about the transcript.
         """
         return try await provider.complete(system: systemPrompt, user: user)
     }

@@ -34,6 +34,7 @@
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
 		BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 53BD9539689CB76F94BBDACC /* MLXLLM */; };
+		C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = AE534A3FFDD02E4A672EDB9C /* MarkdownUI */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
@@ -108,6 +109,7 @@
 				11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */,
 				7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */,
 				BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */,
+				C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -302,6 +304,7 @@
 				F7F968E28E3536B2BD9133D2 /* GRDB */,
 				F979AADA93C8B3A477894A87 /* WhisperKit */,
 				53BD9539689CB76F94BBDACC /* MLXLLM */,
+				AE534A3FFDD02E4A672EDB9C /* MarkdownUI */,
 			);
 			productName = Memgram;
 			productReference = 9B83A48D9B5013FC9151290B /* Memgram.app */;
@@ -334,6 +337,7 @@
 			packageReferences = (
 				94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				C9251B3719E5DBC75CF79002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
+				968C53C4C799846CCB446EFB /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -600,6 +604,14 @@
 				minimumVersion = 6.0.0;
 			};
 		};
+		968C53C4C799846CCB446EFB /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 		C9251B3719E5DBC75CF79002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
@@ -615,6 +627,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C9251B3719E5DBC75CF79002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;
 			productName = MLXLLM;
+		};
+		AE534A3FFDD02E4A672EDB9C /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 968C53C4C799846CCB446EFB /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 		F7F968E28E3536B2BD9133D2 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
