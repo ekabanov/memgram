@@ -34,7 +34,7 @@ final class ClaudeProvider: LLMProvider {
     }
 
     private func post<Body: Encodable, Response: Decodable>(body: Body) async throws -> Response {
-        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+        var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!, timeoutInterval: 600)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")

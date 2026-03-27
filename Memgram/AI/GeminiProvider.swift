@@ -40,7 +40,7 @@ final class GeminiProvider: LLMProvider {
     private func post<B: Encodable, R: Decodable>(body: B) async throws -> R {
         let urlStr = "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent?key=\(apiKey)"
         guard let url = URL(string: urlStr) else { throw URLError(.badURL) }
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, timeoutInterval: 600)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)

@@ -38,7 +38,7 @@ final class CustomServerProvider: LLMProvider {
 
     private func post<B: Encodable, R: Decodable>(path: String, body: B) async throws -> R {
         guard let url = URL(string: "\(baseURL)\(path)") else { throw URLError(.badURL) }
-        var request = URLRequest(url: url, timeoutInterval: 300)  // 5 min — large models need time
+        var request = URLRequest(url: url, timeoutInterval: 600)  // 10 min — large models on long transcripts need time
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !apiKey.isEmpty {
