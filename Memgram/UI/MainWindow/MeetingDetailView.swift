@@ -16,7 +16,10 @@ struct MeetingDetailView: View {
             LazyVStack(alignment: .leading, spacing: 24) {
                 header
                 if let m = meeting, let summary = m.summary, !summary.isEmpty {
-                    summarySection(summary)
+                    let parsed = parseSummary(summary)
+                    ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
+                        styledSummarySection(section)
+                    }
                 }
                 if let m = meeting {
                     let items = actionItems(from: m)
@@ -67,13 +70,79 @@ struct MeetingDetailView: View {
 
     // MARK: - Summary
 
-    private func summarySection(_ summary: String) -> some View {
+    private struct SummarySection {
+        let title: String
+        let content: String
+    }
+
+    private func parseSummary(_ raw: String) -> [SummarySection] {
+        let headers = ["SUMMARY", "KEY DECISIONS", "ACTION ITEMS"]
+        var sections: [SummarySection] = []
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        for (i, header) in headers.enumerated() {
+            guard let headerRange = text.range(of: header, options: .caseInsensitive) else { continue }
+            let contentStart = headerRange.upperBound
+            let contentEnd: String.Index
+            let nextHeaders = headers.dropFirst(i + 1)
+            if let nextHeader = nextHeaders.first(where: { text.range(of: $0, options: .caseInsensitive, range: contentStart..<text.endIndex) != nil }),
+               let nextRange = text.range(of: nextHeader, options: .caseInsensitive, range: contentStart..<text.endIndex) {
+                contentEnd = nextRange.lowerBound
+            } else {
+                contentEnd = text.endIndex
+            }
+            let content = String(text[contentStart..<contentEnd]).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !content.isEmpty && content.lowercased() != "none" {
+                sections.append(SummarySection(title: header, content: content))
+            }
+        }
+
+        if sections.isEmpty && !text.isEmpty {
+            sections.append(SummarySection(title: "SUMMARY", content: text))
+        }
+        return sections
+    }
+
+    private func styledSummarySection(_ section: SummarySection) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Summary", systemImage: "text.alignleft")
-                .font(.headline)
-            Text(summary)
+            HStack(spacing: 6) {
+                Image(systemName: sectionIcon(section.title))
+                    .foregroundColor(sectionColor(section.title))
+                    .font(.subheadline)
+                Text(sectionDisplayTitle(section.title))
+                    .font(.headline)
+            }
+            Text(section.content)
                 .font(.body)
                 .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func sectionIcon(_ title: String) -> String {
+        switch title.uppercased() {
+        case "SUMMARY":       return "text.alignleft"
+        case "KEY DECISIONS":  return "checkmark.seal"
+        case "ACTION ITEMS":   return "checklist"
+        default:               return "doc.text"
+        }
+    }
+
+    private func sectionColor(_ title: String) -> Color {
+        switch title.uppercased() {
+        case "SUMMARY":       return .blue
+        case "KEY DECISIONS":  return .orange
+        case "ACTION ITEMS":   return .green
+        default:               return .secondary
+        }
+    }
+
+    private func sectionDisplayTitle(_ title: String) -> String {
+        switch title.uppercased() {
+        case "SUMMARY":       return "Summary"
+        case "KEY DECISIONS":  return "Key Decisions"
+        case "ACTION ITEMS":   return "Action Items"
+        default:               return title.capitalized
         }
     }
 
