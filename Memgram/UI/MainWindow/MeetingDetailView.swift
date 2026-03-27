@@ -232,18 +232,18 @@ struct MeetingDetailView: View {
     }
 
     private func copyTranscriptText() {
-        let text = segments.map { seg in
+        let content = segments.map { seg in
             let ts = formatTimestamp(seg.startSeconds)
             return "\(seg.speaker) [\(ts)]: \(seg.text)"
         }.joined(separator: "\n")
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text.isEmpty ? "(no transcript)" : text, forType: .string)
+        NSPasteboard.general.setString(content.isEmpty ? "(no transcript)" : content, forType: NSPasteboard.PasteboardType.string)
     }
 
     private func copySummaryText() {
-        let text = meeting?.summary ?? "(no summary)"
+        let content = meeting?.summary ?? "(no summary)"
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        NSPasteboard.general.setString(content, forType: NSPasteboard.PasteboardType.string)
     }
 
     private func giveCopyFeedback() {
