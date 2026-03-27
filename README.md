@@ -2,24 +2,24 @@
 
 > *Every word, perfectly remembered.*
 
-Memgram is a private, offline-first macOS meeting recorder. It silently captures microphone and system audio during meetings, transcribes locally via WhisperKit, generates AI summaries, and provides semantic search across all past meetings — entirely on your Mac. No servers. No bots. No audio stored.
+Memgram is a private, offline-first macOS meeting recorder. It silently captures microphone and system audio, transcribes locally via WhisperKit, generates AI summaries, and provides semantic search — entirely on your Mac. No servers. No bots. No audio stored.
 
 ## Features
 
 - **Menu bar app** — always available, never in the way
-- **Dual-channel capture** — mic (you) + system audio (remote) captured simultaneously
-- **Local transcription** — WhisperKit (Metal decoder + Neural Engine encoder), auto-downloads models
-- **Speaker diarisation** — stereo routing separates "You" from "Remote" speakers
-- **AI summaries** — triggered automatically after each meeting; structured SUMMARY / KEY DECISIONS / ACTION ITEMS
-- **Semantic search** — hybrid FTS5 + cosine similarity across all transcripts (Cmd+F)
-- **Full main window** — browseable meeting history with editable titles, action items, and transcript
+- **Dual-channel capture** — mic (you) + system audio (remote) simultaneously
+- **Local transcription** — WhisperKit (Metal decoder + Neural Engine encoder), auto-selects model based on your RAM
+- **Speaker diarisation** — stereo routing separates "You" from "Remote"
+- **AI summaries** — generated after each meeting; structured Markdown with participants, topics, decisions, action items
+- **Inline search** — filter transcript segments by text or speaker; global semantic search (Cmd+F)
+- **Summary tab** — rendered Markdown with Copy and Regenerate (choose model inline)
+- **Auto-titling** — LLM generates a 4–8 word title from the summary
 
 ## Requirements
 
 - macOS 14.0 or later
-- Apple Silicon (M1 or later) recommended — required for local Qwen AI summaries
-- Xcode 15+
-- [xcodegen](https://github.com/yonaskolb/XcodeGen) to regenerate the project after editing `project.yml`
+- Apple Silicon (M1 or later) — required for local Qwen AI summaries
+- Xcode 15+ to build
 
 ## Getting Started
 
@@ -30,79 +30,74 @@ xcodegen generate
 open Memgram.xcodeproj
 ```
 
-Build and run from Xcode. On first launch, Memgram walks you through microphone and system audio permissions, then prompts to download a Whisper model.
+On first launch: grant microphone + system audio permissions, choose English or Multilingual transcription, optionally pre-load the model.
 
-## Transcription Models
+## Transcription
 
-WhisperKit downloads and caches models automatically from HuggingFace on first use. Select a model from the menu bar popover. Recommended: **Large v3 Turbo Q** (632 MB, fast, multilingual).
+WhisperKit downloads and caches models automatically. The model is chosen automatically based on your Mac's RAM and language preference (set in the model picker):
 
-| Display Name | WhisperKit ID | Size |
-|---|---|---|
-| Tiny EN | openai_whisper-tiny.en | 39 MB |
-| Small EN | openai_whisper-small.en | 244 MB |
-| Large v3 Turbo Q ★ | openai_whisper-large-v3-v20240930_turbo_632MB | 632 MB |
-| Large v3 | openai_whisper-large-v3-v20240930_626MB | 626 MB |
+| RAM | Model | Size |
+|-----|-------|------|
+| 16 GB+ | Large v3 Turbo (full precision) | 954 MB |
+| 8 GB | Large v3 Turbo Q (quantized) ★ | 632 MB |
+| < 8 GB | Small / Small EN | 244 MB |
 
-CoreML model compilation happens on first use (one-time, ~2–5 minutes). Subsequent sessions are fast.
+CoreML compilation happens once on first use. Subsequent sessions are fast.
 
 ## AI Summaries
 
-Configure your LLM backend in **Settings → AI**:
+Configure your LLM in **Settings → AI** (gear icon in the popover):
 
 | Backend | Notes |
-|---|---|
-| **Qwen 3.5 9B (Local)** ★ | In-process via Apple MLX. Download ~4.5 GB once. Requires Apple Silicon. |
+|---------|-------|
+| **Qwen 3.5 9B (Local)** | In-process via Apple MLX. Downloads ~4.5 GB. Requires Apple Silicon. |
 | **Ollama** | Requires [Ollama](https://ollama.ai) running locally |
-| **Custom Server** | Any OpenAI-compatible server (LM Studio, mlx_lm.server, vLLM) |
-| **Claude** | Anthropic API key required |
-| **OpenAI** | OpenAI API key required |
-| **Gemini** | Google API key required |
+| **Custom Server** | Any OpenAI-compatible server (LM Studio, vLLM, mlx_lm.server) |
+| **Claude / OpenAI / Gemini** | Cloud API, key stored in Keychain |
 
-API keys are stored in the macOS Keychain — never in UserDefaults or SQLite.
+All providers use a 10-minute request timeout. API keys are Keychain-only — never UserDefaults or SQLite.
 
 ## Architecture
 
 ```
-MicrophoneCapture (AVAudioEngine, 16kHz mono)
+MicrophoneCapture (16kHz mono)
        ↓
-   StereoMixer  ←  SystemAudioCaptureProvider (CoreAudioTap / ScreenCaptureKit)
+   StereoMixer  ←  CoreAudioTap / ScreenCaptureKit
        ↓ 30s stereo chunks
  TranscriptionEngine (WhisperKit, Metal + ANE)
-       ↓ TranscriptSegments
-   MeetingStore (GRDB SQLite, WAL mode, FTS5)
-       ↓
- SummaryEngine + EmbeddingEngine (background, post-recording)
-       ↓
+       ↓ segments → MeetingStore (GRDB, WAL, FTS5)
+ SummaryEngine (background Task)
+       ↓ Markdown summary + auto-title
    SearchEngine (FTS5 BM25 × 0.4 + cosine × 0.6)
 ```
 
-Data lives in `~/Library/Application Support/Memgram/memgram.db`. Audio is discarded immediately after transcription — transcripts only.
+SQLite at `~/Library/Application Support/Memgram/memgram.db`. Audio discarded after transcription.
 
 ## Package Dependencies
 
-| Package | Version | Purpose |
-|---|---|---|
-| GRDB | 6.x | SQLite (WAL, FTS5) |
-| WhisperKit | 0.9+ | Transcription (Metal/ANE, auto-downloads) |
-| MLXSwiftLM | commit `4051621` | Qwen 3.5 local inference via Apple MLX |
+| Package | Purpose |
+|---------|---------|
+| GRDB 6.x | SQLite with WAL and FTS5 |
+| WhisperKit 0.9+ | Transcription (auto-downloads models) |
+| mlx-swift-lm (pinned commit) | Qwen local inference via Apple MLX |
+| swift-markdown-ui 2.x | Markdown rendering in summary tab |
 
-> **Note on MLXSwiftLM:** Pinned to a specific commit because WhisperKit and the latest MLXSwiftLM main branch require incompatible versions of `swift-transformers`. When WhisperKit updates to support `swift-transformers >= 1.2.0`, switch MLXSwiftLM to `branch: main`.
+> **Note on mlx-swift-lm:** Pinned to a specific commit because WhisperKit and the mlx-swift-lm main branch require incompatible versions of `swift-transformers`. Update when WhisperKit supports `swift-transformers >= 1.2.0`.
 
 ## Privacy
 
-- No audio is ever stored or transmitted
-- Transcripts are stored locally in SQLite only
-- Network requests only occur when using cloud LLM providers (Claude, OpenAI, Gemini)
-- The app requests Screen Recording permission only to capture system audio on macOS < 14.4; no screen content is ever captured or stored
-- CoreAudio ProcessTap (macOS 14.4+) requires a separate system audio permission — granted on first launch
+- Audio is never stored (discarded immediately after transcription)
+- Transcripts stored locally in SQLite only
+- Network requests only when using cloud LLM providers
+- CoreAudio ProcessTap (macOS 14.4+) for system audio — no screen content captured
 
-## Build System
-
-The Xcode project is generated from `project.yml` via [xcodegen](https://github.com/yonaskolb/XcodeGen). After adding new Swift files, run `xcodegen generate` before building.
+## Build
 
 ```bash
 xcodebuild -project Memgram.xcodeproj -scheme Memgram -configuration Debug build
 ```
+
+Add new Swift files → run `xcodegen generate` first.
 
 ## License
 
