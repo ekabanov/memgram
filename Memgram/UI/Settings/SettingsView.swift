@@ -86,7 +86,9 @@ struct AISettingsTab: View {
             if !connectionStatus.isEmpty {
                 Text(connectionStatus)
                     .font(.caption)
-                    .foregroundColor(connectionStatus.hasPrefix("✓") ? .green : .red)
+                    .foregroundColor(connectionStatus.hasPrefix("Connected") || connectionStatus.hasPrefix("Responded") ? .green : .red)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             Spacer()
         }
@@ -100,9 +102,16 @@ struct AISettingsTab: View {
                 system: "You are a test assistant.",
                 user: "Reply with exactly: OK"
             )
-            connectionStatus = reply.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("OK")
-                ? "✓ Connected"
-                : "✓ Responded: \(reply.prefix(40))"
+            var cleanReply = reply
+            if let closeRange = cleanReply.range(of: "</think>", options: .caseInsensitive) {
+                cleanReply = String(cleanReply[closeRange.upperBound...])
+            } else if let openRange = cleanReply.range(of: "<think>", options: .caseInsensitive) {
+                cleanReply = String(cleanReply[..<openRange.lowerBound])
+            }
+            cleanReply = cleanReply.trimmingCharacters(in: .whitespacesAndNewlines)
+            connectionStatus = cleanReply.hasPrefix("OK")
+                ? "Connected"
+                : "Responded: \(String(cleanReply.prefix(50)))"
         } catch {
             connectionStatus = "✗ \(error.localizedDescription)"
         }
