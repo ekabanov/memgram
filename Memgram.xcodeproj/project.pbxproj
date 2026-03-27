@@ -320,7 +320,7 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					87FC04F2AE7E4EA4D3D13462 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 6N57Z7GY37;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -410,13 +410,16 @@
 				CODE_SIGN_ENTITLEMENTS = Memgram/Resources/Memgram.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6N57Z7GY37;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Memgram/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.app;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -431,13 +434,16 @@
 				CODE_SIGN_ENTITLEMENTS = Memgram/Resources/Memgram.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6N57Z7GY37;
+				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Memgram/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.app;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;

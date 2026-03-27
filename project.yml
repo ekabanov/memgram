@@ -47,7 +47,7 @@ targets:
         CFBundleDisplayName: Memgram
         LSUIElement: true
         NSPrincipalClass: NSApplication
-        LSMinimumSystemVersion: "13.0"
+        LSMinimumSystemVersion: "14.0"
     entitlements:
       path: Memgram/Resources/Memgram.entitlements
     settings:
@@ -56,8 +56,11 @@ targets:
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: "6N57Z7GY37"
         SWIFT_STRICT_CONCURRENCY: minimal
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ENABLE_HARDENED_RUNTIME: YES
     dependencies:
       - package: GRDB
         product: GRDB
