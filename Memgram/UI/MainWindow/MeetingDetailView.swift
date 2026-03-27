@@ -59,7 +59,7 @@ struct MeetingDetailView: View {
             Button("Delete", role: .destructive) { performDelete() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(""\(editableTitle)" will be permanently deleted.")
+            Text("\"\(editableTitle)\" will be permanently deleted.")
         }
     }
 
