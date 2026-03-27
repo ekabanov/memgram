@@ -7,6 +7,7 @@ enum LLMBackendCategory: String, CaseIterable {
 }
 
 enum LLMBackend: String, CaseIterable, Identifiable {
+    case qwen    = "qwen"     // Local Qwen via MLX
     case ollama  = "ollama"
     case custom  = "custom"
     case claude  = "claude"
@@ -17,6 +18,7 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
+        case .qwen:   return "Qwen 3.5 9B (Local)"
         case .ollama: return "Ollama"
         case .custom: return "Custom Server"
         case .claude: return "Claude"
@@ -27,7 +29,7 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 
     var category: LLMBackendCategory {
         switch self {
-        case .ollama:                   return .freeLocal
+        case .qwen, .ollama:            return .freeLocal
         case .custom:                   return .selfHosted
         case .claude, .openai, .gemini: return .cloud
         }
@@ -35,7 +37,7 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 
     var badge: String {
         switch self {
-        case .ollama: return "Free"
+        case .qwen, .ollama: return "Free"
         case .custom: return "Self-hosted"
         case .claude, .openai, .gemini: return "API key"
         }

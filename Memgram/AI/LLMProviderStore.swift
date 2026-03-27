@@ -20,7 +20,7 @@ final class LLMProviderStore: ObservableObject {
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: "llmBackend") ?? ""
-        selectedBackend   = LLMBackend(rawValue: saved) ?? .ollama
+        selectedBackend   = LLMBackend(rawValue: saved) ?? .qwen
         ollamaModel       = UserDefaults.standard.string(forKey: "ollamaModel") ?? "llama3.2"
         customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
         customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
@@ -30,6 +30,13 @@ final class LLMProviderStore: ObservableObject {
     var currentProvider: any LLMProvider {
         let provider: any LLMProvider
         switch selectedBackend {
+        case .qwen:
+            #if canImport(MLXLLM)
+            if #available(macOS 14, *) { provider = QwenLocalProvider.shared }
+            else { provider = OllamaProvider(model: "qwen3:8b") }
+            #else
+            provider = OllamaProvider(model: "qwen3:8b")
+            #endif
         case .ollama:
             provider = OllamaProvider(model: ollamaModel)
         case .custom:
