@@ -1,8 +1,12 @@
 import Foundation
 
-final class SummaryEngine {
+@MainActor
+final class SummaryEngine: ObservableObject {
     static let shared = SummaryEngine()
     private init() {}
+
+    /// Meeting IDs currently being summarised. Observed by UI for progress indicators.
+    @Published private(set) var activeMeetingIds: Set<String> = []
 
     private let systemPrompt = """
         You are a meeting notes assistant. Create comprehensive, well-structured notes from meeting \
@@ -19,6 +23,8 @@ final class SummaryEngine {
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
     func summarize(meetingId: String, overrideBackend: LLMBackend? = nil) async {
+        activeMeetingIds.insert(meetingId)
+        defer { activeMeetingIds.remove(meetingId) }
         print("[SummaryEngine] Starting summarisation for \(meetingId)")
 
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {

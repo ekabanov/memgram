@@ -13,7 +13,7 @@ struct MeetingDetailView: View {
     @State private var editableTitle = ""
     @State private var isEditingTitle = false
     @State private var selectedTab: DetailTab = .summary
-    @State private var isRegenerating = false
+    @ObservedObject private var summaryEngine = SummaryEngine.shared
     @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
     @State private var showDeleteConfirm = false
     @State private var copiedFeedback = false
@@ -326,14 +326,14 @@ struct MeetingDetailView: View {
         onDelete?()
     }
 
+    private var isRegenerating: Bool { summaryEngine.activeMeetingIds.contains(meetingId) }
+
     private func regenerateSummary() {
         guard !isRegenerating else { return }
-        isRegenerating = true
         let backend = selectedSummaryBackend
         Task {
             await SummaryEngine.shared.summarize(meetingId: meetingId, overrideBackend: backend)
             await MainActor.run {
-                isRegenerating = false
                 load()
             }
         }

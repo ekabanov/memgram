@@ -99,12 +99,15 @@ struct MeetingListView: View {
 
 struct MeetingRowView: View {
     let meeting: Meeting
+    @ObservedObject private var summaryEngine = SummaryEngine.shared
 
     var body: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
+            if summaryEngine.activeMeetingIds.contains(meeting.id) {
+                ProgressView().controlSize(.mini).frame(width: 8, height: 8)
+            } else {
+                Circle().fill(statusColor).frame(width: 8, height: 8)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(meeting.title)
                     .font(.body)
