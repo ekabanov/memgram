@@ -46,12 +46,38 @@ final class SummaryEngine {
     // MARK: - Private
 
     private func stripThinkingTags(_ text: String) -> String {
-        let stripped = text.replacingOccurrences(
+        var result = text
+        // Remove closed <think>...</think> blocks
+        result = result.replacingOccurrences(
             of: "<think>[\\s\\S]*?</think>",
             with: "",
             options: .regularExpression
         )
-        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Remove unclosed <think> blocks (everything from <think> to end of string)
+        result = result.replacingOccurrences(
+            of: "<think>[\\s\\S]*$",
+            with: "",
+            options: .regularExpression
+        )
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Re-strips thinking tags from all existing meetings that have summaries.
+    /// Call once on launch to clean up summaries generated before this fix.
+    func cleanExistingSummaries() {
+        Task {
+            let meetings = (try? MeetingStore.shared.fetchAll()) ?? []
+            for meeting in meetings {
+                guard let summary = meeting.summary,
+                      summary.contains("<think>") else { continue }
+                let cleaned = stripThinkingTags(summary)
+                try? MeetingStore.shared.saveSummary(meetingId: meeting.id, summary: cleaned)
+                print("[SummaryEngine] Cleaned <think> tags from meeting \(meeting.id)")
+            }
+            if !meetings.filter({ $0.summary?.contains("<think>") == true }).isEmpty {
+                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+            }
+        }
     }
 
     private func summarizeShort(transcript: String, provider: any LLMProvider) async throws -> String {

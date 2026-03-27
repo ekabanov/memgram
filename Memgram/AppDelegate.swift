@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupPopover()
         showOnboardingIfNeeded()
         RecordingSession.shared.loadInterruptedMeetings()
+        SummaryEngine.shared.cleanExistingSummaries()
 
         // Keep menu bar icon in sync with recording state
         sessionCancellable = RecordingSession.shared.$isRecording
