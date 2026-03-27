@@ -47,7 +47,7 @@ final class OllamaProvider: LLMProvider {
     // MARK: - HTTP helpers
 
     private func post<Body: Encodable, Response: Decodable>(path: String, body: Body) async throws -> Response {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        var request = URLRequest(url: baseURL.appendingPathComponent(path), timeoutInterval: 300)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
@@ -59,7 +59,7 @@ final class OllamaProvider: LLMProvider {
     }
 
     private func get<Response: Decodable>(path: String) async throws -> Response {
-        let request = URLRequest(url: baseURL.appendingPathComponent(path))
+        let request = URLRequest(url: baseURL.appendingPathComponent(path), timeoutInterval: 300)
         let (data, resp) = try await URLSession.shared.data(for: request)
         guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw URLError(.badServerResponse)
