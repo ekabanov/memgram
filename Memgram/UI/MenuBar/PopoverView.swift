@@ -83,7 +83,8 @@ struct PopoverView: View {
             .pickerStyle(.segmented)
             .controlSize(.small)
             .frame(width: 150)
-            .help("Transcription language")
+            .disabled(session.isRecording)
+            .help(session.isRecording ? "Language applies to the next recording" : "Transcription language")
             Button(action: { appDelegate?.openMainWindow() }) {
                 Label("Open", systemImage: "macwindow")
                     .font(.caption)

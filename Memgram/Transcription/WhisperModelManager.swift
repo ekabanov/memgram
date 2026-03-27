@@ -67,6 +67,11 @@ final class WhisperModelManager: ObservableObject {
     }
 
     private init() {
-        preferMultilingual = UserDefaults.standard.bool(forKey: "preferMultilingual")
+        // Default to International — covers more use cases out of the box
+        if UserDefaults.standard.object(forKey: "preferMultilingual") == nil {
+            preferMultilingual = true  // first launch default
+        } else {
+            preferMultilingual = UserDefaults.standard.bool(forKey: "preferMultilingual")
+        }
     }
 }
