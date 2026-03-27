@@ -14,10 +14,17 @@ final class SummaryEngine: ObservableObject {
         structure it well instead. Use speaker names when attributing statements.
 
         Follow these additional rules:
-        - Silently correct obvious transcription spelling errors (e.g. misheard names, technical terms).
-        - Mark genuinely uncertain or potentially misheard claims with [possibly: alternate interpretation].
-        - Add brief context in [brackets] for acronyms, company names, or technical terms that benefit \
-          from explanation — but only when it adds value.
+        - **Proper noun correction:** When a company name, person name, or product is phonetically \
+          transcribed inconsistently (e.g. "Vault" when surrounding context makes clear the speaker \
+          means "Bolt"), use the contextually correct version throughout. On its first corrected \
+          occurrence, add a note: *(transcript: "original")*. Do not add the note again.
+        - **Consistency pass:** Before writing, scan the full transcript for the same entity referred \
+          to by multiple similar-sounding names. Pick the one that fits the context and use it \
+          consistently.
+        - Mark claims that are genuinely ambiguous even after context analysis with \
+          [possibly: alternate interpretation] — but only when truly uncertain.
+        - Add brief context in [brackets] for acronyms or technical terms that benefit from \
+          explanation — only when it adds real value.
         - Do not add commentary or reasoning steps beyond what is in the transcript.
         - Format output as Markdown. Use bullet points and bold for clarity.
         """
