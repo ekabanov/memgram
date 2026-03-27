@@ -1,71 +1,262 @@
 // Memgram/UI/MainWindow/MeetingDetailView.swift
 import SwiftUI
+import AppKit
 
 extension MeetingSegment: Identifiable {}
 
 struct MeetingDetailView: View {
     let meetingId: String
+    var onDelete: (() -> Void)? = nil
+
     @State private var meeting: Meeting?
     @State private var segments: [MeetingSegment] = []
     @State private var editableTitle = ""
     @State private var isEditingTitle = false
-    @State private var refreshID = UUID()
+    @State private var selectedTab: DetailTab = .summary
     @State private var isRegenerating = false
     @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
+    @State private var showDeleteConfirm = false
+    @State private var copiedFeedback = false
 
-    var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
-                header
-                summaryBlock
-                if let m = meeting {
-                    let items = actionItems(from: m)
-                    if !items.isEmpty {
-                        actionItemsSection(items, meetingId: m.id)
-                    }
-                }
-                if !segments.isEmpty {
-                    transcriptSection
-                }
-            }
-            .padding(24)
-        }
-        .id(refreshID)
-        .onAppear { load() }
-        .onChange(of: meetingId) { _ in load() }
-        .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
+    enum DetailTab: String, CaseIterable, Identifiable {
+        case transcript = "Transcript"
+        case summary    = "Summary"
+        var id: String { rawValue }
     }
 
-    // MARK: - Summary block (with regenerate)
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            headerView
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 8)
 
-    @ViewBuilder
-    private var summaryBlock: some View {
-        if let m = meeting, let summary = m.summary, !summary.isEmpty {
-            let parsed = parseSummary(summary)
-            ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
-                styledSummarySection(section)
-            }
-        }
-        // Regenerate row — shown when there's a transcript to summarise
-        if let m = meeting, let transcript = m.rawTranscript, !transcript.isEmpty {
-            HStack(spacing: 8) {
-                Picker("", selection: $selectedSummaryBackend) {
-                    ForEach(LLMBackend.allCases) { backend in
-                        Text(backend.displayName).tag(backend)
+            // Tab bar + actions row
+            tabBarRow
+
+            Divider()
+
+            // Tab content
+            ScrollView {
+                Group {
+                    if selectedTab == .transcript {
+                        transcriptTabContent
+                    } else {
+                        summaryTabContent
                     }
                 }
-                .labelsHidden()
-                .frame(width: 180)
-                .controlSize(.small)
-
-                Button(isRegenerating ? "Generating…" : (meeting?.summary == nil ? "Generate Summary" : "Regenerate")) {
-                    regenerateSummary()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(isRegenerating)
+                .padding(24)
             }
         }
+        .onAppear { load() }
+        .onChange(of: meetingId) { _ in
+            selectedTab = .summary
+            load()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
+        .alert("Delete Meeting?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) { performDelete() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(""\(editableTitle)" will be permanently deleted.")
+        }
+    }
+
+    // MARK: - Header
+
+    private var headerView: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                if isEditingTitle {
+                    TextField("Title", text: $editableTitle, onCommit: saveTitle)
+                        .textFieldStyle(.plain)
+                        .font(.title.bold())
+                } else {
+                    Text(editableTitle.isEmpty ? "Untitled" : editableTitle)
+                        .font(.title.bold())
+                        .onTapGesture { isEditingTitle = true }
+                }
+                if let m = meeting {
+                    HStack(spacing: 6) {
+                        Text(DateFormatter.localizedString(from: m.startedAt,
+                                                           dateStyle: .long, timeStyle: .short))
+                        if let dur = m.durationSeconds, dur > 0 {
+                            Text("·")
+                            Text(formatDuration(dur))
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            // Actions: copy + more menu
+            HStack(spacing: 4) {
+                Button {
+                    copyCurrentTab()
+                    giveCopyFeedback()
+                } label: {
+                    Image(systemName: copiedFeedback ? "checkmark" : "doc.on.doc")
+                        .foregroundColor(copiedFeedback ? .green : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help(selectedTab == .transcript ? "Copy transcript" : "Copy summary")
+
+                Menu {
+                    Button {
+                        copyTranscriptText()
+                        giveCopyFeedback()
+                    } label: { Label("Copy Transcript", systemImage: "doc.on.doc") }
+
+                    Button {
+                        copySummaryText()
+                        giveCopyFeedback()
+                    } label: { Label("Copy Summary", systemImage: "sparkles") }
+                    .disabled(meeting?.summary == nil)
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        showDeleteConfirm = true
+                    } label: { Label("Delete Meeting", systemImage: "trash") }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .frame(width: 28)
+                .help("More actions")
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    // MARK: - Tab bar
+
+    private var tabBarRow: some View {
+        HStack {
+            Picker("", selection: $selectedTab) {
+                ForEach(DetailTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 200)
+            .padding(.leading, 24)
+            Spacer()
+        }
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Transcript tab
+
+    @ViewBuilder
+    private var transcriptTabContent: some View {
+        if segments.isEmpty {
+            Text("No transcript available")
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 40)
+        } else {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(segments) { segment in
+                    SegmentRowView(
+                        segment: segment,
+                        meetingStartedAt: meeting?.startedAt ?? Date(),
+                        onSpeakerRenamed: {
+                            load()
+                            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                        }
+                    )
+                    Divider()
+                }
+            }
+        }
+    }
+
+    // MARK: - Summary tab
+
+    @ViewBuilder
+    private var summaryTabContent: some View {
+        LazyVStack(alignment: .leading, spacing: 24) {
+            if let m = meeting, let summary = m.summary, !summary.isEmpty {
+                let parsed = parseSummary(summary)
+                ForEach(Array(parsed.enumerated()), id: \.offset) { _, section in
+                    styledSummarySection(section)
+                }
+                // Action items inline in summary if present
+                let items = actionItems(from: m)
+                if !items.isEmpty {
+                    actionItemsSection(items, meetingId: m.id)
+                }
+            } else {
+                Text("No summary yet.")
+                    .foregroundColor(.secondary)
+            }
+
+            // Regenerate row
+            if let m = meeting, let transcript = m.rawTranscript, !transcript.isEmpty {
+                Divider()
+                HStack(spacing: 8) {
+                    Picker("", selection: $selectedSummaryBackend) {
+                        ForEach(LLMBackend.allCases) { backend in
+                            Text(backend.displayName).tag(backend)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 180)
+                    .controlSize(.small)
+
+                    Button(isRegenerating ? "Generating…" : (m.summary == nil ? "Generate Summary" : "Regenerate")) {
+                        regenerateSummary()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(isRegenerating)
+
+                    if isRegenerating {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Actions
+
+    private func copyCurrentTab() {
+        if selectedTab == .transcript { copyTranscriptText() }
+        else { copySummaryText() }
+    }
+
+    private func copyTranscriptText() {
+        let text = segments.map { seg in
+            let ts = formatTimestamp(seg.startSeconds)
+            return "\(seg.speaker) [\(ts)]: \(seg.text)"
+        }.joined(separator: "\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text.isEmpty ? "(no transcript)" : text, forType: .string)
+    }
+
+    private func copySummaryText() {
+        let text = meeting?.summary ?? "(no summary)"
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    private func giveCopyFeedback() {
+        withAnimation { copiedFeedback = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation { copiedFeedback = false }
+        }
+    }
+
+    private func performDelete() {
+        try? MeetingStore.shared.deleteMeeting(meetingId)
+        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+        onDelete?()
     }
 
     private func regenerateSummary() {
@@ -81,37 +272,7 @@ struct MeetingDetailView: View {
         }
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if isEditingTitle {
-                TextField("Title", text: $editableTitle, onCommit: saveTitle)
-                    .textFieldStyle(.plain)
-                    .font(.title.bold())
-            } else {
-                Text(editableTitle.isEmpty ? "Untitled" : editableTitle)
-                    .font(.title.bold())
-                    .onTapGesture { isEditingTitle = true }
-            }
-            if let m = meeting {
-                HStack(spacing: 8) {
-                    Text(DateFormatter.localizedString(from: m.startedAt,
-                                                       dateStyle: .long, timeStyle: .short))
-                    if let dur = m.durationSeconds, dur > 0 {
-                        Text("·")
-                        let mins = Int(dur / 60)
-                        let secs = Int(dur.truncatingRemainder(dividingBy: 60))
-                        Text("\(mins)m \(secs)s")
-                    }
-                }
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            }
-        }
-    }
-
-    // MARK: - Summary
+    // MARK: - Summary parsing & display
 
     private struct SummarySection {
         let title: String
@@ -128,8 +289,10 @@ struct MeetingDetailView: View {
             let contentStart = headerRange.upperBound
             let contentEnd: String.Index
             let nextHeaders = headers.dropFirst(i + 1)
-            if let nextHeader = nextHeaders.first(where: { text.range(of: $0, options: .caseInsensitive, range: contentStart..<text.endIndex) != nil }),
-               let nextRange = text.range(of: nextHeader, options: .caseInsensitive, range: contentStart..<text.endIndex) {
+            if let nextHeader = nextHeaders.first(where: {
+                text.range(of: $0, options: .caseInsensitive, range: contentStart..<text.endIndex) != nil
+            }), let nextRange = text.range(of: nextHeader, options: .caseInsensitive,
+                                           range: contentStart..<text.endIndex) {
                 contentEnd = nextRange.lowerBound
             } else {
                 contentEnd = text.endIndex
@@ -139,7 +302,6 @@ struct MeetingDetailView: View {
                 sections.append(SummarySection(title: header, content: content))
             }
         }
-
         if sections.isEmpty && !text.isEmpty {
             sections.append(SummarySection(title: "SUMMARY", content: text))
         }
@@ -164,34 +326,34 @@ struct MeetingDetailView: View {
 
     private func sectionIcon(_ title: String) -> String {
         switch title.uppercased() {
-        case "PARTICIPANTS":      return "person.2"
-        case "TOPICS DISCUSSED":  return "text.alignleft"
-        case "SUMMARY":           return "text.alignleft"
-        case "KEY DECISIONS":     return "checkmark.seal"
-        case "ACTION ITEMS":      return "checklist"
-        default:                  return "doc.text"
+        case "PARTICIPANTS":     return "person.2"
+        case "TOPICS DISCUSSED": return "text.alignleft"
+        case "SUMMARY":          return "text.alignleft"
+        case "KEY DECISIONS":    return "checkmark.seal"
+        case "ACTION ITEMS":     return "checklist"
+        default:                 return "doc.text"
         }
     }
 
     private func sectionColor(_ title: String) -> Color {
         switch title.uppercased() {
-        case "PARTICIPANTS":      return .purple
-        case "TOPICS DISCUSSED":  return .blue
-        case "SUMMARY":           return .blue
-        case "KEY DECISIONS":     return .orange
-        case "ACTION ITEMS":      return .green
-        default:                  return .secondary
+        case "PARTICIPANTS":     return .purple
+        case "TOPICS DISCUSSED": return .blue
+        case "SUMMARY":          return .blue
+        case "KEY DECISIONS":    return .orange
+        case "ACTION ITEMS":     return .green
+        default:                 return .secondary
         }
     }
 
     private func sectionDisplayTitle(_ title: String) -> String {
         switch title.uppercased() {
-        case "PARTICIPANTS":      return "Participants"
-        case "TOPICS DISCUSSED":  return "Topics Discussed"
-        case "SUMMARY":           return "Summary"
-        case "KEY DECISIONS":     return "Key Decisions"
-        case "ACTION ITEMS":      return "Action Items"
-        default:                  return title.capitalized
+        case "PARTICIPANTS":     return "Participants"
+        case "TOPICS DISCUSSED": return "Topics Discussed"
+        case "SUMMARY":          return "Summary"
+        case "KEY DECISIONS":    return "Key Decisions"
+        case "ACTION ITEMS":     return "Action Items"
+        default:                 return title.capitalized
         }
     }
 
@@ -215,28 +377,18 @@ struct MeetingDetailView: View {
         }
     }
 
-    // MARK: - Transcript
+    // MARK: - Helpers
 
-    private var transcriptSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Transcript", systemImage: "waveform.and.mic")
-                .font(.headline)
-            ForEach(segments) { segment in
-                SegmentRowView(
-                    segment: segment,
-                    meetingStartedAt: meeting?.startedAt ?? Date(),
-                    onSpeakerRenamed: {
-                        load()
-                        refreshID = UUID()
-                        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                    }
-                )
-                Divider()
-            }
-        }
+    private func formatDuration(_ seconds: Double) -> String {
+        let m = Int(seconds / 60), s = Int(seconds.truncatingRemainder(dividingBy: 60))
+        return "\(m)m \(s)s"
     }
 
-    // MARK: - Data
+    private func formatTimestamp(_ seconds: Double) -> String {
+        let total = Int(seconds)
+        let h = total / 3600, m = (total % 3600) / 60, s = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+    }
 
     private func load() {
         meeting  = try? MeetingStore.shared.fetchMeeting(meetingId)
@@ -264,23 +416,17 @@ private struct ActionItemRow: View {
     let text: String
     let meetingId: String
     let index: Int
-
     @State private var isChecked: Bool
 
     init(text: String, meetingId: String, index: Int) {
-        self.text = text
-        self.meetingId = meetingId
-        self.index = index
+        self.text = text; self.meetingId = meetingId; self.index = index
         _isChecked = State(initialValue:
-            UserDefaults.standard.bool(forKey: "actionChecked_\(meetingId)_\(index)")
-        )
+            UserDefaults.standard.bool(forKey: "actionChecked_\(meetingId)_\(index)"))
     }
 
     var body: some View {
         Toggle(isOn: $isChecked) {
-            Text(text)
-                .strikethrough(isChecked)
-                .foregroundColor(isChecked ? .secondary : .primary)
+            Text(text).strikethrough(isChecked).foregroundColor(isChecked ? .secondary : .primary)
         }
         .toggleStyle(.checkbox)
         .onChange(of: isChecked) { newValue in

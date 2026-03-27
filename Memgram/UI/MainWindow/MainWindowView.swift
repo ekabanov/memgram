@@ -10,7 +10,8 @@ struct MainWindowView: View {
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 320)
         } detail: {
             if let id = selectedMeetingId {
-                MeetingDetailView(meetingId: id)
+                MeetingDetailView(meetingId: id, onDelete: { selectedMeetingId = nil })
+                    .id(id)
                     .id(id)  // Force recreation on selection change to prevent stale data
             } else {
                 emptyState
