@@ -93,9 +93,11 @@ struct PopoverView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             Button(action: { appDelegate?.openMainWindow() }) {
-                Image(systemName: "rectangle.expand.diagonal").font(.caption)
+                Label("Open", systemImage: "macwindow")
+                    .font(.caption)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.bordered)
+            .controlSize(.small)
             .help("Open main window")
             Button(action: { NSApp.terminate(nil) }) {
                 Image(systemName: "power").font(.caption)
@@ -116,21 +118,25 @@ struct PopoverView: View {
                 Text(modelManager.isModelReady ? "Recording & transcribing…" : "Recording…")
                     .font(.body)
             } else {
-                Image(systemName: "mic.slash")
-                    .font(.system(size: 32))
-                    .foregroundColor(.secondary)
-                Text("Not recording")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                if !modelManager.isModelReady {
-                    Text("Download a model to enable transcription")
-                        .font(.caption)
-                        .foregroundColor(Color(NSColor.tertiaryLabelColor))
-                } else {
-                    Text("Click Start Recording to begin")
-                        .font(.caption)
-                        .foregroundColor(Color(NSColor.tertiaryLabelColor))
+                VStack(spacing: 10) {
+                    Image(systemName: "waveform.badge.mic")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.secondary)
+                    Text("Ready to record")
+                        .font(.body)
+                        .foregroundColor(.primary)
+                    if !modelManager.isModelReady {
+                        Text("Download a model to enable transcription")
+                            .font(.caption)
+                            .foregroundColor(Color(NSColor.tertiaryLabelColor))
+                    } else {
+                        Text("Click Start Recording to begin")
+                            .font(.caption)
+                            .foregroundColor(Color(NSColor.tertiaryLabelColor))
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
             }
         }
         .frame(maxWidth: .infinity)
