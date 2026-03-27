@@ -54,7 +54,7 @@ final class SummaryEngine {
         }
     }
 
-    /// Generate a short title (4-8 words) from the first 2 minutes of transcript.
+    /// Generate a short title (4-8 words) from the meeting summary.
     /// Only runs if the meeting currently has a generic default title (starts with "Meeting ").
     func generateTitle(meetingId: String, overrideBackend: LLMBackend? = nil) async {
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else { return }
@@ -65,11 +65,16 @@ final class SummaryEngine {
             return
         }
 
-        let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
-        let first2min = segments.filter { $0.startSeconds < 120 }
-        guard !first2min.isEmpty else { return }
-
-        let excerpt = first2min.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
+        // Use full summary for the best title; fall back to first 2min transcript if no summary yet
+        let source: String
+        if let summary = meeting.summary, !summary.isEmpty {
+            source = summary
+        } else {
+            let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
+            let first2min = segments.filter { $0.startSeconds < 120 }
+            guard !first2min.isEmpty else { return }
+            source = first2min.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
+        }
 
         let provider = await MainActor.run {
             overrideBackend.map { LLMProviderStore.shared.providerFor($0) }
@@ -79,7 +84,7 @@ final class SummaryEngine {
         do {
             let raw = try await provider.complete(
                 system: "Generate a short meeting title of 4-8 words. Output only the title, nothing else. No quotes, no punctuation at the end.",
-                user: "Transcript excerpt (first 2 minutes):\n\n\(excerpt)\n\nGenerate a concise title:"
+                user: "Meeting notes/transcript:\n\n\(source)\n\nGenerate a concise title:"
             )
             let generated = stripThinkingTags(raw)
                 .trimmingCharacters(in: .whitespacesAndNewlines)

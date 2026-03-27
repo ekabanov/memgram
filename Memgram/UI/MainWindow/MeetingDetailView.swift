@@ -80,9 +80,18 @@ struct MeetingDetailView: View {
                         .textFieldStyle(.plain)
                         .font(.title.bold())
                 } else {
-                    Text(editableTitle.isEmpty ? "Untitled" : editableTitle)
-                        .font(.title.bold())
-                        .onTapGesture { isEditingTitle = true }
+                    HStack(spacing: 6) {
+                        Text(editableTitle.isEmpty ? "Untitled" : editableTitle)
+                            .font(.title.bold())
+                        Button { isEditingTitle = true } label: {
+                            Image(systemName: "pencil")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Edit title")
+                    }
+                    .onTapGesture { isEditingTitle = true }
                 }
                 if let m = meeting {
                     HStack(spacing: 6) {
