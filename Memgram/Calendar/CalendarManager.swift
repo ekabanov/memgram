@@ -62,6 +62,9 @@ final class CalendarManager: ObservableObject {
             .filter { !$0.isAllDay }
             .sorted { $0.startDate < $1.startDate }
         upcomingEvent = events.first
+        if let event = upcomingEvent {
+            CalendarNotificationService.shared.scheduleNotification(for: event)
+        }
     }
 
     /// Find a calendar event that overlaps the given time range.

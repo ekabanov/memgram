@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import AVFoundation
+import UserNotifications
 
 enum RecordingState {
     case idle
@@ -33,6 +34,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if #available(macOS 14.0, *) {
             CloudSyncEngine.shared.start()
+        }
+
+        UNUserNotificationCenter.current().delegate = self
+
+        // Calendar integration
+        CalendarNotificationService.shared.setup()
+        if CalendarManager.shared.isEnabled {
+            Task {
+                _ = await CalendarManager.shared.requestAccess()
+                CalendarManager.shared.startMonitoring()
+                _ = await CalendarNotificationService.shared.requestPermission()
+            }
         }
 
         // Keep menu bar icon in sync with recording state
@@ -153,5 +166,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hasShownOnboarding = UserDefaults.standard.bool(forKey: "hasShownOnboarding")
         guard !hasShownOnboarding else { return }
         PermissionsManager.shared.requestPermissionsSequentially()
+    }
+}
+
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard response.actionIdentifier == CalendarNotificationService.startRecordingActionId else { return }
+        await Task { @MainActor in
+            if let event = CalendarManager.shared.findEvent(around: Date()) {
+                let ctx = CalendarManager.shared.context(for: event)
+                try? await RecordingSession.shared.start(calendarContext: ctx)
+            } else {
+                try? await RecordingSession.shared.start()
+            }
+        }.value
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }
