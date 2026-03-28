@@ -23,6 +23,7 @@ final class PDFExporter: NSObject {
     private final class NavigationDelegate: NSObject, WKNavigationDelegate {
         private let continuation: CheckedContinuation<Data, Error>
         private var webView: WKWebView?  // strong ref keeps webView alive during load
+        private var hasResumed = false
 
         init(continuation: CheckedContinuation<Data, Error>, webView: WKWebView) {
             self.continuation = continuation
@@ -35,8 +36,12 @@ final class PDFExporter: NSObject {
                 self?.webView = nil  // release after use
                 switch result {
                 case .success(let data):
+                    guard !(self?.hasResumed ?? true) else { return }
+                    self?.hasResumed = true
                     self?.continuation.resume(returning: data)
                 case .failure(let error):
+                    guard !(self?.hasResumed ?? true) else { return }
+                    self?.hasResumed = true
                     self?.continuation.resume(throwing: error)
                 }
             }
@@ -44,6 +49,8 @@ final class PDFExporter: NSObject {
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             self.webView = nil
+            guard !hasResumed else { return }
+            hasResumed = true
             continuation.resume(throwing: error)
         }
     }
