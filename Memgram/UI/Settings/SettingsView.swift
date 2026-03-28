@@ -302,40 +302,46 @@ struct CalendarSettingsView: View {
 
                 if calendar.authorizationStatus == .fullAccess && !calendar.availableCalendars.isEmpty {
                     Section("Calendars to Monitor") {
-                        Text("Only events from selected calendars will be shown. Leave all unchecked to monitor all calendars.")
+                        Text("Tap a calendar to include or exclude it. All calendars are monitored by default.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         ForEach(calendar.availableCalendars, id: \.calendarIdentifier) { cal in
-                            Toggle(isOn: Binding(
-                                get: { calendar.selectedCalendarIds.isEmpty || calendar.selectedCalendarIds.contains(cal.calendarIdentifier) },
-                                set: { selected in
-                                    var ids = calendar.selectedCalendarIds
-                                    if ids.isEmpty {
-                                        // First explicit selection: select all except the toggled-off one
-                                        ids = Set(calendar.availableCalendars.map(\.calendarIdentifier))
-                                    }
-                                    if selected {
-                                        ids.insert(cal.calendarIdentifier)
-                                    } else {
-                                        ids.remove(cal.calendarIdentifier)
-                                    }
-                                    // If all are selected, treat as "all" (empty set)
-                                    if ids.count == calendar.availableCalendars.count {
-                                        ids = []
-                                    }
-                                    calendar.setSelectedCalendars(ids)
+                            let isActive = calendar.selectedCalendarIds.isEmpty || calendar.selectedCalendarIds.contains(cal.calendarIdentifier)
+                            Button {
+                                var ids = calendar.selectedCalendarIds
+                                if ids.isEmpty {
+                                    ids = Set(calendar.availableCalendars.map(\.calendarIdentifier))
                                 }
-                            )) {
-                                HStack {
+                                if isActive {
+                                    ids.remove(cal.calendarIdentifier)
+                                } else {
+                                    ids.insert(cal.calendarIdentifier)
+                                }
+                                if ids.count == calendar.availableCalendars.count { ids = [] }
+                                calendar.setSelectedCalendars(ids)
+                            } label: {
+                                HStack(spacing: 10) {
+                                    // Calendar colour dot
                                     Circle()
                                         .fill(Color(cgColor: cal.cgColor))
                                         .frame(width: 10, height: 10)
-                                    Text(cal.title)
-                                    Text(cal.source.title)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    // Name + source
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(cal.title)
+                                            .foregroundStyle(isActive ? .primary : .secondary)
+                                        Text(cal.source.title)
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    Spacer()
+                                    // Explicit checkmark — much clearer than a toggle in dark mode
+                                    Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(isActive ? Color(cgColor: cal.cgColor) : Color.secondary.opacity(0.4))
+                                        .font(.system(size: 18))
                                 }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

@@ -77,9 +77,10 @@ final class CalendarManager: ObservableObject {
         let selectedCalendars: [EKCalendar]? = selectedCalendarIds.isEmpty
             ? nil  // nil = all calendars
             : store.calendars(for: .event).filter { selectedCalendarIds.contains($0.calendarIdentifier) }
-        let predicate = store.predicateForEvents(withStart: now, end: lookahead, calendars: selectedCalendars)
+        let cutoff = now.addingTimeInterval(-10 * 60)  // ignore events that started >10 min ago
+        let predicate = store.predicateForEvents(withStart: cutoff, end: lookahead, calendars: selectedCalendars)
         let events = store.events(matching: predicate)
-            .filter { !$0.isAllDay }
+            .filter { !$0.isAllDay && $0.startDate > cutoff }
             .sorted { $0.startDate < $1.startDate }
         upcomingEvent = events.first
         if let event = upcomingEvent {
