@@ -18,6 +18,8 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
 	<key>com.apple.security.temporary-exception.audio-unit-host</key>
 	<true/>
 </dict>

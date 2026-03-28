@@ -33,12 +33,14 @@
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
+		B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 78F963FAD214383E6C348061 /* AppIcon.icns */; };
 		BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 53BD9539689CB76F94BBDACC /* MLXLLM */; };
 		C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = AE534A3FFDD02E4A672EDB9C /* MarkdownUI */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
 		D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5103ED0654B4C0BBA443C7E3 /* CoreAudioTapCapture.swift */; };
+		D6216859EFD788A1BD76CFAF /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
 		D988057B16B21C4C29578766 /* SegmentRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58EB6A7B2486BFE9ED71546A /* SegmentRowView.swift */; };
 		DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D989A419F160963B1D52B3 /* LLMProvider.swift */; };
 		DA6DBBEEAF18E108551B16C3 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */; };
@@ -73,7 +75,9 @@
 		68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProviderStore.swift; sourceTree = "<group>"; };
 		6B935CBFDAA46A9FE07A6B5A /* ScreenCaptureKitCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureKitCapture.swift; sourceTree = "<group>"; };
 		6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
+		6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncEngine.swift; sourceTree = "<group>"; };
 		71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		78F963FAD214383E6C348061 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		8009E920FB91831616BDC1FD /* SummaryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEngine.swift; sourceTree = "<group>"; };
 		8855497AAD103E0546ABADB5 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
 		8B079BA5413B938636C31EC9 /* RecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSession.swift; sourceTree = "<group>"; };
@@ -157,8 +161,10 @@
 				1540D94138F7124A4DB3CC62 /* Audio */,
 				0E5EF07669480A1E00D3AA0E /* Database */,
 				3592EE7D6628062A2FE2A6AF /* Permissions */,
+				7A25DEEEE20C564ECFD8F52C /* Resources */,
 				F3AFF10886A5D1372189B8F3 /* Search */,
 				B7C3E54B8624B6D69A678BA8 /* Storage */,
+				36D0B7EB2C0A4AA8F984A9BC /* Sync */,
 				FAD869B59D73800AFEDEE945 /* Transcription */,
 				6BA73221FE8D81B0538304B0 /* UI */,
 				9AF7DF94C2C8B95A971ED025 /* Utilities */,
@@ -174,6 +180,14 @@
 				3102F3CC3D158F04D5C1AE9A /* PermissionsManager.swift */,
 			);
 			path = Permissions;
+			sourceTree = "<group>";
+		};
+		36D0B7EB2C0A4AA8F984A9BC /* Sync */ = {
+			isa = PBXGroup;
+			children = (
+				6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */,
+			);
+			path = Sync;
 			sourceTree = "<group>";
 		};
 		6BA73221FE8D81B0538304B0 /* UI */ = {
@@ -211,6 +225,14 @@
 				8009E920FB91831616BDC1FD /* SummaryEngine.swift */,
 			);
 			path = AI;
+			sourceTree = "<group>";
+		};
+		7A25DEEEE20C564ECFD8F52C /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				78F963FAD214383E6C348061 /* AppIcon.icns */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		9AF7DF94C2C8B95A971ED025 /* Utilities */ = {
@@ -293,6 +315,7 @@
 			buildConfigurationList = 1E761F9671DAFE1CEAFF2274 /* Build configuration list for PBXNativeTarget "Memgram" */;
 			buildPhases = (
 				F6FFDC712DA4AD1FD0C356FE /* Sources */,
+				424A42FEA04D9E4B2F0917E0 /* Resources */,
 				EAF3F068D2033FF0AE46F646 /* Frameworks */,
 			);
 			buildRules = (
@@ -350,6 +373,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		424A42FEA04D9E4B2F0917E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		F6FFDC712DA4AD1FD0C356FE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -359,6 +393,7 @@
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
 				9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */,
+				D6216859EFD788A1BD76CFAF /* CloudSyncEngine.swift in Sources */,
 				D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */,
 				3055A0EA01B2ADE26050B931 /* CustomServerProvider.swift in Sources */,
 				A24CDC605E52AC049DE52718 /* EmbeddingEngine.swift in Sources */,
@@ -410,7 +445,7 @@
 				CODE_SIGN_ENTITLEMENTS = Memgram/Resources/Memgram.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6N57Z7GY37;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Memgram/Resources/Info.plist;
@@ -419,7 +454,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.app;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -434,7 +469,7 @@
 				CODE_SIGN_ENTITLEMENTS = Memgram/Resources/Memgram.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6N57Z7GY37;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Memgram/Resources/Info.plist;
@@ -443,7 +478,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.app;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;

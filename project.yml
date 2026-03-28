@@ -42,11 +42,13 @@ targets:
         NSMicrophoneUsageDescription: "Memgram uses your microphone to capture your voice in meetings."
         NSAudioCaptureUsageDescription: "Memgram captures system audio to transcribe meeting calls."
         NSScreenCaptureUsageDescription: "Memgram captures system audio from your screen to transcribe calls. (Used on older macOS only. No video is ever recorded or stored.)"
+        NSCalendarsFullAccessUsageDescription: "Memgram reads your calendar to suggest recording scheduled meetings and to use event details for more accurate summaries."
         CFBundleIdentifier: com.memgram.app
         CFBundleName: Memgram
         CFBundleDisplayName: Memgram
         LSUIElement: true
         NSPrincipalClass: NSApplication
+        CFBundleIconFile: AppIcon
         LSMinimumSystemVersion: "14.0"
     entitlements:
       path: Memgram/Resources/Memgram.entitlements
@@ -56,6 +58,7 @@ targets:
         com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.temporary-exception.audio-unit-host: true
+        com.apple.security.personal-information.calendars: true
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.memgram.app
         com.apple.developer.icloud-services:
@@ -68,8 +71,8 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "6N57Z7GY37"
         SWIFT_STRICT_CONCURRENCY: minimal
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
         ENABLE_HARDENED_RUNTIME: YES
     dependencies:
       - package: GRDB

@@ -8,6 +8,8 @@
 	<string>Memgram</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.memgram.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -26,6 +28,8 @@
 	<true/>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Memgram captures system audio to transcribe meeting calls.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Memgram reads your calendar to suggest recording scheduled meetings and to use event details for more accurate summaries.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Memgram uses your microphone to capture your voice in meetings.</string>
 	<key>NSPrincipalClass</key>
