@@ -182,6 +182,8 @@ final class CloudSyncEngine: Sendable {
                 record["summary"] = meeting.summary
                 record["actionItems"] = meeting.actionItems
                 record["rawTranscript"] = meeting.rawTranscript
+                record["calendarEventId"] = meeting.calendarEventId as CKRecordValue?
+                record["calendarContext"] = meeting.calendarContext as CKRecordValue?
                 return record
 
             case "segments":
@@ -243,7 +245,9 @@ final class CloudSyncEngine: Sendable {
                     summary: record["summary"] as? String,
                     actionItems: record["actionItems"] as? String,
                     rawTranscript: record["rawTranscript"] as? String,
-                    ckSystemFields: systemFieldsData
+                    ckSystemFields: systemFieldsData,
+                    calendarEventId: record["calendarEventId"] as? String,
+                    calendarContext: record["calendarContext"] as? String
                 )
                 try db.write { db in
                     if try Meeting.fetchOne(db, key: id) != nil {
