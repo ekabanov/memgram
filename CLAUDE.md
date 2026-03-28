@@ -95,6 +95,17 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - `PRAGMA foreign_keys = OFF` is silently ignored inside GRDB `db.write {}` transactions.
 - xcodegen regenerates `.entitlements` from `project.yml` — all entitlements must be in `entitlements.properties`, not added via Xcode UI.
 
+## PDF Export
+
+`PDFExporter` (`Memgram/Export/PDFExporter.swift`) exports a meeting summary as a PDF file.
+
+- **Renderer:** Pure AppKit — `NSTextView` + `dataWithPDF(inside:)`. No WebKit.
+- **Why not WKWebView:** Sandboxed apps lack `com.apple.runningboard.assertions.webkit`, so WKWebView cannot spawn its WebContent process. Using it causes a hung continuation (`SWIFT TASK CONTINUATION MISUSE: leaked its continuation`).
+- **Entry point:** `PDFExporter.export(meeting:) async throws -> Data` — `@MainActor`, synchronous layout under the hood.
+- **Markdown parsing:** Line-by-line — `##`/`###` headings, `**bold**` (regex + NSFontManager), `` `code` `` (monospaced + background), `- `/`* ` bullets. Inline span regex is applied after building the base `NSMutableAttributedString` (not on HTML-escaped text).
+- **Output:** Single tall PDF page sized to content. Sufficient for sharing; PDF viewers handle tall pages correctly.
+- **MeetingDetailView integration:** "Export PDF…" (NSSavePanel) and "Share…" (NSSharingServicePicker) in the `⋯` menu, disabled when `summary == nil`. `isExporting` state shows a `ProgressView` spinner in place of the `⋯` button.
+
 ## Key Implementation Details
 
 - **SWIFT_STRICT_CONCURRENCY: minimal** — cross-actor accesses compile without errors.
