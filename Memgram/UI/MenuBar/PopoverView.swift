@@ -88,12 +88,12 @@ struct PopoverView: View {
             .disabled(session.isRecording)
             .help(session.isRecording ? "Language applies to the next recording" : "Transcription language")
             Button(action: { appDelegate?.openMainWindow() }) {
-                Label("Open", systemImage: "macwindow")
+                Label("Meetings", systemImage: "rectangle.stack")
                     .font(.caption)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .help("Open main window")
+            .help("Open meetings list")
             Button(action: { NSApp.terminate(nil) }) {
                 Image(systemName: "power").font(.caption)
             }
