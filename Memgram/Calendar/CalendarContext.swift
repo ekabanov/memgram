@@ -14,7 +14,10 @@ struct CalendarContext: Codable, Equatable {
     func toJSON() -> String? {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(self) else { return nil }
+        guard let data = try? encoder.encode(self) else {
+            print("[CalendarContext] ⚠️ JSON encode failed")
+            return nil
+        }
         return String(data: data, encoding: .utf8)
     }
 
@@ -22,14 +25,25 @@ struct CalendarContext: Codable, Equatable {
     static func fromJSON(_ json: String) -> CalendarContext? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        guard let data = json.data(using: .utf8) else { return nil }
-        return try? decoder.decode(CalendarContext.self, from: data)
+        guard let data = json.data(using: .utf8) else {
+            print("[CalendarContext] ⚠️ JSON decode failed: invalid UTF-8")
+            return nil
+        }
+        guard let result = try? decoder.decode(CalendarContext.self, from: data) else {
+            print("[CalendarContext] ⚠️ JSON decode failed: schema mismatch or corrupt data")
+            return nil
+        }
+        return result
     }
 
     /// Format as context block for inclusion in LLM prompts.
     func promptBlock() -> String {
         var lines: [String] = []
         lines.append("Calendar Event: \(eventTitle)")
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+        lines.append("Scheduled: \(dateFormatter.string(from: startDate)) – \(dateFormatter.string(from: endDate))")
         if let notes, !notes.isEmpty {
             lines.append("Event Notes: \(notes)")
         }
