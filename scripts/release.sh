@@ -76,6 +76,10 @@ echo "📎  Stapling..."
 xcrun stapler staple "$APP_PATH"
 
 echo "💿  Creating DMG..."
+DMG_STAGING="$BUILD_DIR/dmg-staging"
+rm -rf "$DMG_STAGING"
+mkdir -p "$DMG_STAGING"
+cp -R "$APP_PATH" "$DMG_STAGING/"
 create-dmg \
     --volname "Memgram" \
     --volicon "Memgram/Resources/AppIcon.icns" \
@@ -86,7 +90,7 @@ create-dmg \
     --hide-extension "Memgram.app" \
     --app-drop-link 425 190 \
     "$DMG_PATH" \
-    "$EXPORT_PATH" || {
+    "$DMG_STAGING" || {
         # Fallback: plain zip if create-dmg not installed or icon missing
         echo "⚠️  create-dmg failed, falling back to zip"
         ditto -c -k --keepParent "$APP_PATH" "$BUILD_DIR/Memgram-${VERSION}.zip"
