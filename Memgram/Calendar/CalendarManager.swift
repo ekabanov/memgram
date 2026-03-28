@@ -42,6 +42,7 @@ final class CalendarManager: ObservableObject {
             refreshUpcomingEvent()
             startMonitoring()
         } else {
+            CalendarNotificationService.shared.cancelAll()
             stopMonitoring()
             upcomingEvent = nil
         }
@@ -69,7 +70,7 @@ final class CalendarManager: ObservableObject {
 
     /// Find a calendar event that overlaps the given time range.
     func findEvent(around date: Date, toleranceMinutes: Double = 10) -> EKEvent? {
-        guard authorizationStatus == .fullAccess else { return nil }
+        guard isEnabled, authorizationStatus == .fullAccess else { return nil }
         let start = date.addingTimeInterval(-toleranceMinutes * 60)
         let end = date.addingTimeInterval(toleranceMinutes * 60)
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)

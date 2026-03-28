@@ -287,7 +287,7 @@ struct CalendarSettingsView: View {
                         Button("Grant Calendar Access") {
                             Task { await calendar.requestAccess() }
                         }
-                    case .denied, .restricted:
+                    case .denied, .restricted, .writeOnly:
                         VStack(alignment: .leading, spacing: 4) {
                             Label("Calendar access denied", systemImage: "xmark.circle.fill")
                                 .foregroundStyle(.red)
@@ -308,7 +308,6 @@ struct CalendarSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 300)
     }
 }
 

@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import AVFoundation
+import EventKit
 import UserNotifications
 
 enum RecordingState {
@@ -176,7 +177,12 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) async {
         guard response.actionIdentifier == CalendarNotificationService.startRecordingActionId else { return }
         await Task { @MainActor in
-            if let event = CalendarManager.shared.findEvent(around: Date()) {
+            let eventId = response.notification.request.content.userInfo["eventIdentifier"] as? String
+            // Try lookup by identifier first, fall back to time-based search
+            let store = EKEventStore()
+            let event = eventId.flatMap { store.event(withIdentifier: $0) }
+                ?? CalendarManager.shared.findEvent(around: Date(), toleranceMinutes: 30)
+            if let event {
                 let ctx = CalendarManager.shared.context(for: event)
                 try? await RecordingSession.shared.start(calendarContext: ctx)
             } else {

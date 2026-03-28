@@ -170,6 +170,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .disabled(!permissions.microphoneGranted || !permissions.systemAudioGranted)
             }
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
