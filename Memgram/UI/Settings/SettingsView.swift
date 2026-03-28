@@ -5,12 +5,12 @@ struct SettingsView: View {
         TabView {
             AISettingsTab()
                 .tabItem { Label("AI", systemImage: "sparkles") }
-            PrivacySettingsTab()
-                .tabItem { Label("Privacy", systemImage: "lock.shield") }
             CalendarSettingsView()
                 .tabItem {
                     Label("Calendar", systemImage: "calendar")
                 }
+            PrivacySettingsTab()
+                .tabItem { Label("Privacy", systemImage: "lock.shield") }
         }
         .frame(width: 620, height: 500)
     }
