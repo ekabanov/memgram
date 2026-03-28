@@ -141,7 +141,7 @@ final class AppDatabase {
             }
         }
 
-        migrator.registerMigration("addCalendarFields") { db in
+        migrator.registerMigration("v3_calendar_fields") { db in
             try db.alter(table: "meetings") { t in
                 t.add(column: "calendar_event_id", .text)
                 t.add(column: "calendar_context", .text)

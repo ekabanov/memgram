@@ -36,14 +36,18 @@ struct CalendarContext: Codable, Equatable {
         return result
     }
 
+    private static let scheduledDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
     /// Format as context block for inclusion in LLM prompts.
     func promptBlock() -> String {
         var lines: [String] = []
         lines.append("Calendar Event: \(eventTitle)")
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
-        lines.append("Scheduled: \(dateFormatter.string(from: startDate)) – \(dateFormatter.string(from: endDate))")
+        lines.append("Scheduled: \(Self.scheduledDateFormatter.string(from: startDate)) – \(Self.scheduledDateFormatter.string(from: endDate))")
         if let notes, !notes.isEmpty {
             lines.append("Event Notes: \(notes)")
         }
