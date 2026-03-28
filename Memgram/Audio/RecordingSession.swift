@@ -46,13 +46,27 @@ final class RecordingSession: ObservableObject {
 
     // MARK: - Recording
 
-    func start() async throws {
+    func start(calendarContext: CalendarContext? = nil) async throws {
         guard !isRecording else { return }
 
+        let title = calendarContext?.eventTitle
+            ?? "Meeting \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))"
         let meeting = try MeetingStore.shared.createMeeting(
-            title: "Meeting \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))"
+            title: title,
+            calendarEventId: nil,
+            calendarContext: calendarContext
         )
         currentMeetingId = meeting.id
+
+        // Auto-detect calendar event if none was explicitly provided
+        if calendarContext == nil, CalendarManager.shared.isEnabled {
+            if let event = CalendarManager.shared.findEvent(around: Date()) {
+                let ctx = CalendarManager.shared.context(for: event)
+                try? MeetingStore.shared.updateTitle(meeting.id, title: ctx.eventTitle)
+                try? MeetingStore.shared.updateCalendarContext(meeting.id, eventId: event.eventIdentifier, context: ctx)
+            }
+        }
+
         // Notify the list immediately so the new meeting appears while recording
         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
 
