@@ -2,6 +2,8 @@
 import SwiftUI
 import AppKit
 import MarkdownUI
+import WebKit
+import UniformTypeIdentifiers
 
 extension MeetingSegment: Identifiable {}
 
@@ -19,6 +21,8 @@ struct MeetingDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var deleteError: String?
     @State private var copiedFeedback = false
+    @State private var isExporting = false
+    @State private var exportError: String?
     @State private var localQuery = ""
     @State private var showLocalSearch = false
 
@@ -79,6 +83,14 @@ struct MeetingDetailView: View {
         } message: {
             Text(deleteError ?? "")
         }
+        .alert("Export Failed", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
+        }
     }
 
     // MARK: - Header
@@ -130,31 +142,49 @@ struct MeetingDetailView: View {
                 .buttonStyle(.plain)
                 .help(selectedTab == .transcript ? "Copy transcript" : "Copy summary")
 
-                Menu {
-                    Button {
-                        copyTranscriptText()
-                        giveCopyFeedback()
-                    } label: { Label("Copy Transcript", systemImage: "doc.on.doc") }
+                if isExporting {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 28)
+                } else {
+                    Menu {
+                        Button {
+                            copyTranscriptText()
+                            giveCopyFeedback()
+                        } label: { Label("Copy Transcript", systemImage: "doc.on.doc") }
 
-                    Button {
-                        copySummaryText()
-                        giveCopyFeedback()
-                    } label: { Label("Copy Summary", systemImage: "sparkles") }
-                    .disabled(meeting?.summary == nil)
+                        Button {
+                            copySummaryText()
+                            giveCopyFeedback()
+                        } label: { Label("Copy Summary", systemImage: "sparkles") }
+                        .disabled(meeting?.summary == nil)
 
-                    Divider()
+                        Divider()
 
-                    Button(role: .destructive) {
-                        showDeleteConfirm = true
-                    } label: { Label("Delete Meeting", systemImage: "trash") }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundColor(.secondary)
+                        Button {
+                            Task { await exportPDF() }
+                        } label: { Label("Export PDF…", systemImage: "arrow.down.doc") }
+                        .disabled(meeting?.summary == nil)
+
+                        Button {
+                            Task { await sharePDF() }
+                        } label: { Label("Share…", systemImage: "square.and.arrow.up") }
+                        .disabled(meeting?.summary == nil)
+
+                        Divider()
+
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: { Label("Delete Meeting", systemImage: "trash") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 28)
+                    .help("More actions")
                 }
-                .buttonStyle(.plain)
-                .menuStyle(.borderlessButton)
-                .frame(width: 28)
-                .help("More actions")
             }
             .padding(.top, 4)
         }
@@ -332,6 +362,45 @@ struct MeetingDetailView: View {
         let pasteStr = meeting?.summary ?? "(no summary)"
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(pasteStr, forType: NSPasteboard.PasteboardType.string)
+    }
+
+    private func exportPDF() async {
+        guard let meeting else { return }
+        isExporting = true
+        defer { isExporting = false }
+        do {
+            let data = try await PDFExporter.export(meeting: meeting)
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [UTType.pdf]
+            panel.nameFieldStringValue = PDFExporter.suggestedFilename(for: meeting)
+            let response = await panel.beginSheetModal(for: NSApp.keyWindow ?? NSWindow())
+            guard response == .OK, let url = panel.url else { return }
+            try data.write(to: url)
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    private func sharePDF() async {
+        guard let meeting else { return }
+        isExporting = true
+        defer { isExporting = false }
+        do {
+            let data = try await PDFExporter.export(meeting: meeting)
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension("pdf")
+            try data.write(to: tempURL)
+            // Note: do NOT delete tempURL — the share sheet reads it asynchronously.
+            let picker = NSSharingServicePicker(items: [tempURL])
+            if let contentView = NSApp.keyWindow?.contentView {
+                await MainActor.run {
+                    picker.show(relativeTo: .zero, of: contentView, preferredEdge: .minY)
+                }
+            }
+        } catch {
+            exportError = error.localizedDescription
+        }
     }
 
     private func giveCopyFeedback() {
