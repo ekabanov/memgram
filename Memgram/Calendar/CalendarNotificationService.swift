@@ -61,6 +61,11 @@ final class CalendarNotificationService {
 
     /// Cancel all pending meeting notifications.
     func cancelAll() {
-        center.removeAllPendingNotificationRequests()
+        center.getPendingNotificationRequests { [weak self] requests in
+            let ids = requests
+                .filter { $0.identifier.hasPrefix("meeting-") }
+                .map(\.identifier)
+            self?.center.removePendingNotificationRequests(withIdentifiers: ids)
+        }
     }
 }
