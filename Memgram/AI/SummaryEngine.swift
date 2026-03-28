@@ -19,6 +19,10 @@ final class SummaryEngine: ObservableObject {
           transcribed inconsistently (e.g. "Vault" when surrounding context makes clear the speaker \
           means "Bolt"), use the contextually correct version throughout. On its first corrected \
           occurrence, add a note: *(transcript: "original")*. Do not add the note again.
+        - **Calendar context:** When calendar event metadata is provided (event title, attendee names, \
+          notes), use it to correct speaker names and proper nouns in the transcript. Map generic \
+          "Speaker 1", "Speaker 2" labels to attendee names when you can reasonably infer who is \
+          speaking based on context. Note the mapping in the Participants section.
         - **Consistency pass:** Before writing, scan the full transcript for the same entity referred \
           to by multiple similar-sounding names. Pick the one that fits the context and use it \
           consistently.
@@ -55,6 +59,8 @@ final class SummaryEngine: ObservableObject {
             print("[SummaryEngine] ⚠️ rawTranscript missing — rebuilt from \(segs.count) DB segments")
         }
 
+        let calendarCtx = meeting.calendarContext.flatMap { CalendarContext.fromJSON($0) }
+
         let provider = await MainActor.run {
             overrideBackend.map { LLMProviderStore.shared.providerFor($0) }
                 ?? LLMProviderStore.shared.currentProvider
@@ -65,9 +71,9 @@ final class SummaryEngine: ObservableObject {
             let summary: String
             if (meeting.durationSeconds ?? 0) > 3600 {
                 print("[SummaryEngine] Long meeting (>60min) — chunked summarisation")
-                summary = try await summarizeLong(meetingId: meetingId, provider: provider)
+                summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx, provider: provider)
             } else {
-                summary = try await summarizeShort(transcript: transcript, provider: provider)
+                summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx, provider: provider)
             }
             let cleanSummary = stripThinkingTags(summary)
             print("[SummaryEngine] ✓ Summary generated (\(cleanSummary.count) chars) — saving")
@@ -171,11 +177,19 @@ final class SummaryEngine: ObservableObject {
         }
     }
 
-    private func summarizeShort(transcript: String, provider: any LLMProvider) async throws -> String {
+    private func summarizeShort(transcript: String, calendarContext: CalendarContext?, provider: any LLMProvider) async throws -> String {
+        var contextBlock = ""
+        if let ctx = calendarContext {
+            contextBlock = """
+            Calendar event metadata (use to correct proper nouns and identify speakers):
+            \(ctx.promptBlock())
+
+            """
+        }
         let user = """
         /no_think
 
-        Transcript:
+        \(contextBlock)Transcript:
 
         \(transcript)
 
@@ -223,14 +237,14 @@ final class SummaryEngine: ObservableObject {
         return try await provider.complete(system: systemPrompt, user: user)
     }
 
-    private func summarizeLong(meetingId: String, provider: any LLMProvider) async throws -> String {
+    private func summarizeLong(meetingId: String, calendarContext: CalendarContext?, provider: any LLMProvider) async throws -> String {
         let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
         let windows = chunkByTime(segments, windowMinutes: 20)
 
         var chunkSummaries: [String] = []
         for window in windows {
             let chunkTranscript = window.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
-            let summary = try await summarizeShort(transcript: chunkTranscript, provider: provider)
+            let summary = try await summarizeShort(transcript: chunkTranscript, calendarContext: calendarContext, provider: provider)
             chunkSummaries.append(summary)
         }
 
