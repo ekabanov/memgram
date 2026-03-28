@@ -24,33 +24,36 @@ final class PDFExporter: NSObject {
         private let continuation: CheckedContinuation<Data, Error>
         private var webView: WKWebView?  // strong ref keeps webView alive during load
         private var hasResumed = false
+        private var selfRetain: NavigationDelegate?   // keeps self alive until navigation completes
 
         init(continuation: CheckedContinuation<Data, Error>, webView: WKWebView) {
             self.continuation = continuation
             self.webView = webView
+            super.init()
+            self.selfRetain = self   // self-retain: released when continuation resumes
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             let config = WKPDFConfiguration()
             webView.createPDF(configuration: config) { [weak self] result in
-                self?.webView = nil  // release after use
+                guard !(self?.hasResumed ?? true) else { return }
+                self?.hasResumed = true
+                self?.selfRetain = nil   // release self-retain before resuming
+                self?.webView = nil
                 switch result {
                 case .success(let data):
-                    guard !(self?.hasResumed ?? true) else { return }
-                    self?.hasResumed = true
                     self?.continuation.resume(returning: data)
                 case .failure(let error):
-                    guard !(self?.hasResumed ?? true) else { return }
-                    self?.hasResumed = true
                     self?.continuation.resume(throwing: error)
                 }
             }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            self.webView = nil
             guard !hasResumed else { return }
             hasResumed = true
+            selfRetain = nil   // release self-retain before resuming
+            self.webView = nil
             continuation.resume(throwing: error)
         }
     }

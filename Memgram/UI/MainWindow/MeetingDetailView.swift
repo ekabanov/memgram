@@ -371,7 +371,8 @@ struct MeetingDetailView: View {
             let panel = NSSavePanel()
             panel.allowedContentTypes = [UTType.pdf]
             panel.nameFieldStringValue = PDFExporter.suggestedFilename(for: meeting)
-            let response = await panel.beginSheetModal(for: NSApp.keyWindow ?? NSWindow())
+            guard let keyWindow = NSApp.keyWindow else { return }
+            let response = await panel.beginSheetModal(for: keyWindow)
             guard response == .OK, let url = panel.url else { return }
             try data.write(to: url)
         } catch {
