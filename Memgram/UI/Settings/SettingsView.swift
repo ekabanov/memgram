@@ -7,6 +7,10 @@ struct SettingsView: View {
                 .tabItem { Label("AI", systemImage: "sparkles") }
             PrivacySettingsTab()
                 .tabItem { Label("Privacy", systemImage: "lock.shield") }
+            CalendarSettingsView()
+                .tabItem {
+                    Label("Calendar", systemImage: "calendar")
+                }
         }
         .frame(width: 620, height: 500)
     }
@@ -253,6 +257,58 @@ private struct APIKeyConfigView: View {
                     KeychainHelper.save(key: "\(service)APIKey", value: newValue)
                 }
         }
+    }
+}
+
+// MARK: - Calendar Settings
+
+struct CalendarSettingsView: View {
+    @ObservedObject private var calendar = CalendarManager.shared
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Enable Calendar Integration", isOn: Binding(
+                    get: { calendar.isEnabled },
+                    set: { calendar.setEnabled($0) }
+                ))
+                Text("When enabled, Memgram will show upcoming calendar events and use event details to improve meeting summaries.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if calendar.isEnabled {
+                Section("Calendar Access") {
+                    switch calendar.authorizationStatus {
+                    case .fullAccess:
+                        Label("Calendar access granted", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    case .notDetermined:
+                        Button("Grant Calendar Access") {
+                            Task { await calendar.requestAccess() }
+                        }
+                    case .denied, .restricted:
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Calendar access denied", systemImage: "xmark.circle.fill")
+                                .foregroundStyle(.red)
+                            Text("Open System Settings > Privacy & Security > Calendars to grant access.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    @unknown default:
+                        Text("Unknown status")
+                    }
+                }
+
+                Section("Notifications") {
+                    Text("Memgram will notify you 1 minute before scheduled meetings so you can start recording.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 460, height: 300)
     }
 }
 
