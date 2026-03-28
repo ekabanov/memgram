@@ -4,6 +4,7 @@ struct PopoverView: View {
     weak var appDelegate: AppDelegate?
     @ObservedObject private var permissions = PermissionsManager.shared
     @ObservedObject private var session = RecordingSession.shared
+    @ObservedObject private var calendar = CalendarManager.shared
     @ObservedObject private var modelManager = WhisperModelManager.shared
     @ObservedObject private var llmStore = LLMProviderStore.shared
     @State private var lastError: String?
@@ -19,6 +20,7 @@ struct PopoverView: View {
                 LiveTranscriptView(segments: session.segments)
                     .frame(maxHeight: 180)
             } else {
+                upcomingEventCard
                 statusSection
                     .padding(.horizontal, 16)
                 Spacer()
@@ -134,6 +136,45 @@ struct PopoverView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
+    }
+
+    // MARK: - Upcoming Event Card
+
+    @ViewBuilder
+    private var upcomingEventCard: some View {
+        if let event = calendar.upcomingEvent, !session.isRecording {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: "calendar")
+                        .foregroundStyle(.secondary)
+                    Text("Starting soon")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(event.startDate, style: .time)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(event.title ?? "Untitled Event")
+                    .font(.headline)
+                    .lineLimit(2)
+                if let attendees = event.attendees, !attendees.isEmpty {
+                    Text(attendees.compactMap(\.name).joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Button("Record This Meeting") {
+                    let ctx = CalendarManager.shared.context(for: event)
+                    Task { try? await session.start(calendarContext: ctx) }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal)
+        }
     }
 
     // MARK: - Level Meters
