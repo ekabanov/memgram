@@ -15,6 +15,7 @@ Memgram is a private, offline-first macOS meeting recorder. It silently captures
 - **Summary tab** — rendered Markdown with Copy and Regenerate (choose model inline)
 - **Auto-titling** — LLM generates a 4–8 word title from the summary
 - **iCloud sync** — meetings, transcripts, and speaker names sync across Macs via CloudKit
+- **Calendar integration** — upcoming events shown in popover; menu bar icon pulses purple before a meeting; event title, notes and attendees improve AI summaries
 
 ## Requirements
 
@@ -32,6 +33,8 @@ open Memgram.xcodeproj
 ```
 
 On first launch: grant microphone + system audio permissions, choose English or Multilingual transcription, optionally pre-load the model.
+
+To enable calendar integration: **Settings → Calendar** → toggle on → grant calendar access. Requires Google (or any other) calendar account added in **System Settings → Internet Accounts**.
 
 ## Transcription
 
@@ -79,6 +82,19 @@ SQLite at `~/Library/Application Support/Memgram/memgram.db`. Audio discarded af
 Meetings, transcript segments, and speaker names sync automatically via CloudKit (`CKSyncEngine`, macOS 14+). Data lives in a custom zone (`MemgramZone`) in the CloudKit private database. Embeddings and FTS indexes are not synced — they are regenerated locally.
 
 On first launch with sync enabled, all existing local data is uploaded. Subsequent changes are synced incrementally. Conflict resolution is last-writer-wins.
+
+### Calendar Integration
+
+Uses EventKit (no OAuth — works with any calendar source added to macOS). When enabled:
+
+- Popover shows the next event starting within 15 minutes with a "Record This Meeting" button
+- Menu bar icon turns purple `calendar.badge.clock` and pulses; reverts 10 minutes after event start
+- A system notification fires 1 minute before the event with a "Start Recording" action
+- Recording automatically attaches the event's title, notes, and attendee names
+- The LLM summary prompt includes this metadata for better proper noun correction and speaker identification
+- Calendar metadata (`calendarEventId`, `calendarContext` JSON) is stored on the meeting and synced via iCloud
+
+Select which calendars to monitor in **Settings → Calendar → Calendars to Monitor** (all monitored by default).
 
 ## Package Dependencies
 

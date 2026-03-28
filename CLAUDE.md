@@ -56,6 +56,27 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **⚠️ MLXSwiftLM pinning:** Pinned to commit `4051621` — `main` branch broke `swift-transformers` compat with WhisperKit. When WhisperKit supports `swift-transformers >= 1.2.0`, switch to `branch: main`.
 
+## Calendar Integration
+
+`Memgram/Calendar/` contains three files with no dependencies on each other beyond `CalendarContext`:
+
+- **`CalendarContext.swift`** — `Codable/Equatable` snapshot of an `EKEvent` (title, notes, attendees, organizer, start/end). Stored as JSON in `meetings.calendar_context`. `promptBlock()` formats it for LLM injection. Static `scheduledDateFormatter` to avoid repeated allocations.
+- **`CalendarManager.swift`** — `@MainActor ObservableObject` singleton. Wraps `EKEventStore`. Manages auth, upcoming event polling (60s timer + `EKEventStoreChanged`), calendar list, and `selectedCalendarIds` (UserDefaults, empty = all). `refreshUpcomingEvent()` excludes events whose `startDate` is >10 minutes in the past.
+- **`CalendarNotificationService.swift`** — `UNUserNotification` scheduling. Category `MEETING_START` with action `START_RECORDING`. `scheduleNotification(for:)` fires 60s before event. `cancelAll()` scoped to `"meeting-"` prefix only.
+
+**Icon states:** `RecordingState` has a `.upcoming` case — purple `calendar.badge.clock` with a slow 2s pulse. Driven by `CalendarManager.$upcomingEvent` in `AppDelegate`. Reverts to `.idle` when `upcomingEvent` becomes nil (i.e. event started >10 min ago or was cancelled).
+
+**Notification handler:** `AppDelegate` is `UNUserNotificationCenterDelegate`. `didReceive` looks up the event by `eventIdentifier` from `userInfo` first (`EKEventStore.event(withIdentifier:)`), falls back to `findEvent(around: Date(), toleranceMinutes: 30)`.
+
+**Prompt injection:** `SummaryEngine.summarizeShort(transcript:calendarContext:provider:)` prepends a calendar metadata block before `Transcript:` when context is non-nil. Nil path is byte-for-byte identical to pre-calendar behavior.
+
+**DB schema:** `meetings` table has two new nullable text columns (`calendar_event_id`, `calendar_context`) added by GRDB migration `"v3_calendar_fields"`.
+
+**Pitfalls:**
+- `EKParticipant` does not expose `email` reliably — store display names only.
+- `EKAuthorizationStatus.fullAccess` (macOS 14+) is distinct from the deprecated `.authorized`. Always check for `.fullAccess`.
+- `predicateForEvents(withStart:end:calendars:)` matches events that *overlap* the window, not just those that start within it — filter by `startDate > cutoff` explicitly.
+
 ## iCloud Sync
 
 `CloudSyncEngine` (`Memgram/Sync/CloudSyncEngine.swift`) wraps `CKSyncEngine` (macOS 14+) for syncing meetings, segments, and speakers via CloudKit private database.

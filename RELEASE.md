@@ -64,6 +64,8 @@ The release script uses `6N57Z7GY37` (Developer ID).
 
 ## Troubleshooting
 
+**"No profiles for 'com.memgram.app' were found"** — The Developer ID Application **provisioning profile** is missing. Go to [developer.apple.com/account/resources/profiles](https://developer.apple.com/account/resources/profiles), create a **Developer ID** profile for `com.memgram.app`, download and double-click to install. Then in Xcode: Settings → Accounts → your team → Download Manual Profiles.
+
 **"No signing certificate found"** — Make sure the Developer ID Application certificate is installed and the team ID in `project.yml` matches.
 
 **Notarization rejected** — Check `xcrun notarytool log <submission-id>` for details. Common causes: missing Hardened Runtime, unsigned frameworks, or entitlement issues.
