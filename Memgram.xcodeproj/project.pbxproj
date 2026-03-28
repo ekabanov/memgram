@@ -12,6 +12,7 @@
 		10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A335CC4E14196465F8F057 /* AppDelegate.swift */; };
 		11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = F7F968E28E3536B2BD9133D2 /* GRDB */; };
 		15A508C1BFE79B2C91F22FF5 /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */; };
+		17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		1870B967E488562E6551E2F2 /* SummaryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8009E920FB91831616BDC1FD /* SummaryEngine.swift */; };
 		29B9E8EA107ACD884B77613A /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5DFF25E171256C015392B0 /* SearchEngine.swift */; };
 		2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B935CBFDAA46A9FE07A6B5A /* ScreenCaptureKitCapture.swift */; };
@@ -102,6 +103,7 @@
 		E3A335CC4E14196465F8F057 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F0B16CE774DDB719F2117948 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
+		F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarContext.swift; sourceTree = "<group>"; };
 		FD6CF342BB0459F5A34F2B93 /* Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meeting.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -159,6 +161,7 @@
 			children = (
 				75937709139C86A1308B34A6 /* AI */,
 				1540D94138F7124A4DB3CC62 /* Audio */,
+				B919AABD577F8DA313FCC24F /* Calendar */,
 				0E5EF07669480A1E00D3AA0E /* Database */,
 				3592EE7D6628062A2FE2A6AF /* Permissions */,
 				7A25DEEEE20C564ECFD8F52C /* Resources */,
@@ -263,6 +266,14 @@
 				CD3CDFCF7479291FD29F257E /* Models */,
 			);
 			path = Storage;
+			sourceTree = "<group>";
+		};
+		B919AABD577F8DA313FCC24F /* Calendar */ = {
+			isa = PBXGroup;
+			children = (
+				F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */,
+			);
+			path = Calendar;
 			sourceTree = "<group>";
 		};
 		CA51747FF1F736A3F98B13F0 /* MenuBar */ = {
@@ -392,6 +403,7 @@
 				ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */,
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
+				17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */,
 				9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */,
 				D6216859EFD788A1BD76CFAF /* CloudSyncEngine.swift in Sources */,
 				D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */,

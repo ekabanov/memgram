@@ -14,8 +14,12 @@ final class MeetingStore {
     // MARK: - Write
 
     @discardableResult
-    func createMeeting(title: String) throws -> Meeting {
-        let meeting = Meeting(
+    func createMeeting(
+        title: String,
+        calendarEventId: String? = nil,
+        calendarContext: CalendarContext? = nil
+    ) throws -> Meeting {
+        var meeting = Meeting(
             id: UUID().uuidString,
             title: title,
             startedAt: Date(),
@@ -25,11 +29,23 @@ final class MeetingStore {
             summary: nil,
             actionItems: nil,
             rawTranscript: nil,
-            ckSystemFields: nil
+            ckSystemFields: nil,
+            calendarEventId: calendarEventId,
+            calendarContext: calendarContext?.toJSON()
         )
         try db.write { db in try meeting.insert(db) }
         sync?.enqueueSave(table: "meetings", id: meeting.id)
         return meeting
+    }
+
+    func updateCalendarContext(_ id: String, eventId: String?, context: CalendarContext) throws {
+        try db.write { db in
+            guard var meeting = try Meeting.fetchOne(db, key: id) else { return }
+            meeting.calendarEventId = eventId
+            meeting.calendarContext = context.toJSON()
+            try meeting.update(db)
+        }
+        sync?.enqueueSave(table: "meetings", id: id)
     }
 
     func appendSegment(_ segment: TranscriptSegment, toMeeting meetingId: String) throws {
