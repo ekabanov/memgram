@@ -18,6 +18,8 @@ struct Meeting: Codable, FetchableRecord, PersistableRecord {
     var actionItems: String?
     var rawTranscript: String?
     var ckSystemFields: Data?
+    var calendarEventId: String?        // EventKit event identifier
+    var calendarContext: String?         // JSON-encoded CalendarContext
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -30,5 +32,7 @@ struct Meeting: Codable, FetchableRecord, PersistableRecord {
         case actionItems     = "action_items"
         case rawTranscript   = "raw_transcript"
         case ckSystemFields  = "ck_system_fields"
+        case calendarEventId = "calendar_event_id"
+        case calendarContext = "calendar_context"
     }
 }

@@ -141,6 +141,13 @@ final class AppDatabase {
             }
         }
 
+        migrator.registerMigration("addCalendarFields") { db in
+            try db.alter(table: "meetings") { t in
+                t.add(column: "calendar_event_id", .text)
+                t.add(column: "calendar_context", .text)
+            }
+        }
+
         try migrator.migrate(dbQueue)
     }
 }
