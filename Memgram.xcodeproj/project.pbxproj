@@ -11,6 +11,7 @@
 		0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */; };
 		10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A335CC4E14196465F8F057 /* AppDelegate.swift */; };
 		11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = F7F968E28E3536B2BD9133D2 /* GRDB */; };
+		1429C65DF2D432E7767682D2 /* PDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28822E40CBC23C661FBD955 /* PDFExporter.swift */; };
 		15A508C1BFE79B2C91F22FF5 /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */; };
 		17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		1870B967E488562E6551E2F2 /* SummaryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8009E920FB91831616BDC1FD /* SummaryEngine.swift */; };
@@ -103,6 +104,7 @@
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
 		E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
+		E28822E40CBC23C661FBD955 /* PDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExporter.swift; sourceTree = "<group>"; };
 		E2DACCFEC6DB30395795F347 /* MeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingListView.swift; sourceTree = "<group>"; };
 		E3A335CC4E14196465F8F057 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F0B16CE774DDB719F2117948 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -167,6 +169,7 @@
 				1540D94138F7124A4DB3CC62 /* Audio */,
 				B919AABD577F8DA313FCC24F /* Calendar */,
 				0E5EF07669480A1E00D3AA0E /* Database */,
+				2E90FC5C4B06C2904334B8C7 /* Export */,
 				3592EE7D6628062A2FE2A6AF /* Permissions */,
 				7A25DEEEE20C564ECFD8F52C /* Resources */,
 				F3AFF10886A5D1372189B8F3 /* Search */,
@@ -179,6 +182,14 @@
 				212D0221DE67444BF6FAA347 /* MemgramApp.swift */,
 			);
 			path = Memgram;
+			sourceTree = "<group>";
+		};
+		2E90FC5C4B06C2904334B8C7 /* Export */ = {
+			isa = PBXGroup;
+			children = (
+				E28822E40CBC23C661FBD955 /* PDFExporter.swift */,
+			);
+			path = Export;
 			sourceTree = "<group>";
 		};
 		3592EE7D6628062A2FE2A6AF /* Permissions */ = {
@@ -436,6 +447,7 @@
 				15A508C1BFE79B2C91F22FF5 /* OllamaProvider.swift in Sources */,
 				833A3C45383F91821935CB27 /* OnboardingView.swift in Sources */,
 				F4079DD0A1D5E98E12EE09D4 /* OpenAIProvider.swift in Sources */,
+				1429C65DF2D432E7767682D2 /* PDFExporter.swift in Sources */,
 				F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */,
 				501FEB83850E856B56431C2B /* PopoverView.swift in Sources */,
 				0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */,
