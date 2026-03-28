@@ -300,6 +300,46 @@ struct CalendarSettingsView: View {
                     }
                 }
 
+                if calendar.authorizationStatus == .fullAccess && !calendar.availableCalendars.isEmpty {
+                    Section("Calendars to Monitor") {
+                        Text("Only events from selected calendars will be shown. Leave all unchecked to monitor all calendars.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ForEach(calendar.availableCalendars, id: \.calendarIdentifier) { cal in
+                            Toggle(isOn: Binding(
+                                get: { calendar.selectedCalendarIds.isEmpty || calendar.selectedCalendarIds.contains(cal.calendarIdentifier) },
+                                set: { selected in
+                                    var ids = calendar.selectedCalendarIds
+                                    if ids.isEmpty {
+                                        // First explicit selection: select all except the toggled-off one
+                                        ids = Set(calendar.availableCalendars.map(\.calendarIdentifier))
+                                    }
+                                    if selected {
+                                        ids.insert(cal.calendarIdentifier)
+                                    } else {
+                                        ids.remove(cal.calendarIdentifier)
+                                    }
+                                    // If all are selected, treat as "all" (empty set)
+                                    if ids.count == calendar.availableCalendars.count {
+                                        ids = []
+                                    }
+                                    calendar.setSelectedCalendars(ids)
+                                }
+                            )) {
+                                HStack {
+                                    Circle()
+                                        .fill(Color(cgColor: cal.cgColor))
+                                        .frame(width: 10, height: 10)
+                                    Text(cal.title)
+                                    Text(cal.source.title)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Section("Notifications") {
                     Text("Memgram will notify you 1 minute before scheduled meetings so you can start recording.")
                         .font(.caption)

@@ -7,6 +7,7 @@ import UserNotifications
 
 enum RecordingState {
     case idle
+    case upcoming   // calendar event starting within 15 min
     case recording
     case processing
 }
@@ -23,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var sessionCancellable: AnyCancellable?
+    private var calendarCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -53,7 +55,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sessionCancellable = RecordingSession.shared.$isRecording
             .receive(on: DispatchQueue.main)
             .sink { [weak self] recording in
-                self?.recordingState = recording ? .recording : .idle
+                guard let self else { return }
+                if recording {
+                    self.recordingState = .recording
+                } else {
+                    // Restore upcoming state if there's still a pending event
+                    self.recordingState = CalendarManager.shared.upcomingEvent != nil ? .upcoming : .idle
+                }
+            }
+
+        calendarCancellable = CalendarManager.shared.$upcomingEvent
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                guard let self else { return }
+                // Only show upcoming state when idle
+                if case .idle = self.recordingState {
+                    self.recordingState = event != nil ? .upcoming : .idle
+                } else if event == nil, case .upcoming = self.recordingState {
+                    self.recordingState = .idle
+                }
             }
     }
 
@@ -114,6 +134,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = image
             button.contentTintColor = .secondaryLabelColor
 
+        case .upcoming:
+            let paletteConfig = NSImage.SymbolConfiguration(paletteColors: [.systemPurple])
+            let sizeConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            let config = sizeConfig.applying(paletteConfig)
+            let image = NSImage(systemSymbolName: "calendar.badge.clock", accessibilityDescription: "Meeting starting soon")?
+                .withSymbolConfiguration(config)
+            button.image = image
+            button.contentTintColor = nil
+            startUpcomingPulseAnimation(button: button)
+
         case .recording:
             // Use a palette configuration to force red regardless of menu bar appearance
             let paletteConfig = NSImage.SymbolConfiguration(paletteColors: [.systemRed])
@@ -132,6 +162,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = image
             button.contentTintColor = .secondaryLabelColor
         }
+    }
+
+    private func startUpcomingPulseAnimation(button: NSStatusBarButton) {
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak button] _ in
+            guard let button else { return }
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.8
+                button.animator().alphaValue = button.alphaValue < 0.5 ? 1.0 : 0.5
+            }
+        }
+        pulseTimer?.fire()
     }
 
     private func startPulseAnimation(button: NSStatusBarButton) {

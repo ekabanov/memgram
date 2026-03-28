@@ -8,6 +8,11 @@ final class CalendarManager: ObservableObject {
     @Published private(set) var authorizationStatus: EKAuthorizationStatus = .notDetermined
     @Published private(set) var upcomingEvent: EKEvent?
     @Published private(set) var isEnabled: Bool = UserDefaults.standard.bool(forKey: "calendarIntegrationEnabled")
+    @Published private(set) var availableCalendars: [EKCalendar] = []
+    @Published private(set) var selectedCalendarIds: Set<String> = {
+        let stored = UserDefaults.standard.stringArray(forKey: "selectedCalendarIds") ?? []
+        return stored.isEmpty ? [] : Set(stored)  // empty = all calendars
+    }()
 
     private let store = EKEventStore()
     private var refreshTimer: Timer?
@@ -23,6 +28,7 @@ final class CalendarManager: ObservableObject {
             let granted = try await store.requestFullAccessToEvents()
             authorizationStatus = EKEventStore.authorizationStatus(for: .event)
             if granted {
+                refreshAvailableCalendars()
                 refreshUpcomingEvent()
                 startMonitoring()
             }
@@ -31,6 +37,16 @@ final class CalendarManager: ObservableObject {
             authorizationStatus = EKEventStore.authorizationStatus(for: .event)
             return false
         }
+    }
+
+    func setSelectedCalendars(_ ids: Set<String>) {
+        selectedCalendarIds = ids
+        UserDefaults.standard.set(Array(ids), forKey: "selectedCalendarIds")
+        refreshUpcomingEvent()
+    }
+
+    func refreshAvailableCalendars() {
+        availableCalendars = store.calendars(for: .event).sorted { $0.title < $1.title }
     }
 
     // MARK: - Enable / Disable
@@ -58,7 +74,10 @@ final class CalendarManager: ObservableObject {
         }
         let now = Date()
         let lookahead = now.addingTimeInterval(15 * 60)  // 15 minutes
-        let predicate = store.predicateForEvents(withStart: now, end: lookahead, calendars: nil)
+        let selectedCalendars: [EKCalendar]? = selectedCalendarIds.isEmpty
+            ? nil  // nil = all calendars
+            : store.calendars(for: .event).filter { selectedCalendarIds.contains($0.calendarIdentifier) }
+        let predicate = store.predicateForEvents(withStart: now, end: lookahead, calendars: selectedCalendars)
         let events = store.events(matching: predicate)
             .filter { !$0.isAllDay }
             .sorted { $0.startDate < $1.startDate }
@@ -73,7 +92,10 @@ final class CalendarManager: ObservableObject {
         guard isEnabled, authorizationStatus == .fullAccess else { return nil }
         let start = date.addingTimeInterval(-toleranceMinutes * 60)
         let end = date.addingTimeInterval(toleranceMinutes * 60)
-        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        let selectedCalendars: [EKCalendar]? = selectedCalendarIds.isEmpty
+            ? nil  // nil = all calendars
+            : store.calendars(for: .event).filter { selectedCalendarIds.contains($0.calendarIdentifier) }
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: selectedCalendars)
         let events = store.events(matching: predicate)
             .filter { !$0.isAllDay }
             .sorted { abs($0.startDate.timeIntervalSince(date)) < abs($1.startDate.timeIntervalSince(date)) }
@@ -98,6 +120,7 @@ final class CalendarManager: ObservableObject {
     func startMonitoring() {
         stopMonitoring()
         guard isEnabled else { return }
+        refreshAvailableCalendars()
         // Refresh every 60 seconds to catch upcoming events
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
