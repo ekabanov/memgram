@@ -40,7 +40,9 @@ final class MeetingStore {
 
     func updateCalendarContext(_ id: String, eventId: String?, context: CalendarContext) throws {
         try db.write { db in
-            guard var meeting = try Meeting.fetchOne(db, key: id) else { return }
+            guard var meeting = try Meeting.fetchOne(db, key: id) else {
+                throw DatabaseError(message: "Meeting \(id) not found for calendar context update")
+            }
             meeting.calendarEventId = eventId
             meeting.calendarContext = context.toJSON()
             try meeting.update(db)
