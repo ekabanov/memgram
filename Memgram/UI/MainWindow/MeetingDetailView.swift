@@ -159,8 +159,6 @@ struct MeetingDetailView: View {
                         } label: { Label("Copy Summary", systemImage: "sparkles") }
                         .disabled(meeting?.summary == nil)
 
-                        Divider()
-
                         Button {
                             Task { await exportPDF() }
                         } label: { Label("Export PDF…", systemImage: "arrow.down.doc") }
