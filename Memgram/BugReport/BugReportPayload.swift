@@ -25,6 +25,7 @@ struct BugReportPayload: Codable {
         let segmentCount: Int
         let hasSummary: Bool
         let hasCalendarContext: Bool
+        let speakersCount: Int
     }
 
     struct LogEntry: Codable {
@@ -116,7 +117,8 @@ final class BugReportPayloadBuilder {
                 transcriptLengthChars: meeting.rawTranscript?.count ?? 0,
                 segmentCount: segCount,
                 hasSummary: meeting.summary != nil,
-                hasCalendarContext: meeting.calendarContext != nil
+                hasCalendarContext: meeting.calendarContext != nil,
+                speakersCount: 0  // speaker table not fetched here to keep this lightweight
             )
         }
     }
