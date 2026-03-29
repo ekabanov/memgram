@@ -8,6 +8,7 @@ struct BugReportView: View {
     @State private var isSubmitting = false
     @State private var submittedURL: String?
     @State private var errorMessage: String?
+    @State private var builtPayload: BugReportPayload?
     @State private var logPreview: String = "Loading logs…"
     @State private var showLogPreview = false
 
@@ -55,8 +56,10 @@ struct BugReportView: View {
             if let url = submittedURL {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Report submitted!").font(.subheadline).bold()
-                    Link(url, destination: URL(string: url)!)
-                        .font(.caption)
+                    if let dest = URL(string: url) {
+                        Link(url, destination: dest)
+                            .font(.caption)
+                    }
                 }
             }
 
@@ -80,6 +83,7 @@ struct BugReportView: View {
 
     private func loadLogPreview() async {
         let payload = await BugReportPayloadBuilder.build()
+        builtPayload = payload
         let lines = payload.logs.suffix(20).map { "[\($0.category)] \($0.level): \($0.message)" }
         let header = """
         App: \(payload.appVersion) | macOS: \(payload.macosVersion)
@@ -96,7 +100,12 @@ struct BugReportView: View {
         errorMessage = nil
         defer { isSubmitting = false }
         do {
-            let payload = await BugReportPayloadBuilder.build()
+            let payload: BugReportPayload
+            if let cached = builtPayload {
+                payload = cached
+            } else {
+                payload = await BugReportPayloadBuilder.build()
+            }
             let result = try await BugReportSubmitter.submit(
                 payload: payload,
                 description: description.trimmingCharacters(in: .whitespacesAndNewlines),

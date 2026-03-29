@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var mainWindow: NSWindow?
+    private var bugReportWindow: NSWindow?
     private var pulseTimer: Timer?
 
     var recordingState: RecordingState = .idle {
@@ -210,17 +211,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showBugReport() {
-        let view = BugReportView()
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 400),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = NSHostingView(rootView: view)
-        window.title = "Report a Bug"
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        if bugReportWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 400),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.contentView = NSHostingView(rootView: BugReportView())
+            window.title = "Report a Bug"
+            window.center()
+            bugReportWindow = window
+        }
+        bugReportWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

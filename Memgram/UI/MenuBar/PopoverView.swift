@@ -256,38 +256,38 @@ struct PopoverView: View {
                 Spacer()
             }
             Divider()
-        HStack {
-            settingsButton
-            .help("Settings")
-            permissionsStatus
-            Spacer()
-            if session.isRecording {
-                Button("Stop") { Task { await session.stop() } }
+            HStack {
+                settingsButton
+                    .help("Settings")
+                permissionsStatus
+                Spacer()
+                if session.isRecording {
+                    Button("Stop") { Task { await session.stop() } }
+                        .buttonStyle(.bordered)
+                } else if !permissions.microphoneGranted || !permissions.systemAudioGranted {
+                    Button("Fix Permissions") {
+                        Task {
+                            if !permissions.microphoneGranted {
+                                let micGranted = await permissions.requestMicrophonePermission()
+                                if !micGranted { permissions.openSystemPreferences(); return }
+                            }
+                            if !permissions.systemAudioGranted {
+                                _ = await permissions.requestSystemAudioPermission()
+                            }
+                        }
+                    }
                     .buttonStyle(.bordered)
-            } else if !permissions.microphoneGranted || !permissions.systemAudioGranted {
-                Button("Fix Permissions") {
-                    Task {
-                        if !permissions.microphoneGranted {
-                            let micGranted = await permissions.requestMicrophonePermission()
-                            if !micGranted { permissions.openSystemPreferences(); return }
-                        }
-                        if !permissions.systemAudioGranted {
-                            _ = await permissions.requestSystemAudioPermission()
+                } else {
+                    Button("Start Recording") {
+                        lastError = nil
+                        Task {
+                            do { try await session.start() }
+                            catch { lastError = error.localizedDescription }
                         }
                     }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.bordered)
-            } else {
-                Button("Start Recording") {
-                    lastError = nil
-                    Task {
-                        do { try await session.start() }
-                        catch { lastError = error.localizedDescription }
-                    }
-                }
-                .buttonStyle(.borderedProminent)
             }
-        }
         }
     }
 
