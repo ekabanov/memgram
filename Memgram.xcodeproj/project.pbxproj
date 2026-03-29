@@ -183,6 +183,8 @@
 				2E90FC5C4B06C2904334B8C7 /* Export */,
 				3592EE7D6628062A2FE2A6AF /* Permissions */,
 				7A25DEEEE20C564ECFD8F52C /* Resources */,
+				F3AFF10886A5D1372189B8F3 /* Search */,
+				B7C3E54B8624B6D69A678BA8 /* Storage */,
 				36D0B7EB2C0A4AA8F984A9BC /* Sync */,
 				FAD869B59D73800AFEDEE945 /* Transcription */,
 				6BA73221FE8D81B0538304B0 /* UI */,
@@ -296,6 +298,14 @@
 			path = MainWindow;
 			sourceTree = "<group>";
 		};
+		B7C3E54B8624B6D69A678BA8 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				CD3CDFCF7479291FD29F257E /* Models */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
 		B919AABD577F8DA313FCC24F /* Calendar */ = {
 			isa = PBXGroup;
 			children = (
@@ -317,12 +327,26 @@
 			path = MenuBar;
 			sourceTree = "<group>";
 		};
+		CD3CDFCF7479291FD29F257E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
 		DD5C597A85C2EB7FCF978634 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
 				45C4DEB4673DB88282F219CF /* SettingsView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		F3AFF10886A5D1372189B8F3 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Search;
 			sourceTree = "<group>";
 		};
 		FAD869B59D73800AFEDEE945 /* Transcription */ = {
