@@ -100,25 +100,31 @@ final class PermissionsManager: ObservableObject {
 
     @available(macOS 14.4, *)
     private func requestCoreAudioTapPermission() async -> Bool {
-        // Use real audio process IDs — kAudioObjectSystemObject is NOT a valid process object.
-        // If no processes are running now, wait briefly and try again.
+        // AudioHardwareCreateProcessTap is synchronous — it cannot wait for the user to
+        // respond to a TCC dialog. SCShareableContent.excludingDesktopWindows IS properly
+        // async and awaits the "Screen and System Audio Recording" dialog.
+        // CoreAudioTap and ScreenCaptureKit share the same TCC category, so triggering
+        // the dialog via SCKit grants permission for both.
+        let scGranted = await requestScreenCapturePermission()
+        guard scGranted else { return false }
+
+        // Verify the CoreAudio tap also works now that permission has been granted.
         var processIDs = Self.audioProcessObjectIDs()
         if processIDs.isEmpty {
             try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
             processIDs = Self.audioProcessObjectIDs()
         }
-
-        // If still no processes, fall back to SCKit to at least trigger the dialog
         guard !processIDs.isEmpty else {
-            return await requestScreenCapturePermission()
+            // No audio processes to probe — trust SCKit result.
+            return scGranted
         }
 
-        let granted = Self.probeAudioTapPermission(processIDs: processIDs)
+        let tapGranted = Self.probeAudioTapPermission(processIDs: processIDs)
         await MainActor.run {
-            systemAudioGranted = granted
-            UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
+            systemAudioGranted = tapGranted
+            UserDefaults.standard.set(tapGranted, forKey: "systemAudioPermissionGranted")
         }
-        return granted
+        return tapGranted
     }
 
     /// Attempt to create and immediately destroy a tap. Returns true if TCC allows it.
