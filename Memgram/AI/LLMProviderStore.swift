@@ -8,9 +8,6 @@ final class LLMProviderStore: ObservableObject {
     @Published var selectedBackend: LLMBackend {
         didSet { UserDefaults.standard.set(selectedBackend.rawValue, forKey: "llmBackend") }
     }
-    @Published var ollamaModel: String {
-        didSet { UserDefaults.standard.set(ollamaModel, forKey: "ollamaModel") }
-    }
     @Published var customServerURL: String {
         didSet { UserDefaults.standard.set(customServerURL, forKey: "customServerURL") }
     }
@@ -21,7 +18,6 @@ final class LLMProviderStore: ObservableObject {
     private init() {
         let saved = UserDefaults.standard.string(forKey: "llmBackend") ?? ""
         selectedBackend   = LLMBackend(rawValue: saved) ?? .qwen
-        ollamaModel       = UserDefaults.standard.string(forKey: "ollamaModel") ?? "llama3.2"
         customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
         customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
         print("[LLMProviderStore] Loaded — backend: \(selectedBackend.displayName) (raw saved: '\(saved)')")
@@ -39,12 +35,20 @@ final class LLMProviderStore: ObservableObject {
         case .qwen:
             #if canImport(MLXLLM)
             if #available(macOS 14, *) { return QwenLocalProvider.shared }
-            else { return OllamaProvider(model: "qwen3:8b") }
+            else {
+                return CustomServerProvider(
+                    baseURL:   customServerURL,
+                    apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
+                    modelName: customServerModel
+                )
+            }
             #else
-            return OllamaProvider(model: "qwen3:8b")
+            return CustomServerProvider(
+                baseURL:   customServerURL,
+                apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
+                modelName: customServerModel
+            )
             #endif
-        case .ollama:
-            return OllamaProvider(model: ollamaModel)
         case .custom:
             return CustomServerProvider(
                 baseURL:   customServerURL,
@@ -60,7 +64,4 @@ final class LLMProviderStore: ObservableObject {
         }
     }
 
-    func fetchOllamaModels() async -> [String] {
-        await OllamaProvider(model: ollamaModel).listModels()
-    }
 }

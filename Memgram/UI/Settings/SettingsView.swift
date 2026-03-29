@@ -46,13 +46,9 @@ struct AISettingsTab: View {
             get: { store.selectedBackend },
             set: { store.selectedBackend = $0 }
         )) {
-            ForEach(LLMBackendCategory.allCases, id: \.rawValue) { category in
-                Section(category.rawValue) {
-                    ForEach(LLMBackend.allCases.filter { $0.category == category }) { backend in
-                        ProviderRow(backend: backend)
-                            .tag(backend)
-                    }
-                }
+            ForEach(LLMBackend.allCases) { backend in
+                ProviderRow(backend: backend)
+                    .tag(backend)
             }
         }
         .listStyle(.sidebar)
@@ -66,7 +62,6 @@ struct AISettingsTab: View {
             VStack(alignment: .leading, spacing: 16) {
                 switch store.selectedBackend {
                 case .qwen:   QwenConfigView()
-                case .ollama: OllamaConfigView()
                 case .custom: CustomServerConfigView()
                 case .claude: APIKeyConfigView(service: "claude", label: "Claude API Key", placeholder: "sk-ant-…")
                 case .openai: APIKeyConfigView(service: "openai", label: "OpenAI API Key", placeholder: "sk-…")
@@ -185,25 +180,6 @@ private struct QwenDownloadStatusView: View {
     }
 }
 #endif
-
-private struct OllamaConfigView: View {
-    @ObservedObject private var store = LLMProviderStore.shared
-    @State private var models: [String] = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Ollama", systemImage: "server.rack")
-                .font(.headline)
-            Text("Requires Ollama running locally (ollama.ai). Supports any installed model.")
-                .font(.body).foregroundColor(.secondary)
-            Picker("Model", selection: $store.ollamaModel) {
-                if models.isEmpty { Text(store.ollamaModel).tag(store.ollamaModel) }
-                ForEach(models, id: \.self) { Text($0).tag($0) }
-            }
-            .onAppear { Task { models = await store.fetchOllamaModels() } }
-        }
-    }
-}
 
 private struct CustomServerConfigView: View {
     @ObservedObject private var store = LLMProviderStore.shared
