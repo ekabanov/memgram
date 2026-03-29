@@ -107,6 +107,19 @@ Select which calendars to monitor in **Settings → Calendar → Calendars to Mo
 
 > **Note on mlx-swift-lm:** Pinned to a specific commit because WhisperKit and the mlx-swift-lm main branch require incompatible versions of `swift-transformers`. Update when WhisperKit supports `swift-transformers >= 1.2.0`.
 
+## Bug Reporting & Automated Fixes
+
+Users can report bugs from **Settings → Help**. The form collects a description, steps to reproduce, and an anonymised diagnostic payload (app version, macOS version, hardware model, last 30 minutes of app logs, anonymous meeting metadata — never transcript or summary content).
+
+Submitted reports go to the private [`ekabanov/memgram-bugs`](https://github.com/ekabanov/memgram-bugs) repo as GitHub Issues. A GitHub Actions workflow then:
+
+1. Extracts the JSON payload from the issue body
+2. Builds a structured prompt and runs a Claude Code agent against a full checkout of this repo
+3. If the agent identifies the root cause and produces a passing build, it opens a PR automatically
+4. A human reviews and merges (or closes) the PR; the original issue is linked via `Closes #N`
+
+Issues that can't be auto-fixed are labeled `needs-human-review` for manual triage.
+
 ## Privacy
 
 - Audio is never stored (discarded immediately after transcription)

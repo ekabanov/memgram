@@ -95,6 +95,39 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - `PRAGMA foreign_keys = OFF` is silently ignored inside GRDB `db.write {}` transactions.
 - xcodegen regenerates `.entitlements` from `project.yml` — all entitlements must be in `entitlements.properties`, not added via Xcode UI.
 
+## Bug Reporting
+
+`Memgram/BugReport/` — in-app bug report form (Settings → Help tab).
+
+- **`BugReportPayload.swift`** — `Codable` struct + `@MainActor BugReportPayloadBuilder`. Collects OSLog entries (last 30 min via `OSLogStore(scope: .currentProcessIdentifier)`), anonymous meeting metadata (up to 20 meetings), crash log (capped at 50 KB), and system info via `ProcessInfo`/`sysctlbyname`.
+- **`BugReportSubmitter.swift`** — POSTs a formatted GitHub Issue to `ekabanov/memgram-bugs` via REST API. Payload embedded as a collapsible `json` fenced block in the issue body.
+- **`BugReportView.swift`** — SwiftUI settings tab. Builds payload once in `.task {}`, reuses on submit.
+- **`BugReportConfig.swift`** — **gitignored**. Must be created manually; contains `githubToken` (fine-grained PAT, `issues:write` on `ekabanov/memgram-bugs`).
+
+**Pitfalls:**
+- `OSLogStore.local()` requires a private entitlement — always use `OSLogStore(scope: .currentProcessIdentifier)`.
+- `BugReportConfig.swift` must never be committed — it contains a live GitHub token.
+
+## Automated Fix Pipeline
+
+`ekabanov/memgram-bugs` is a private GitHub repo that receives bug reports from the app and automatically attempts to fix them via Claude Code.
+
+**Flow:**
+1. App submits a GitHub Issue to `memgram-bugs` (label `bug-report` added automatically)
+2. GitHub Actions workflow (`.github/workflows/autofix.yml`) triggers on `issues: labeled` when label is `bug-report`
+3. Extracts the JSON payload from the issue body (`extract-payload.py`), builds an agent prompt (`build-prompt.py` + `agent-prompt-template.md`), and runs `claude --model claude-sonnet-4-6 --print` in a full checkout of this repo
+4. If the agent opens a PR against `ekabanov/Memgram`, the issue is labeled `automated-fix-opened`; otherwise `needs-human-review`
+
+**Secrets required in `ekabanov/memgram-bugs`:**
+- `ANTHROPIC_API_KEY` — Claude API key for the agent runner
+- `MAIN_REPO_TOKEN` — Fine-grained PAT: `Contents: read/write` + `Pull requests: read/write` on `ekabanov/Memgram`
+
+**Agent constraints (in `agent-prompt-template.md`):**
+- Read `CLAUDE.md` first
+- Fix at most 3 files; do not touch DB migrations
+- Build must pass before opening a PR (`CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`)
+- If root cause is unclear, comment on the issue instead of opening a PR
+
 ## PDF Export
 
 `PDFExporter` (`Memgram/Export/PDFExporter.swift`) exports a meeting summary as a PDF file.
