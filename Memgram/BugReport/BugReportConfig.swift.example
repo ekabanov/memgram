@@ -1,0 +1,8 @@
+// Copy this file to BugReportConfig.swift and fill in your values.
+// BugReportConfig.swift is gitignored — never commit it.
+
+enum BugReportConfig {
+    static let githubToken  = "ghp_YOUR_TOKEN_HERE"
+    static let repoOwner    = "YOUR_GITHUB_USERNAME"
+    static let repoName     = "memgram-bugs"
+}

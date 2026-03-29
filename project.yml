@@ -32,6 +32,7 @@ targets:
         excludes:
           - Resources/Info.plist
           - Resources/Memgram.entitlements
+          - BugReport/BugReportConfig.swift.example
     resources:
       - path: Memgram/Resources
         excludes:

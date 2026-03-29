@@ -25,6 +25,7 @@
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
+		4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
 		561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B565F886405D70876367BB2D /* LiveTranscriptView.swift */; };
 		697082341F362921D9038502 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
@@ -106,6 +107,7 @@
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
 		E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
+		E27492E6BDFF29042C71E300 /* BugReportConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportConfig.swift; sourceTree = "<group>"; };
 		E28822E40CBC23C661FBD955 /* PDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExporter.swift; sourceTree = "<group>"; };
 		E2DACCFEC6DB30395795F347 /* MeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingListView.swift; sourceTree = "<group>"; };
 		E3A335CC4E14196465F8F057 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 			children = (
 				75937709139C86A1308B34A6 /* AI */,
 				1540D94138F7124A4DB3CC62 /* Audio */,
+				99C6328FF10715284EFCBDDD /* BugReport */,
 				B919AABD577F8DA313FCC24F /* Calendar */,
 				0E5EF07669480A1E00D3AA0E /* Database */,
 				2E90FC5C4B06C2904334B8C7 /* Export */,
@@ -251,6 +254,14 @@
 				78F963FAD214383E6C348061 /* AppIcon.icns */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		99C6328FF10715284EFCBDDD /* BugReport */ = {
+			isa = PBXGroup;
+			children = (
+				E27492E6BDFF29042C71E300 /* BugReportConfig.swift */,
+			);
+			path = BugReport;
 			sourceTree = "<group>";
 		};
 		9AF7DF94C2C8B95A971ED025 /* Utilities */ = {
@@ -399,6 +410,7 @@
 				ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */,
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
+				4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */,
 				17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */,
 				697082341F362921D9038502 /* CalendarManager.swift in Sources */,
 				2D5B4554362FEC0DED44D1FF /* CalendarNotificationService.swift in Sources */,
