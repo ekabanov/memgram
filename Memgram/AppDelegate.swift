@@ -35,6 +35,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RecordingSession.shared.loadInterruptedMeetings()
         SummaryEngine.shared.cleanExistingSummaries()
 
+        // Pre-download models in the background so first recording starts instantly.
+        RecordingSession.shared.preloadWhisperModel()
+        #if canImport(MLXLLM)
+        if #available(macOS 14, *), LLMProviderStore.shared.selectedBackend == .qwen {
+            QwenLocalProvider.shared.preload()
+        }
+        #endif
+
         if #available(macOS 14.0, *) {
             CloudSyncEngine.shared.start()
         }

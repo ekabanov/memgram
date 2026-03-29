@@ -28,6 +28,21 @@ final class RecordingSession: ObservableObject {
 
     private init() {}
 
+    // MARK: - Startup Preload
+
+    /// Download and warm up the Whisper model in the background at app launch.
+    /// Safe to call multiple times — TranscriptionEngine.prepare() is idempotent.
+    func preloadWhisperModel() {
+        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
+        Task {
+            do {
+                try await transcriptionEngine.prepare(modelName: modelName)
+            } catch {
+                print("[RecordingSession] ⚠️ Whisper preload failed: \(error)")
+            }
+        }
+    }
+
     // MARK: - Recovery
 
     func loadInterruptedMeetings() {
