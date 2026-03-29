@@ -79,15 +79,6 @@ struct PopoverView: View {
             Text("Memgram")
                 .font(.headline)
             Spacer()
-            Picker("", selection: $modelManager.preferMultilingual) {
-                Text("English").tag(false)
-                Text("International").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .controlSize(.small)
-            .frame(width: 150)
-            .disabled(session.isRecording)
-            .help(session.isRecording ? "Language applies to the next recording" : "Transcription language")
             Button(action: { appDelegate?.openMainWindow() }) {
                 Label("Meetings", systemImage: "rectangle.stack")
                     .font(.caption)

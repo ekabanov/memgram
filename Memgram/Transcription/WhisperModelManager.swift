@@ -37,12 +37,7 @@ final class WhisperModelManager: ObservableObject {
     /// True while WhisperKit is downloading or loading the model for the first time.
     @Published var isWhisperDownloading: Bool = false
 
-    /// True = multilingual; False = English-only (faster, higher accuracy for English)
-    @Published var preferMultilingual: Bool {
-        didSet { UserDefaults.standard.set(preferMultilingual, forKey: "preferMultilingual") }
-    }
-
-    /// Model chosen automatically based on language preference and available RAM.
+    /// Model chosen automatically based on available RAM. Always multilingual.
     var selectedModel: WhisperModel { autoSelectedModel }
 
     var isModelReady: Bool { true }
@@ -55,26 +50,15 @@ final class WhisperModelManager: ObservableObject {
     /// Automatically pick the best model the hardware can comfortably run.
     ///
     /// Thresholds (Apple Silicon Mac line-up: 8 / 16 / 24 / 32 GB+):
-    ///  < 8 GB  → Small (244 MB) — unlikely on modern Apple Silicon but safe fallback
+    ///  < 8 GB  → Small multilingual (244 MB) — safe fallback
     ///  8 GB    → Large v3 Turbo Q (632 MB) — fits easily, excellent quality
     ///  ≥ 16 GB → Large v3 Turbo full (954 MB) — full precision, best quality
     var autoSelectedModel: WhisperModel {
         let ram = Self.ramGB
-        if ram >= 16 {
-            return .largeV3Full
-        } else if ram >= 8 {
-            return .largeV3Turbo
-        } else {
-            return preferMultilingual ? .small : .smallEn
-        }
+        if ram >= 16 { return .largeV3Full }
+        if ram >= 8  { return .largeV3Turbo }
+        return .small  // multilingual small — smallEn retired
     }
 
-    private init() {
-        // Default to International — covers more use cases out of the box
-        if UserDefaults.standard.object(forKey: "preferMultilingual") == nil {
-            preferMultilingual = true  // first launch default
-        } else {
-            preferMultilingual = UserDefaults.standard.bool(forKey: "preferMultilingual")
-        }
-    }
+    private init() {}
 }
