@@ -1,6 +1,9 @@
 import AVFoundation
 import CoreAudio
 import Combine
+import OSLog
+
+private let log = Logger.make("Audio")
 
 @available(macOS 14.4, *)
 final class CoreAudioTapCapture: SystemAudioCaptureProvider {
@@ -27,6 +30,7 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
         let tapProcesses: [AudioObjectID] = processIDs.isEmpty
             ? [AudioObjectID(kAudioObjectSystemObject)]
             : processIDs
+        log.info("CoreAudioTapCapture: \(processIDs.count) audio processes — strategy: \(processIDs.isEmpty ? "system-fallback" : "process-list", privacy: .public)")
         let tapDesc = CATapDescription(stereoMixdownOfProcesses: tapProcesses)
         tapDesc.name = "MemgramSystemTap"
         // isExclusive = false → spy tap (audio still plays through speakers)
@@ -38,6 +42,9 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
             tapStatus = AudioHardwareCreateProcessTap(tapDesc, &tapObjectID)
             if tapStatus == noErr { break }
             if attempt < 3 { try await Task.sleep(nanoseconds: 500_000_000) }
+        }
+        if tapStatus != noErr {
+            log.error("Tap creation failed after 3 attempts: OSStatus \(tapStatus)")
         }
         guard tapStatus == noErr else {
             throw AudioCaptureError.tapCreationFailed(tapStatus)
@@ -59,6 +66,9 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
             aggregateDeviceID = kAudioObjectUnknown
             aggStatus = AudioHardwareCreateAggregateDevice(aggregateDict as CFDictionary, &aggregateDeviceID)
         }
+        if aggStatus != noErr {
+            log.error("Aggregate device creation failed: OSStatus \(aggStatus)")
+        }
         guard aggStatus == noErr else {
             AudioHardwareDestroyProcessTap(tapObjectID)
             tapObjectID = kAudioObjectUnknown
@@ -74,6 +84,7 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
 
         let nativeSampleRate = asbd.mSampleRate
         let nativeChannels = asbd.mChannelsPerFrame
+        log.info("Format: \(Int(nativeSampleRate))Hz \(nativeChannels)ch")
 
         // STEP 5: IOProc
         let subjectCapture = subject
@@ -104,12 +115,16 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
                 subjectCapture.send(resampled)
             }
         }
+        if procStatus != noErr || procID == nil {
+            log.error("IOProc creation failed: OSStatus \(procStatus)")
+        }
         guard procStatus == noErr, let procID else {
             teardownHard()
             throw AudioCaptureError.ioProcFailed(procStatus)
         }
         self.ioProcID = procID
         AudioDeviceStart(aggregateDeviceID, procID)
+        log.info("CoreAudioTapCapture started")
     }
 
     func stop() async {
