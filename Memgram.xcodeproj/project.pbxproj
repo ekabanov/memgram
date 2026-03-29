@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A4A6FAF2578E27545AE7053 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF09BEF692E4C86B766A5C7A /* Log.swift */; };
 		0B4A45336C12AFF1B2CB2090 /* MeetingEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */; };
 		0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */; };
 		10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A335CC4E14196465F8F057 /* AppDelegate.swift */; };
@@ -92,6 +93,7 @@
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D9D739005F69BB4F709259E /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		AF09BEF692E4C86B766A5C7A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		B565F886405D70876367BB2D /* LiveTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptView.swift; sourceTree = "<group>"; };
 		B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
 		BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenLocalProvider.swift; sourceTree = "<group>"; };
@@ -172,8 +174,6 @@
 				2E90FC5C4B06C2904334B8C7 /* Export */,
 				3592EE7D6628062A2FE2A6AF /* Permissions */,
 				7A25DEEEE20C564ECFD8F52C /* Resources */,
-				F3AFF10886A5D1372189B8F3 /* Search */,
-				B7C3E54B8624B6D69A678BA8 /* Storage */,
 				36D0B7EB2C0A4AA8F984A9BC /* Sync */,
 				FAD869B59D73800AFEDEE945 /* Transcription */,
 				6BA73221FE8D81B0538304B0 /* UI */,
@@ -257,6 +257,7 @@
 			isa = PBXGroup;
 			children = (
 				3F9518923B9FA68D6694C5AD /* AudioConverter.swift */,
+				AF09BEF692E4C86B766A5C7A /* Log.swift */,
 				278D238861836CB5BDF0154A /* Notifications.swift */,
 			);
 			path = Utilities;
@@ -273,14 +274,6 @@
 				CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */,
 			);
 			path = MainWindow;
-			sourceTree = "<group>";
-		};
-		B7C3E54B8624B6D69A678BA8 /* Storage */ = {
-			isa = PBXGroup;
-			children = (
-				CD3CDFCF7479291FD29F257E /* Models */,
-			);
-			path = Storage;
 			sourceTree = "<group>";
 		};
 		B919AABD577F8DA313FCC24F /* Calendar */ = {
@@ -304,26 +297,12 @@
 			path = MenuBar;
 			sourceTree = "<group>";
 		};
-		CD3CDFCF7479291FD29F257E /* Models */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
 		DD5C597A85C2EB7FCF978634 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
 				45C4DEB4673DB88282F219CF /* SettingsView.swift */,
 			);
 			path = Settings;
-			sourceTree = "<group>";
-		};
-		F3AFF10886A5D1372189B8F3 /* Search */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Search;
 			sourceTree = "<group>";
 		};
 		FAD869B59D73800AFEDEE945 /* Transcription */ = {
@@ -433,6 +412,7 @@
 				DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */,
 				E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */,
 				561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */,
+				0A4A6FAF2578E27545AE7053 /* Log.swift in Sources */,
 				DA6DBBEEAF18E108551B16C3 /* MainWindowView.swift in Sources */,
 				4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */,
 				C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */,
