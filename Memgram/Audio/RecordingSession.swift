@@ -1,12 +1,15 @@
 import AVFoundation
 import Combine
 import AppKit
+import OSLog
 
 /// Owns and coordinates all audio components for a single recording session.
 @MainActor
 final class RecordingSession: ObservableObject {
 
     static let shared = RecordingSession()
+
+    private let log = Logger.make("Audio")
 
     @Published private(set) var isRecording = false
     @Published var micLevel: Float = 0
@@ -83,7 +86,7 @@ final class RecordingSession: ObservableObject {
             do {
                 try await self.transcriptionEngine.prepare(modelName: modelName)
             } catch {
-                print("[RecordingSession] ✗ WhisperKit load failed for '\(modelName)': \(error)")
+                self.log.error("WhisperKit load failed for '\(modelName, privacy: .public)': \(error)")
             }
         }
 
@@ -166,7 +169,7 @@ final class RecordingSession: ObservableObject {
             let rawTranscript = self.segments
                 .map { "\($0.speaker): \($0.text)" }
                 .joined(separator: "\n")
-            print("[RecordingSession] Finalising meeting \(id) — \(self.segments.count) segments, transcript \(rawTranscript.count) chars")
+            self.log.info("Finalising meeting \(id, privacy: .public) — \(self.segments.count) segments, \(rawTranscript.count) chars")
             try? MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript)
             self.currentMeetingId = nil
             self.segmentCancellable = nil
@@ -179,10 +182,10 @@ final class RecordingSession: ObservableObject {
         }
 
         if transcriptionEngine.isIdle {
-            print("[RecordingSession] Transcription already idle — finalising immediately")
+            self.log.info("Transcription already idle — finalising immediately")
             finalize()
         } else {
-            print("[RecordingSession] Waiting for transcription queue to drain before finalising")
+            self.log.info("Waiting for transcription queue to drain")
             finalizationCancellable = transcriptionEngine.allChunksDonePublisher
                 .first()
                 .receive(on: DispatchQueue.main)
@@ -192,7 +195,7 @@ final class RecordingSession: ObservableObject {
             // finalize after 120 seconds regardless.
             DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
                 guard let self, self.finalizationCancellable != nil else { return }
-                print("[RecordingSession] ⚠️ Transcription drain timed out — finalising anyway")
+                self.log.warning("Transcription drain timed out — finalising anyway")
                 self.finalizationCancellable = nil
                 finalize()
             }
