@@ -28,6 +28,7 @@
 		4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
 		561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B565F886405D70876367BB2D /* LiveTranscriptView.swift */; };
+		579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
 		697082341F362921D9038502 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = F979AADA93C8B3A477894A87 /* WhisperKit */; };
 		7FB48F758AB985BDCBAFF851 /* MicrophoneCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F902E1020C4FC6C2401E92 /* MicrophoneCapture.swift */; };
@@ -36,10 +37,12 @@
 		9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269098F6F8AD2D7EAE48AC4C /* ClaudeProvider.swift */; };
 		A014CBA98A79D45243C72F8D /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */; };
 		A24CDC605E52AC049DE52718 /* EmbeddingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201C8D6048B8ABDC78FB3CDF /* EmbeddingEngine.swift */; };
+		A5FAF5B5110002A277AA27F3 /* BugReportPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */; };
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
 		B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 78F963FAD214383E6C348061 /* AppIcon.icns */; };
+		BC578E3DA71EB07461ADF16E /* BugReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AF2D313FD0669F68D81F39 /* BugReportView.swift */; };
 		BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 53BD9539689CB76F94BBDACC /* MLXLLM */; };
 		C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = AE534A3FFDD02E4A672EDB9C /* MarkdownUI */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
@@ -91,6 +94,7 @@
 		8B42916D4665E4E55C140260 /* MeetingSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSegment.swift; sourceTree = "<group>"; };
 		9272F36873A483ABC9FDCB0F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		95BDF9934A5067BEC5703004 /* StereoMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StereoMixer.swift; sourceTree = "<group>"; };
+		98AF2D313FD0669F68D81F39 /* BugReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportView.swift; sourceTree = "<group>"; };
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D9D739005F69BB4F709259E /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
@@ -100,6 +104,7 @@
 		BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenLocalProvider.swift; sourceTree = "<group>"; };
 		BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomServerProvider.swift; sourceTree = "<group>"; };
 		BE1E2B84348CF7B813409F0F /* Speaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speaker.swift; sourceTree = "<group>"; };
+		BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportPayload.swift; sourceTree = "<group>"; };
 		C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingEmbedding.swift; sourceTree = "<group>"; };
 		C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetailView.swift; sourceTree = "<group>"; };
 		CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
@@ -112,6 +117,7 @@
 		E2DACCFEC6DB30395795F347 /* MeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingListView.swift; sourceTree = "<group>"; };
 		E3A335CC4E14196465F8F057 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		F0B16CE774DDB719F2117948 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportSubmitter.swift; sourceTree = "<group>"; };
 		F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarContext.swift; sourceTree = "<group>"; };
 		FD6CF342BB0459F5A34F2B93 /* Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meeting.swift; sourceTree = "<group>"; };
@@ -260,6 +266,9 @@
 			isa = PBXGroup;
 			children = (
 				E27492E6BDFF29042C71E300 /* BugReportConfig.swift */,
+				BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */,
+				F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */,
+				98AF2D313FD0669F68D81F39 /* BugReportView.swift */,
 			);
 			path = BugReport;
 			sourceTree = "<group>";
@@ -411,6 +420,9 @@
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
 				4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */,
+				A5FAF5B5110002A277AA27F3 /* BugReportPayload.swift in Sources */,
+				579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */,
+				BC578E3DA71EB07461ADF16E /* BugReportView.swift in Sources */,
 				17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */,
 				697082341F362921D9038502 /* CalendarManager.swift in Sources */,
 				2D5B4554362FEC0DED44D1FF /* CalendarNotificationService.swift in Sources */,
