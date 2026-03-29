@@ -59,8 +59,36 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                     }
                     print("[QwenLocal] stream() — starting token-by-token generation")
                     let session = ChatSession(container, instructions: system)
+
+                    // Buffer tokens until the <think> block closes, then stream the real response.
+                    // If no <think> block appears in the first tokens, stream immediately.
+                    var rawAccumulated = ""
+                    var pastThinking = false
+
                     for try await chunk in session.streamResponse(to: user) {
-                        continuation.yield(chunk)
+                        rawAccumulated += chunk
+
+                        if pastThinking {
+                            // Think block is done — yield every subsequent token directly
+                            continuation.yield(chunk)
+                        } else if rawAccumulated.contains("</think>") {
+                            // Think block just closed — yield everything after it
+                            pastThinking = true
+                            let afterThink = rawAccumulated
+                                .components(separatedBy: "</think>")
+                                .dropFirst()
+                                .joined(separator: "</think>")
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !afterThink.isEmpty {
+                                continuation.yield(afterThink)
+                            }
+                        } else if !rawAccumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        .hasPrefix("<think>") && rawAccumulated.count > 10 {
+                            // No think block after first tokens — stream normally from here
+                            pastThinking = true
+                            continuation.yield(rawAccumulated)
+                        }
+                        // else: still buffering the think block
                     }
                     continuation.finish()
                     print("[QwenLocal] stream() — generation complete")
