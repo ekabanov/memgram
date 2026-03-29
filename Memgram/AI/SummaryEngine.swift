@@ -85,14 +85,15 @@ final class SummaryEngine: ObservableObject {
             let cleanSummary = stripThinkingTags(summary)
             print("[SummaryEngine] ✓ Summary generated (\(cleanSummary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
+            // Clear active indicator NOW — before title generation which can take a long time
+            activeMeetingIds.remove(meetingId)
             streamingText.removeValue(forKey: meetingId)
-            // Clear the active indicator and notify UI BEFORE title generation so progress clears immediately
             await MainActor.run {
                 NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             }
             print("[SummaryEngine] ✓ Saved and notified")
-            // Auto-title runs after UI is unblocked (defer handles cleanup on all paths)
-            await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
+            // Fire title generation in a separate task so summarize() returns immediately
+            Task { await self.generateTitle(meetingId: meetingId, overrideBackend: overrideBackend) }
         } catch {
             print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
             streamingText.removeValue(forKey: meetingId)
