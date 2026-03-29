@@ -154,7 +154,7 @@ final class RecordingSession: ObservableObject {
             catch { log.error("updateStatus(.transcribing) failed for meeting \(id, privacy: .public): \(error)") }
         }
 
-        mixer.disconnect()
+        mixer.flushAndDisconnect()
         micCapture?.stop()
         await sysCapture?.stop()
         micCapture = nil

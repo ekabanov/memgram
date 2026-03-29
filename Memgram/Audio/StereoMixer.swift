@@ -51,6 +51,26 @@ final class StereoMixer {
         }
     }
 
+    /// Flush any remaining partial audio (< 30 s) as a final chunk, then disconnect.
+    func flushAndDisconnect() {
+        micCancellable = nil
+        sysCancellable = nil
+        DispatchQueue.main.async { self.levelTimer?.invalidate(); self.levelTimer = nil }
+        lock.lock()
+        let mic = micAccumulator
+        let sys = sysAccumulator
+        micAccumulator.removeAll()
+        sysAccumulator.removeAll()
+        lock.unlock()
+
+        let count = max(mic.count, sys.count)
+        guard count > 0 else { return }
+        let paddedMic = mic.count < count ? mic + [Float](repeating: 0, count: count - mic.count) : mic
+        let paddedSys = sys.count < count ? sys + [Float](repeating: 0, count: count - sys.count) : sys
+        guard let chunk = buildStereoBuffer(left: paddedMic, right: paddedSys) else { return }
+        subject.send(chunk)
+    }
+
     func disconnect() {
         micCancellable = nil
         sysCancellable = nil
