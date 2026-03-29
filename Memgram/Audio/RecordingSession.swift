@@ -38,12 +38,14 @@ final class RecordingSession: ObservableObject {
     }
 
     func recoverMeeting(_ meeting: Meeting) {
-        try? MeetingStore.shared.updateStatus(meeting.id, status: .done)
+        do { try MeetingStore.shared.updateStatus(meeting.id, status: .done) }
+        catch { log.error("updateStatus(.done) failed for meeting \(meeting.id, privacy: .public): \(error)") }
         interruptedMeetings.removeAll { $0.id == meeting.id }
     }
 
     func discardMeeting(_ meeting: Meeting) {
-        try? MeetingStore.shared.discardMeeting(meeting.id)
+        do { try MeetingStore.shared.discardMeeting(meeting.id) }
+        catch { log.error("discardMeeting failed for meeting \(meeting.id, privacy: .public): \(error)") }
         interruptedMeetings.removeAll { $0.id == meeting.id }
     }
 
@@ -65,8 +67,10 @@ final class RecordingSession: ObservableObject {
         if calendarContext == nil, CalendarManager.shared.isEnabled {
             if let event = CalendarManager.shared.findEvent(around: Date()) {
                 let ctx = CalendarManager.shared.context(for: event)
-                try? MeetingStore.shared.updateTitle(meeting.id, title: ctx.eventTitle)
-                try? MeetingStore.shared.updateCalendarContext(meeting.id, eventId: event.eventIdentifier, context: ctx)
+                do { try MeetingStore.shared.updateTitle(meeting.id, title: ctx.eventTitle) }
+                catch { log.error("updateTitle failed for meeting \(meeting.id, privacy: .public): \(error)") }
+                do { try MeetingStore.shared.updateCalendarContext(meeting.id, eventId: event.eventIdentifier, context: ctx) }
+                catch { log.error("updateCalendarContext failed for meeting \(meeting.id, privacy: .public): \(error)") }
             }
         }
 
@@ -96,7 +100,8 @@ final class RecordingSession: ObservableObject {
         } catch {
             mic.stop()
             if let id = currentMeetingId {
-                try? MeetingStore.shared.updateStatus(id, status: .error)
+                do { try MeetingStore.shared.updateStatus(id, status: .error) }
+                catch { log.error("updateStatus(.error) failed for meeting \(id, privacy: .public): \(error)") }
             }
             throw error
         }
@@ -130,8 +135,9 @@ final class RecordingSession: ObservableObject {
             .sink { [weak self] segment in
                 self?.segments.append(segment)          // UI update stays on main
                 let id = meetingId
-                Task.detached(priority: .utility) {    // DB write off main
-                    try? MeetingStore.shared.appendSegment(segment, toMeeting: id)
+                Task.detached(priority: .utility) { [log = self?.log] in    // DB write off main
+                    do { try MeetingStore.shared.appendSegment(segment, toMeeting: id) }
+                    catch { log?.error("appendSegment failed for meeting \(id, privacy: .public): \(error)") }
                 }
             }
 
@@ -144,7 +150,8 @@ final class RecordingSession: ObservableObject {
         let meetingId = currentMeetingId
 
         if let id = meetingId {
-            try? MeetingStore.shared.updateStatus(id, status: .transcribing)
+            do { try MeetingStore.shared.updateStatus(id, status: .transcribing) }
+            catch { log.error("updateStatus(.transcribing) failed for meeting \(id, privacy: .public): \(error)") }
         }
 
         mixer.disconnect()
@@ -160,7 +167,8 @@ final class RecordingSession: ObservableObject {
         isRecording = false
 
         let tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent("memgram")
-        try? FileManager.default.removeItem(at: tmpDir)
+        do { try FileManager.default.removeItem(at: tmpDir) }
+        catch { log.debug("Temp dir removal skipped: \(error)") }
 
         guard let id = meetingId else { return }
 
@@ -170,7 +178,8 @@ final class RecordingSession: ObservableObject {
                 .map { "\($0.speaker): \($0.text)" }
                 .joined(separator: "\n")
             self.log.info("Finalising meeting \(id, privacy: .public) — \(self.segments.count) segments, \(rawTranscript.count) chars")
-            try? MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript)
+            do { try MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript) }
+            catch { log.error("finalizeMeeting failed for meeting \(id, privacy: .public): \(error)") }
             self.currentMeetingId = nil
             self.segmentCancellable = nil
             self.finalizationCancellable = nil
