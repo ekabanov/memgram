@@ -29,6 +29,58 @@ final class OpenAIProvider: LLMProvider {
         return response.choices.first?.message.content ?? ""
     }
 
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    struct Message: Encodable { let role: String; let content: String }
+                    struct Request: Encodable {
+                        let model: String; let messages: [Message]; let stream: Bool
+                    }
+                    let body = Request(
+                        model: "gpt-4o-mini",
+                        messages: [
+                            Message(role: "system", content: system),
+                            Message(role: "user",   content: user)
+                        ],
+                        stream: true
+                    )
+                    var request = URLRequest(
+                        url: URL(string: "https://api.openai.com/v1/chat/completions")!,
+                        timeoutInterval: 600
+                    )
+                    request.httpMethod = "POST"
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.setValue("Bearer \(self.apiKey)", forHTTPHeaderField: "Authorization")
+                    request.httpBody = try JSONEncoder().encode(body)
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse,
+                          (200...299).contains(http.statusCode) else {
+                        throw URLError(.badServerResponse)
+                    }
+
+                    struct Delta: Decodable { let content: String? }
+                    struct Choice: Decodable { let delta: Delta }
+                    struct StreamChunk: Decodable { let choices: [Choice] }
+
+                    for try await line in bytes.lines {
+                        guard line.hasPrefix("data: ") else { continue }
+                        let json = String(line.dropFirst(6))
+                        guard json != "[DONE]" else { break }
+                        guard let data = json.data(using: .utf8),
+                              let chunk = try? JSONDecoder().decode(StreamChunk.self, from: data),
+                              let text = chunk.choices.first?.delta.content else { continue }
+                        continuation.yield(text)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
     func embed(text: String) async throws -> [Float] {
         struct Request: Encodable { let model: String; let input: String }
         struct EmbeddingData: Decodable { let embedding: [Float] }
