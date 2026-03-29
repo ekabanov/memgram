@@ -33,6 +33,55 @@ final class GeminiProvider: LLMProvider {
         return response.candidates.first?.content.parts.first?.text ?? ""
     }
 
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    struct GPart: Encodable { let text: String }
+                    struct GSystemInstruction: Encodable { let parts: [GPart] }
+                    struct GContentItem: Encodable { let role: String; let parts: [GPart] }
+                    struct GRequest: Encodable {
+                        let systemInstruction: GSystemInstruction
+                        let contents: [GContentItem]
+                    }
+                    let body = GRequest(
+                        systemInstruction: .init(parts: [GPart(text: system)]),
+                        contents: [GContentItem(role: "user", parts: [GPart(text: user)])]
+                    )
+                    let urlStr = "https://generativelanguage.googleapis.com/v1beta/models/\(self.model):streamGenerateContent?key=\(self.apiKey)&alt=sse"
+                    guard let url = URL(string: urlStr) else { throw URLError(.badURL) }
+                    var request = URLRequest(url: url, timeoutInterval: 600)
+                    request.httpMethod = "POST"
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.httpBody = try JSONEncoder().encode(body)
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: request)
+                    guard let http = response as? HTTPURLResponse,
+                          (200...299).contains(http.statusCode) else {
+                        throw URLError(.badServerResponse)
+                    }
+
+                    struct RPart: Decodable { let text: String }
+                    struct RContent: Decodable { let parts: [RPart] }
+                    struct RCandidate: Decodable { let content: RContent }
+                    struct GStreamEvent: Decodable { let candidates: [RCandidate] }
+
+                    for try await line in bytes.lines {
+                        guard line.hasPrefix("data: ") else { continue }
+                        let json = String(line.dropFirst(6))
+                        guard let data = json.data(using: .utf8),
+                              let event = try? JSONDecoder().decode(GStreamEvent.self, from: data),
+                              let text = event.candidates.first?.content.parts.first?.text else { continue }
+                        continuation.yield(text)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
     func embed(text: String) async throws -> [Float] {
         try await OllamaProvider().embed(text: text)
     }
