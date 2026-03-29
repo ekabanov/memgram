@@ -47,5 +47,24 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 protocol LLMProvider {
     var name: String { get }
     func complete(system: String, user: String) async throws -> String
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error>
     func embed(text: String) async throws -> [Float]
+}
+
+extension LLMProvider {
+    /// Default: wraps complete() — yields the full response as a single chunk.
+    /// Providers that support real streaming override this.
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let result = try await self.complete(system: system, user: user)
+                    continuation.yield(result)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
 }
