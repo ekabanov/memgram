@@ -100,31 +100,31 @@ final class PermissionsManager: ObservableObject {
 
     @available(macOS 14.4, *)
     private func requestCoreAudioTapPermission() async -> Bool {
-        // AudioHardwareCreateProcessTap is synchronous — it cannot wait for the user to
-        // respond to a TCC dialog. SCShareableContent.excludingDesktopWindows IS properly
-        // async and awaits the "Screen and System Audio Recording" dialog.
-        // CoreAudioTap and ScreenCaptureKit share the same TCC category, so triggering
-        // the dialog via SCKit grants permission for both.
-        let scGranted = await requestScreenCapturePermission()
-        guard scGranted else { return false }
-
-        // Verify the CoreAudio tap also works now that permission has been granted.
         var processIDs = Self.audioProcessObjectIDs()
         if processIDs.isEmpty {
-            try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+            try? await Task.sleep(nanoseconds: 500_000_000)
             processIDs = Self.audioProcessObjectIDs()
         }
-        guard !processIDs.isEmpty else {
-            // No audio processes to probe — trust SCKit result.
-            return scGranted
-        }
+        guard !processIDs.isEmpty else { return false }
 
-        let tapGranted = Self.probeAudioTapPermission(processIDs: processIDs)
-        await MainActor.run {
-            systemAudioGranted = tapGranted
-            UserDefaults.standard.set(tapGranted, forKey: "systemAudioPermissionGranted")
+        // First probe triggers the dedicated CoreAudio permission dialog
+        // ("Memgram would like to access audio from other apps") — this is NOT
+        // Screen Recording. The call is synchronous and returns immediately before
+        // the user responds, so we poll until granted or timeout.
+        _ = Self.probeAudioTapPermission(processIDs: processIDs)
+
+        for _ in 0..<90 {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)  // 1s per poll
+            let granted = Self.probeAudioTapPermission(processIDs: processIDs)
+            if granted {
+                await MainActor.run {
+                    systemAudioGranted = true
+                    UserDefaults.standard.set(true, forKey: "systemAudioPermissionGranted")
+                }
+                return true
+            }
         }
-        return tapGranted
+        return false
     }
 
     /// Attempt to create and immediately destroy a tap. Returns true if TCC allows it.
