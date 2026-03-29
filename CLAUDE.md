@@ -106,6 +106,18 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **Output:** Single tall PDF page sized to content. Sufficient for sharing; PDF viewers handle tall pages correctly.
 - **MeetingDetailView integration:** "Export PDF…" (NSSavePanel) and "Share…" (NSSharingServicePicker) in the `⋯` menu, disabled when `summary == nil`. `isExporting` state shows a `ProgressView` spinner in place of the `⋯` button.
 
+## LLM Streaming
+
+`LLMProvider` has a `stream(system:user:) -> AsyncThrowingStream<String, Error>` method alongside `complete()`.
+
+- **Default implementation:** wraps `complete()` — yields the full response as a single chunk. Qwen uses this path.
+- **SSE providers (Claude, OpenAI, Custom Server, Gemini):** use `URLSession.bytes(for:)` + `bytes.lines` to parse Server-Sent Events. Add `stream: true` to the request body. Parse `data:` prefixed JSON lines, skipping `[DONE]` sentinels.
+- **Gemini SSE:** uses `streamGenerateContent?alt=sse` endpoint instead of `generateContent`.
+- **SummaryEngine streaming:** `summarize()` builds an `onChunk: (String) -> Void` closure that strips `<think>` tags, suppresses updates while a `<think>` block is open (Qwen reasoning), and dispatches `streamingText[meetingId] = visible` to main actor. `summarizeShort` and `summarizeFinal` both use `provider.stream()` loops and call `onChunk` with the accumulated string after each token.
+- **`streamingText: [String: String]`** — `@Published` on `SummaryEngine`. Set during generation, cleared by `defer` in `summarize()` (covers all exit paths including early returns and errors).
+- **MeetingDetailView:** shows `streamingText[meetingId]` as live `Markdown` with a "Generating…" badge overlay while active; falls back to saved summary; skeleton while waiting for first tokens.
+- **`<think>` suppression:** `onChunk` checks `hasPrefix("<think>") && !contains("</think>")` — no UI updates while the thinking block is still open, then content streams normally once `</think>` appears.
+
 ## Key Implementation Details
 
 - **SWIFT_STRICT_CONCURRENCY: minimal** — cross-actor accesses compile without errors.

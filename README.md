@@ -10,9 +10,9 @@ Memgram is a private, offline-first macOS meeting recorder. It silently captures
 - **Dual-channel capture** — mic (you) + system audio (remote) simultaneously
 - **Local transcription** — WhisperKit (Metal decoder + Neural Engine encoder), auto-selects model based on your RAM
 - **Speaker diarisation** — stereo routing separates "You" from "Remote"
-- **AI summaries** — generated after each meeting; structured Markdown with participants, topics, decisions, action items
+- **AI summaries** — stream word-by-word as the model generates; structured Markdown with participants, topics, decisions, action items
 - **Inline search** — filter transcript segments by text or speaker; global semantic search (Cmd+F)
-- **Summary tab** — rendered Markdown with Copy and Regenerate (choose model inline)
+- **Summary tab** — live streaming Markdown with Copy, Export PDF, Share and Regenerate
 - **Auto-titling** — LLM generates a 4–8 word title from the summary
 - **iCloud sync** — meetings, transcripts, and speaker names sync across Macs via CloudKit
 - **Calendar integration** — upcoming events shown in popover; menu bar icon pulses purple before a meeting; event title, notes and attendees improve AI summaries
