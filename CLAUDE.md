@@ -117,6 +117,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **`streamingText: [String: String]`** — `@Published` on `SummaryEngine`. Set during generation, cleared by `defer` in `summarize()` (covers all exit paths including early returns and errors).
 - **MeetingDetailView:** shows `streamingText[meetingId]` as live `Markdown` with a "Generating…" badge overlay while active; falls back to saved summary; skeleton while waiting for first tokens.
 - **`<think>` suppression:** `onChunk` checks `hasPrefix("<think>") && !contains("</think>")` — no UI updates while the thinking block is still open, then content streams normally once `</think>` appears.
+- **Qwen thinking disabled:** `ChatSession` is created with `additionalContext: ["enable_thinking": false]`, which is passed as a Jinja template variable and suppresses the think block entirely. The `<think>` filter in `stream()` remains as a safety net.
 
 ## Key Implementation Details
 
