@@ -1,5 +1,8 @@
 import Foundation
 import Combine
+import OSLog
+
+private let log = Logger.make("AI")
 
 @MainActor
 final class LLMProviderStore: ObservableObject {
@@ -24,12 +27,12 @@ final class LLMProviderStore: ObservableObject {
         ollamaModel       = UserDefaults.standard.string(forKey: "ollamaModel") ?? "llama3.2"
         customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
         customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
-        print("[LLMProviderStore] Loaded — backend: \(selectedBackend.displayName) (raw saved: '\(saved)')")
+        log.info("Loaded — backend: \(self.selectedBackend.displayName, privacy: .public) (raw saved: \(saved, privacy: .public))")
     }
 
     var currentProvider: any LLMProvider {
         let p = providerFor(selectedBackend)
-        print("[LLMProviderStore] currentProvider → \(p.name)")
+        log.debug("currentProvider → \(p.name, privacy: .public)")
         return p
     }
 
