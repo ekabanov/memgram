@@ -47,21 +47,15 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     }
 
     func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
-        // Capture container before entering the stream closure (main actor access)
-        let containerSnapshot = modelContainer
-        return AsyncThrowingStream { continuation in
+        AsyncThrowingStream { continuation in
             Task.detached(priority: .userInitiated) {
                 do {
-                    // Load model if needed — must happen off main actor via loadModel's own detach
-                    let container: ModelContainer
-                    if let c = containerSnapshot {
-                        container = c
-                    } else {
-                        // Model not yet loaded — fall back to complete() which handles loading
-                        let result = try await self.complete(system: system, user: user)
-                        continuation.yield(result)
-                        continuation.finish()
-                        return
+                    // Load model on main actor if not yet ready
+                    if await self.modelContainer == nil {
+                        try await self.loadModel()
+                    }
+                    guard let container = await self.modelContainer else {
+                        throw QwenError.modelNotLoaded
                     }
                     print("[QwenLocal] stream() — starting token-by-token generation")
                     let session = ChatSession(container, instructions: system)
