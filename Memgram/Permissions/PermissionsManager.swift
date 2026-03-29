@@ -109,28 +109,34 @@ final class PermissionsManager: ObservableObject {
 
     @available(macOS 14.4, *)
     private func requestCoreAudioTapPermission() async -> Bool {
-        // Use real audio process IDs — kAudioObjectSystemObject is NOT a valid process object.
-        // If no processes are running now, wait briefly and try again.
         var processIDs = Self.audioProcessObjectIDs()
         if processIDs.isEmpty {
-            try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+            try? await Task.sleep(nanoseconds: 500_000_000)
             processIDs = Self.audioProcessObjectIDs()
         }
         log.info("CoreAudio tap permission check: \(processIDs.count) processes")
+        guard !processIDs.isEmpty else { return false }
 
-        // If still no processes, fall back to SCKit to at least trigger the dialog
-        guard !processIDs.isEmpty else {
-            log.warning("No audio processes for CoreAudio tap — falling back to ScreenCaptureKit")
-            return await requestScreenCapturePermission()
-        }
+        // First probe triggers the dedicated CoreAudio permission dialog
+        // ("Memgram would like to access audio from other apps") — this is NOT
+        // Screen Recording. The call is synchronous and returns immediately before
+        // the user responds, so we poll until granted or timeout.
+        _ = Self.probeAudioTapPermission(processIDs: processIDs)
 
-        let granted = Self.probeAudioTapPermission(processIDs: processIDs)
-        log.info("CoreAudio tap probe result: granted=\(granted)")
-        await MainActor.run {
-            systemAudioGranted = granted
-            UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
+        for _ in 0..<90 {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)  // 1s per poll
+            let granted = Self.probeAudioTapPermission(processIDs: processIDs)
+            if granted {
+                log.info("CoreAudio tap permission granted")
+                await MainActor.run {
+                    systemAudioGranted = true
+                    UserDefaults.standard.set(true, forKey: "systemAudioPermissionGranted")
+                }
+                return true
+            }
         }
-        return granted
+        log.warning("CoreAudio tap permission not granted after 90s polling")
+        return false
     }
 
     /// Attempt to create and immediately destroy a tap. Returns true if TCC allows it.

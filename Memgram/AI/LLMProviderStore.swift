@@ -9,10 +9,17 @@ final class LLMProviderStore: ObservableObject {
     static let shared = LLMProviderStore()
 
     @Published var selectedBackend: LLMBackend {
-        didSet { UserDefaults.standard.set(selectedBackend.rawValue, forKey: "llmBackend") }
-    }
-    @Published var ollamaModel: String {
-        didSet { UserDefaults.standard.set(ollamaModel, forKey: "ollamaModel") }
+        didSet {
+            UserDefaults.standard.set(selectedBackend.rawValue, forKey: "llmBackend")
+            // Cancel any in-progress Qwen download when user switches away
+            if oldValue == .qwen && selectedBackend != .qwen {
+                #if canImport(MLXLLM)
+                if #available(macOS 14, *) {
+                    QwenLocalProvider.shared.cancelDownload()
+                }
+                #endif
+            }
+        }
     }
     @Published var customServerURL: String {
         didSet { UserDefaults.standard.set(customServerURL, forKey: "customServerURL") }
@@ -24,7 +31,6 @@ final class LLMProviderStore: ObservableObject {
     private init() {
         let saved = UserDefaults.standard.string(forKey: "llmBackend") ?? ""
         selectedBackend   = LLMBackend(rawValue: saved) ?? .qwen
-        ollamaModel       = UserDefaults.standard.string(forKey: "ollamaModel") ?? "llama3.2"
         customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
         customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
         log.info("Loaded — backend: \(self.selectedBackend.displayName, privacy: .public) (raw saved: \(saved, privacy: .public))")
@@ -42,12 +48,20 @@ final class LLMProviderStore: ObservableObject {
         case .qwen:
             #if canImport(MLXLLM)
             if #available(macOS 14, *) { return QwenLocalProvider.shared }
-            else { return OllamaProvider(model: "qwen3:8b") }
+            else {
+                return CustomServerProvider(
+                    baseURL:   customServerURL,
+                    apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
+                    modelName: customServerModel
+                )
+            }
             #else
-            return OllamaProvider(model: "qwen3:8b")
+            return CustomServerProvider(
+                baseURL:   customServerURL,
+                apiKey:    KeychainHelper.load(key: "customServerKey") ?? "",
+                modelName: customServerModel
+            )
             #endif
-        case .ollama:
-            return OllamaProvider(model: ollamaModel)
         case .custom:
             return CustomServerProvider(
                 baseURL:   customServerURL,
@@ -63,7 +77,4 @@ final class LLMProviderStore: ObservableObject {
         }
     }
 
-    func fetchOllamaModels() async -> [String] {
-        await OllamaProvider(model: ollamaModel).listModels()
-    }
 }

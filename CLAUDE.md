@@ -39,7 +39,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **Transcription:** WhisperKit auto-downloads models. Model auto-selected by `WhisperModelManager.autoSelectedModel` based on RAM + `preferMultilingual` flag. Users only see English/Multilingual toggle — no model list.
 
-**LLM backends:** Qwen (local MLX via `mlx-swift-lm`), Ollama, Custom Server, Claude, OpenAI, Gemini. `LLMProviderStore.currentProvider` delegates to `providerFor(selectedBackend)`. API keys in Keychain only.
+**LLM backends:** Qwen (local MLX via `mlx-swift-lm`), Custom Server (OpenAI-compatible — covers Ollama/LM Studio/vLLM), Claude, OpenAI, Gemini. `LLMProviderStore.currentProvider` delegates to `providerFor(selectedBackend)`. API keys in Keychain only. All backends stream tokens via `provider.stream()` — cloud providers use SSE, Qwen uses `ChatSession.streamResponse()`.
 
 **SummaryEngine:** `@MainActor ObservableObject`. `activeMeetingIds: Set<String>` tracks in-progress jobs — observed by UI for spinners. `summarize()` runs LLM off main (awaits provider), saves to DB, then calls `generateTitle()`. Title generation runs AFTER `activeMeetingIds.remove()` so progress clears immediately.
 
@@ -51,10 +51,10 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 |---------|---------|---------|
 | GRDB | 6.x | SQLite (WAL, FTS5, `PRAGMA foreign_keys = ON`) |
 | WhisperKit | 0.9+ | Transcription (Metal decoder + ANE encoder) |
-| MLXSwiftLM | commit `4051621` | Qwen local inference |
+| MLXSwiftLM | branch `main` | Qwen local inference |
 | MarkdownUI | 2.x | Markdown rendering in summary tab |
 
-**⚠️ MLXSwiftLM pinning:** Pinned to commit `4051621` — `main` branch broke `swift-transformers` compat with WhisperKit. When WhisperKit supports `swift-transformers >= 1.2.0`, switch to `branch: main`.
+**⚠️ WhisperKit fork:** Using `ekabanov/WhisperKit` (fork of `argmaxinc/WhisperKit`) pinned to commit `69c0a9d`. The only change from upstream is `swift-transformers` constraint relaxed from `< 1.2.0` to `>= 1.2.0` in `Package.swift`. This unblocks MLXSwiftLM `branch: main`. If upstream WhisperKit ever ships a release with `swift-transformers >= 1.2.0`, revert to `argmaxinc/WhisperKit` with `from: "0.x.0"`.
 
 ## Calendar Integration
 
@@ -138,6 +138,20 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **Markdown parsing:** Line-by-line — `##`/`###` headings, `**bold**` (regex + NSFontManager), `` `code` `` (monospaced + background), `- `/`* ` bullets. Inline span regex is applied after building the base `NSMutableAttributedString` (not on HTML-escaped text).
 - **Output:** Single tall PDF page sized to content. Sufficient for sharing; PDF viewers handle tall pages correctly.
 - **MeetingDetailView integration:** "Export PDF…" (NSSavePanel) and "Share…" (NSSharingServicePicker) in the `⋯` menu, disabled when `summary == nil`. `isExporting` state shows a `ProgressView` spinner in place of the `⋯` button.
+
+## LLM Streaming
+
+`LLMProvider` has a `stream(system:user:) -> AsyncThrowingStream<String, Error>` method alongside `complete()`.
+
+- **Default implementation:** wraps `complete()` — yields the full response as a single chunk. Used as fallback only.
+- **Qwen implementation:** overrides `stream()` with `ChatSession.streamResponse(to:)` for true token-by-token output. Runs in `Task.detached` to avoid main actor deadlock with MLX's `AsyncMutex`. Buffers tokens until `</think>` closes if a think block appears.
+- **SSE providers (Claude, OpenAI, Custom Server, Gemini):** use `URLSession.bytes(for:)` + `bytes.lines` to parse Server-Sent Events. Add `stream: true` to the request body. Parse `data:` prefixed JSON lines, skipping `[DONE]` sentinels.
+- **Gemini SSE:** uses `streamGenerateContent?alt=sse` endpoint instead of `generateContent`.
+- **SummaryEngine streaming:** `summarize()` builds an `onChunk: (String) -> Void` closure that strips `<think>` tags, suppresses updates while a `<think>` block is open (Qwen reasoning), and dispatches `streamingText[meetingId] = visible` to main actor. `summarizeShort` and `summarizeFinal` both use `provider.stream()` loops and call `onChunk` with the accumulated string after each token.
+- **`streamingText: [String: String]`** — `@Published` on `SummaryEngine`. Set during generation, cleared by `defer` in `summarize()` (covers all exit paths including early returns and errors).
+- **MeetingDetailView:** shows `streamingText[meetingId]` as live `Markdown` with a "Generating…" badge overlay while active; falls back to saved summary; skeleton while waiting for first tokens.
+- **`<think>` suppression:** `onChunk` checks `hasPrefix("<think>") && !contains("</think>")` — no UI updates while the thinking block is still open, then content streams normally once `</think>` appears.
+- **Qwen thinking disabled:** `ChatSession` is created with `additionalContext: ["enable_thinking": false]`, which is passed as a Jinja template variable and suppresses the think block entirely. The `<think>` filter in `stream()` remains as a safety net.
 
 ## Key Implementation Details
 

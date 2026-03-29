@@ -13,11 +13,11 @@ packages:
     url: https://github.com/groue/GRDB.swift
     from: "6.0.0"
   WhisperKit:
-    url: https://github.com/argmaxinc/WhisperKit
-    from: "0.9.0"
+    url: https://github.com/ekabanov/WhisperKit
+    revision: "69c0a9d60199725ac216e80797a732836c473c1f"
   MLXSwiftLM:
     url: https://github.com/ml-explore/mlx-swift-lm
-    revision: "405162196eb484eeaa4afcc7bd354f9b559a11d5"
+    branch: main
   MarkdownUI:
     url: https://github.com/gonzalezreal/swift-markdown-ui
     from: "2.0.0"
@@ -72,8 +72,8 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "6N57Z7GY37"
         SWIFT_STRICT_CONCURRENCY: minimal
-        MARKETING_VERSION: "0.2.0"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "0.3.0"
+        CURRENT_PROJECT_VERSION: "3"
         ENABLE_HARDENED_RUNTIME: YES
     dependencies:
       - package: GRDB

@@ -37,14 +37,6 @@ struct ModelDownloadView: View {
                     .multilineTextAlignment(.center)
             }
 
-            // Language selector
-            Picker("Language", selection: $modelManager.preferMultilingual) {
-                Text("English").tag(false)
-                Text("Multilingual").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 260)
-
             // Auto-selected model info
             VStack(spacing: 6) {
                 HStack(spacing: 6) {

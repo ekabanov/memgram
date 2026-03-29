@@ -11,7 +11,7 @@ final class EmbeddingEngine {
               let transcript = meeting.rawTranscript, !transcript.isEmpty else { return }
 
         let provider = await MainActor.run { LLMProviderStore.shared.currentProvider }
-        let modelName = await MainActor.run { LLMProviderStore.shared.ollamaModel }
+        let modelName = provider.name
         let chunks = chunkText(transcript)
 
         for chunk in chunks {

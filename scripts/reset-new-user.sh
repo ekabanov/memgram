@@ -39,10 +39,12 @@ if [ "$KEEP_MEETINGS" = false ]; then
   rm -rf ~/Library/Containers/"$BUNDLE_ID"/Data/Library/Application\ Support/Memgram
 fi
 
-# 5. Remove WhisperKit model cache
+# 5. Remove model caches
 if [ "$KEEP_MODELS" = false ]; then
   echo "   Removing WhisperKit model cache…"
   rm -rf ~/Library/Caches/huggingface
+  echo "   Removing Qwen/MLX model cache…"
+  rm -rf ~/Library/Containers/"$BUNDLE_ID"/Data/Library/Caches/models
 fi
 
 echo ""

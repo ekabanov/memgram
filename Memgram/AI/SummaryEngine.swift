@@ -10,37 +10,26 @@ final class SummaryEngine: ObservableObject {
 
     /// Meeting IDs currently being summarised. Observed by UI for progress indicators.
     @Published private(set) var activeMeetingIds: Set<String> = []
+    /// Partial summary text being streamed, keyed by meetingId.
+    /// Non-nil only while generation is in progress for that meeting.
+    @Published private(set) var streamingText: [String: String] = [:]
     @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
-        You are a meeting notes assistant. Create comprehensive, well-structured notes from meeting \
-        transcripts. Capture all significant topics and details — do not omit important information, \
-        structure it well instead. Use speaker names when attributing statements.
-
-        Follow these additional rules:
-        - **Proper noun correction:** When a company name, person name, or product is phonetically \
-          transcribed inconsistently (e.g. "Vault" when surrounding context makes clear the speaker \
-          means "Bolt"), use the contextually correct version throughout. On its first corrected \
-          occurrence, add a note: *(transcript: "original")*. Do not add the note again.
-        - **Calendar context:** When calendar event metadata is provided (event title, attendee names, \
-          notes), use it to correct speaker names and proper nouns in the transcript. Map generic \
-          "Speaker 1", "Speaker 2" labels to attendee names when you can reasonably infer who is \
-          speaking based on context. Note the mapping in the Participants section.
-        - **Consistency pass:** Before writing, scan the full transcript for the same entity referred \
-          to by multiple similar-sounding names. Pick the one that fits the context and use it \
-          consistently.
-        - Mark claims that are genuinely ambiguous even after context analysis with \
-          [possibly: alternate interpretation] — but only when truly uncertain.
-        - Add brief context in [brackets] for acronyms or technical terms that benefit from \
-          explanation — only when it adds real value.
-        - Do not add commentary or reasoning steps beyond what is in the transcript.
-        - Format output as Markdown. Use bullet points and bold for clarity.
+        You are a meeting notes assistant. Create clear, concise notes from meeting \
+        transcripts. Use speaker names when attributing statements. Correct obvious \
+        transcription errors in proper nouns based on context — do not annotate the \
+        corrections. When calendar event metadata is provided, use it to identify \
+        speakers and correct proper nouns. Format output as Markdown.
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
     func summarize(meetingId: String, overrideBackend: LLMBackend? = nil) async {
         activeMeetingIds.insert(meetingId)
-        defer { activeMeetingIds.remove(meetingId) }
+        defer {
+            activeMeetingIds.remove(meetingId)
+            streamingText.removeValue(forKey: meetingId)
+        }
         lastError = nil
         log.info("Starting summarisation for \(meetingId, privacy: .public)")
 
@@ -72,24 +61,45 @@ final class SummaryEngine: ObservableObject {
 
         do {
             let summary: String
+            // Closure that updates streamingText after stripping think-tags.
+            // Suppressed while a <think> block is still open (reasoning models).
+            let onChunk: (String) -> Void = { [weak self] accumulated in
+                guard let self else { return }
+                let isThinking = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .hasPrefix("<think>") && !accumulated.contains("</think>")
+                if !isThinking {
+                    let visible = self.stripThinkingTags(accumulated)
+                    if !visible.isEmpty {
+                        Task { @MainActor [weak self] in
+                            self?.streamingText[meetingId] = visible
+                        }
+                    }
+                }
+            }
+
             if (meeting.durationSeconds ?? 0) > 3600 {
                 log.info("Long meeting (>60min) — chunked summarisation")
-                summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx, provider: provider)
+                summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx,
+                                                  provider: provider, onChunk: onChunk)
             } else {
-                summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx, provider: provider)
+                summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx,
+                                                   provider: provider, onChunk: onChunk)
             }
             let cleanSummary = stripThinkingTags(summary)
             log.info("Summary generated (\(cleanSummary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
-            // Clear the active indicator and notify UI BEFORE title generation so progress clears immediately
+            // Clear active indicator NOW — before title generation which can take a long time
+            activeMeetingIds.remove(meetingId)
+            streamingText.removeValue(forKey: meetingId)
             await MainActor.run {
                 NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             }
             log.info("Summary saved and UI notified")
-            // Auto-title runs after UI is unblocked (defer handles cleanup on all paths)
-            await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
+            // Fire title generation in a separate task so summarize() returns immediately
+            Task { await self.generateTitle(meetingId: meetingId, overrideBackend: overrideBackend) }
         } catch {
             log.error("Failed to summarise meeting \(meetingId, privacy: .public): \(error)")
+            streamingText.removeValue(forKey: meetingId)
             await MainActor.run {
                 self.lastError = (meetingId: meetingId, message: error.localizedDescription)
             }
@@ -180,7 +190,9 @@ final class SummaryEngine: ObservableObject {
         }
     }
 
-    private func summarizeShort(transcript: String, calendarContext: CalendarContext?, provider: any LLMProvider) async throws -> String {
+    private func summarizeShort(transcript: String, calendarContext: CalendarContext?,
+                                 provider: any LLMProvider,
+                                 onChunk: ((String) -> Void)? = nil) async throws -> String {
         var contextBlock = ""
         if let ctx = calendarContext {
             contextBlock = """
@@ -190,8 +202,6 @@ final class SummaryEngine: ObservableObject {
             """
         }
         let user = """
-        /no_think
-
         \(contextBlock)Transcript:
 
         \(transcript)
@@ -216,16 +226,20 @@ final class SummaryEngine: ObservableObject {
 
         Rules: use markdown formatting (bold, bullets, headings). No meta-commentary about the transcript.
         """
-        return try await provider.complete(system: systemPrompt, user: user)
+        var accumulated = ""
+        for try await chunk in provider.stream(system: systemPrompt, user: user) {
+            accumulated += chunk
+            onChunk?(accumulated)
+        }
+        return accumulated
     }
 
-    private func summarizeFinal(chunkSummaries: [String], provider: any LLMProvider) async throws -> String {
+    private func summarizeFinal(chunkSummaries: [String], provider: any LLMProvider,
+                                 onChunk: ((String) -> Void)? = nil) async throws -> String {
         let combined = chunkSummaries.enumerated()
             .map { "Segment \($0.offset + 1):\n\($0.element)" }
             .joined(separator: "\n\n")
         let user = """
-        /no_think
-
         The following are notes from consecutive segments of a long meeting, each formatted in Markdown:
 
         \(combined)
@@ -237,10 +251,17 @@ final class SummaryEngine: ObservableObject {
         Use these sections with ## headings: ## Participants, ## Topics Discussed (with ### subheadings \
         per topic), ## Key Decisions, ## Action Items.
         """
-        return try await provider.complete(system: systemPrompt, user: user)
+        var accumulated = ""
+        for try await chunk in provider.stream(system: systemPrompt, user: user) {
+            accumulated += chunk
+            onChunk?(accumulated)
+        }
+        return accumulated
     }
 
-    private func summarizeLong(meetingId: String, calendarContext: CalendarContext?, provider: any LLMProvider) async throws -> String {
+    private func summarizeLong(meetingId: String, calendarContext: CalendarContext?,
+                                provider: any LLMProvider,
+                                onChunk: ((String) -> Void)? = nil) async throws -> String {
         let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
         let windows = chunkByTime(segments, windowMinutes: 20)
 
@@ -251,7 +272,7 @@ final class SummaryEngine: ObservableObject {
             chunkSummaries.append(summary)
         }
 
-        return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider)
+        return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider, onChunk: onChunk)
     }
 
     private func chunkByTime(_ segments: [MeetingSegment], windowMinutes: Double) -> [[MeetingSegment]] {

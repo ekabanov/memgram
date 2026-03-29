@@ -14,7 +14,7 @@ struct SettingsView: View {
             BugReportView()
                 .tabItem { Label("Help", systemImage: "questionmark.circle") }
         }
-        .frame(width: 620, height: 500)
+        .frame(width: 520, height: 440)
     }
 }
 
@@ -26,78 +26,46 @@ struct AISettingsTab: View {
     @State private var isTesting = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            providerSidebar
-                .frame(width: 190)
-            Divider()
-            VStack(spacing: 0) {
-                configPanel
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                testBar
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-            }
-        }
-    }
-
-    // MARK: - Sidebar
-
-    private var providerSidebar: some View {
-        List(selection: Binding(
-            get: { store.selectedBackend },
-            set: { store.selectedBackend = $0 }
-        )) {
-            ForEach(LLMBackendCategory.allCases, id: \.rawValue) { category in
-                Section(category.rawValue) {
-                    ForEach(LLMBackend.allCases.filter { $0.category == category }) { backend in
-                        ProviderRow(backend: backend)
-                            .tag(backend)
+        Form {
+            Section("AI Engine") {
+                Picker("Engine", selection: $store.selectedBackend) {
+                    ForEach(LLMBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
                     }
                 }
+                .pickerStyle(.menu)
+                .labelsHidden()
             }
-        }
-        .listStyle(.sidebar)
-    }
 
-    // MARK: - Config panel
-
-    @ViewBuilder
-    private var configPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            Section(store.selectedBackend.displayName) {
                 switch store.selectedBackend {
                 case .qwen:   QwenConfigView()
-                case .ollama: OllamaConfigView()
                 case .custom: CustomServerConfigView()
                 case .claude: APIKeyConfigView(service: "claude", label: "Claude API Key", placeholder: "sk-ant-…")
                 case .openai: APIKeyConfigView(service: "openai", label: "OpenAI API Key", placeholder: "sk-…")
                 case .gemini: APIKeyConfigView(service: "gemini", label: "Gemini API Key", placeholder: "AIza…")
                 }
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
 
-    // MARK: - Test bar
-
-    private var testBar: some View {
-        HStack {
-            Button(isTesting ? "Testing…" : "Test Connection") {
-                Task { await test() }
+            Section {
+                HStack {
+                    Button(isTesting ? "Testing…" : "Test Connection") {
+                        Task { await test() }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isTesting)
+                    if !connectionStatus.isEmpty {
+                        Text(connectionStatus)
+                            .font(.caption)
+                            .foregroundColor(connectionStatus.hasPrefix("Connected") || connectionStatus.hasPrefix("Responded") ? .green : .red)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    Spacer()
+                }
             }
-            .buttonStyle(.bordered)
-            .disabled(isTesting)
-            if !connectionStatus.isEmpty {
-                Text(connectionStatus)
-                    .font(.caption)
-                    .foregroundColor(connectionStatus.hasPrefix("Connected") || connectionStatus.hasPrefix("Responded") ? .green : .red)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            Spacer()
         }
+        .formStyle(.grouped)
     }
 
     private func test() async {
@@ -116,23 +84,6 @@ struct AISettingsTab: View {
             connectionStatus = "✗ \(error.localizedDescription)"
         }
         isTesting = false
-    }
-}
-
-// MARK: - Sidebar row
-
-private struct ProviderRow: View {
-    let backend: LLMBackend
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(backend.displayName)
-                .font(.body)
-            Text(backend.badge)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 2)
     }
 }
 
@@ -187,25 +138,6 @@ private struct QwenDownloadStatusView: View {
     }
 }
 #endif
-
-private struct OllamaConfigView: View {
-    @ObservedObject private var store = LLMProviderStore.shared
-    @State private var models: [String] = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Ollama", systemImage: "server.rack")
-                .font(.headline)
-            Text("Requires Ollama running locally (ollama.ai). Supports any installed model.")
-                .font(.body).foregroundColor(.secondary)
-            Picker("Model", selection: $store.ollamaModel) {
-                if models.isEmpty { Text(store.ollamaModel).tag(store.ollamaModel) }
-                ForEach(models, id: \.self) { Text($0).tag($0) }
-            }
-            .onAppear { Task { models = await store.fetchOllamaModels() } }
-        }
-    }
-}
 
 private struct CustomServerConfigView: View {
     @ObservedObject private var store = LLMProviderStore.shared

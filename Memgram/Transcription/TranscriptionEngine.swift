@@ -49,8 +49,10 @@ final class TranscriptionEngine {
     /// Load (and if needed download) the WhisperKit model, then warm up CoreML compilation.
     func prepare(modelName: String) async throws {
         log.info("Loading WhisperKit model: \(modelName, privacy: .public)")
+        await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = true }
         let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
         self.whisperKit = wk
+        await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = false }
         log.info("WhisperKit loaded — triggering CoreML warm-up")
 
         // Run a silent 1-second dummy transcription to force CoreML compilation now,

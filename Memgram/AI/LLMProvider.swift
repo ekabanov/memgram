@@ -1,14 +1,7 @@
 import Foundation
 
-enum LLMBackendCategory: String, CaseIterable {
-    case freeLocal  = "Free Local"
-    case selfHosted = "Self-Hosted"
-    case cloud      = "Cloud"
-}
-
 enum LLMBackend: String, CaseIterable, Identifiable {
     case qwen    = "qwen"     // Local Qwen via MLX
-    case ollama  = "ollama"
     case custom  = "custom"
     case claude  = "claude"
     case openai  = "openai"
@@ -19,7 +12,6 @@ enum LLMBackend: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .qwen:   return "Default (Qwen 3.5 9B)"
-        case .ollama: return "Ollama"
         case .custom: return "Custom Server"
         case .claude: return "Claude"
         case .openai: return "OpenAI"
@@ -27,17 +19,9 @@ enum LLMBackend: String, CaseIterable, Identifiable {
         }
     }
 
-    var category: LLMBackendCategory {
-        switch self {
-        case .qwen, .ollama:            return .freeLocal
-        case .custom:                   return .selfHosted
-        case .claude, .openai, .gemini: return .cloud
-        }
-    }
-
     var badge: String {
         switch self {
-        case .qwen, .ollama: return "Free"
+        case .qwen: return "Free"
         case .custom: return "Self-hosted"
         case .claude, .openai, .gemini: return "API key"
         }
@@ -46,8 +30,8 @@ enum LLMBackend: String, CaseIterable, Identifiable {
     /// Returns true if this backend has enough configuration to attempt a request.
     var isConfigured: Bool {
         switch self {
-        case .qwen, .ollama:
-            return true  // always available — Qwen auto-downloads, Ollama just needs the daemon
+        case .qwen:
+            return true  // always available — Qwen auto-downloads
         case .custom:
             return true  // always show — same logic as Ollama; connection errors surface separately
         case .claude:
@@ -63,5 +47,29 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 protocol LLMProvider {
     var name: String { get }
     func complete(system: String, user: String) async throws -> String
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error>
     func embed(text: String) async throws -> [Float]
+}
+
+extension LLMProvider {
+    /// Default: wraps complete() — yields the full response as a single chunk.
+    /// Providers that support real streaming override this.
+    ///
+    /// Uses Task.detached (not bare Task{}) so the call to complete() is always
+    /// explicitly off any actor context. A bare Task{} can inherit @MainActor
+    /// isolation under SWIFT_STRICT_CONCURRENCY:minimal, which deadlocks MLX's
+    /// internal AsyncMutex when called on QwenLocalProvider.
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            Task.detached {
+                do {
+                    let result = try await self.complete(system: system, user: user)
+                    continuation.yield(result)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
 }
