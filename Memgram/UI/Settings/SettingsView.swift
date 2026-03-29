@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView: View {
     var body: some View {
@@ -294,6 +295,8 @@ struct CalendarSettingsView: View {
 // MARK: - Privacy Settings
 
 struct PrivacySettingsTab: View {
+    @State private var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled)
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
@@ -308,6 +311,20 @@ struct PrivacySettingsTab: View {
                         .font(.body).foregroundColor(.secondary)
                 }
             }
+            Divider()
+            Toggle("Launch at Login", isOn: $launchAtLogin)
+                .onChange(of: launchAtLogin) { enabled in
+                    do {
+                        if enabled {
+                            try SMAppService.mainApp.register()
+                        } else {
+                            try SMAppService.mainApp.unregister()
+                        }
+                    } catch {
+                        // Revert toggle on failure
+                        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+                    }
+                }
             Divider()
             Button("Reset Permissions") {
                 UserDefaults.standard.removeObject(forKey: "microphonePermissionGranted")
