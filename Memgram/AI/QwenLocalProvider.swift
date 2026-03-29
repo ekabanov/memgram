@@ -31,11 +31,16 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
             print("[QwenLocal] ✗ Model container is nil after load attempt")
             throw QwenError.modelNotLoaded
         }
+        // Run inference in a detached task so it always executes off the main actor.
+        // This prevents deadlocks when complete() is called through an existential
+        // (any LLMProvider) which doesn't guarantee actor hops under minimal concurrency.
         print("[QwenLocal] Creating ChatSession — system prompt: \(system.prefix(80))…")
-        let session = ChatSession(container, instructions: system)
         let start = Date()
         print("[QwenLocal] Generating response…")
-        let response = try await session.respond(to: user)
+        let response = try await Task.detached(priority: .userInitiated) {
+            let session = ChatSession(container, instructions: system)
+            return try await session.respond(to: user)
+        }.value
         let elapsed = Date().timeIntervalSince(start)
         print("[QwenLocal] ✓ Response generated in \(String(format: "%.1f", elapsed))s — \(response.count) chars")
         return response
