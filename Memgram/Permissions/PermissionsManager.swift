@@ -3,6 +3,9 @@ import CoreAudio
 import ScreenCaptureKit
 import AppKit
 import SwiftUI
+import OSLog
+
+private let log = Logger.make("Permissions")
 
 final class PermissionsManager: ObservableObject {
     static let shared = PermissionsManager()
@@ -20,6 +23,7 @@ final class PermissionsManager: ObservableObject {
     private func checkStoredPermissions() {
         // Mic: check actual TCC state
         let micStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+        log.info("Mic auth status at startup: \(micStatus.rawValue)")
         microphoneGranted = (micStatus == .authorized)
         UserDefaults.standard.set(microphoneGranted, forKey: "microphonePermissionGranted")
 
@@ -27,6 +31,7 @@ final class PermissionsManager: ObservableObject {
         // Falls back to UserDefaults when no audio processes are running (early startup).
         if #available(macOS 14.4, *) {
             let processIDs = Self.audioProcessObjectIDs()
+            log.info("System audio check: \(processIDs.count) processes available")
             if processIDs.isEmpty {
                 // No audio processes to tap — can't verify. Default to false (safe)
                 // and schedule a re-check once audio processes are available.
@@ -48,8 +53,10 @@ final class PermissionsManager: ObservableObject {
             for _ in 0..<5 {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 let processIDs = Self.audioProcessObjectIDs()
+                log.debug("System audio recheck: \(processIDs.count) processes")
                 guard !processIDs.isEmpty else { continue }
                 let granted = Self.probeAudioTapPermission(processIDs: processIDs)
+                log.info("System audio recheck result: granted=\(granted)")
                 await MainActor.run {
                     systemAudioGranted = granted
                     UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
@@ -68,6 +75,7 @@ final class PermissionsManager: ObservableObject {
 
     func requestMicrophonePermission() async -> Bool {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        log.info("Microphone permission request — current status: \(status.rawValue)")
         switch status {
         case .authorized:
             await MainActor.run {
@@ -77,6 +85,7 @@ final class PermissionsManager: ObservableObject {
             return true
         case .notDetermined:
             let granted = await AVCaptureDevice.requestAccess(for: .audio)
+            log.info("Microphone permission result: granted=\(granted)")
             await MainActor.run {
                 microphoneGranted = granted
                 UserDefaults.standard.set(granted, forKey: "microphonePermissionGranted")
@@ -107,13 +116,16 @@ final class PermissionsManager: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
             processIDs = Self.audioProcessObjectIDs()
         }
+        log.info("CoreAudio tap permission check: \(processIDs.count) processes")
 
         // If still no processes, fall back to SCKit to at least trigger the dialog
         guard !processIDs.isEmpty else {
+            log.warning("No audio processes for CoreAudio tap — falling back to ScreenCaptureKit")
             return await requestScreenCapturePermission()
         }
 
         let granted = Self.probeAudioTapPermission(processIDs: processIDs)
+        log.info("CoreAudio tap probe result: granted=\(granted)")
         await MainActor.run {
             systemAudioGranted = granted
             UserDefaults.standard.set(granted, forKey: "systemAudioPermissionGranted")
@@ -153,6 +165,7 @@ final class PermissionsManager: ObservableObject {
     }
 
     private func requestScreenCapturePermission() async -> Bool {
+        log.info("ScreenCaptureKit permission: requesting")
         do {
             _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
             await MainActor.run {
@@ -161,6 +174,7 @@ final class PermissionsManager: ObservableObject {
             }
             return true
         } catch {
+            log.warning("ScreenCaptureKit permission denied: \(error)")
             await MainActor.run { systemAudioGranted = false }
             return false
         }

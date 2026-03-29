@@ -1,5 +1,8 @@
 import EventKit
 import Combine
+import OSLog
+
+private let log = Logger.make("Calendar")
 
 @MainActor
 final class CalendarManager: ObservableObject {
@@ -18,7 +21,9 @@ final class CalendarManager: ObservableObject {
     private var refreshTimer: Timer?
 
     private init() {
-        authorizationStatus = EKEventStore.authorizationStatus(for: .event)
+        let status = EKEventStore.authorizationStatus(for: .event)
+        authorizationStatus = status
+        log.info("CalendarManager init — auth: \(status.rawValue)")
     }
 
     // MARK: - Authorization
@@ -26,6 +31,7 @@ final class CalendarManager: ObservableObject {
     func requestAccess() async -> Bool {
         do {
             let granted = try await store.requestFullAccessToEvents()
+            log.info("Calendar access result: granted=\(granted)")
             authorizationStatus = EKEventStore.authorizationStatus(for: .event)
             if granted {
                 refreshAvailableCalendars()
@@ -34,6 +40,7 @@ final class CalendarManager: ObservableObject {
             }
             return granted
         } catch {
+            log.warning("Calendar access request failed: \(error)")
             authorizationStatus = EKEventStore.authorizationStatus(for: .event)
             return false
         }
@@ -82,6 +89,7 @@ final class CalendarManager: ObservableObject {
         let events = store.events(matching: predicate)
             .filter { !$0.isAllDay && $0.startDate > cutoff }
             .sorted { $0.startDate < $1.startDate }
+        log.debug("refreshUpcomingEvent: \(events.count) candidates, upcoming=\(events.first != nil)")
         upcomingEvent = events.first
         if let event = upcomingEvent {
             CalendarNotificationService.shared.scheduleNotification(for: event)
@@ -128,6 +136,7 @@ final class CalendarManager: ObservableObject {
                 self?.refreshUpcomingEvent()
             }
         }
+        log.info("Calendar monitoring started")
         // Also listen for calendar changes
         NotificationCenter.default.addObserver(
             self,
@@ -138,6 +147,7 @@ final class CalendarManager: ObservableObject {
     }
 
     func stopMonitoring() {
+        log.info("Calendar monitoring stopped")
         refreshTimer?.invalidate()
         refreshTimer = nil
         NotificationCenter.default.removeObserver(self, name: .EKEventStoreChanged, object: store)
