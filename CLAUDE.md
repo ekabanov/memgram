@@ -54,7 +54,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 | MLXSwiftLM | commit `4051621` | Qwen local inference |
 | MarkdownUI | 2.x | Markdown rendering in summary tab |
 
-**⚠️ MLXSwiftLM pinning:** Pinned to commit `4051621` — `main` branch broke `swift-transformers` compat with WhisperKit. When WhisperKit supports `swift-transformers >= 1.2.0`, switch to `branch: main`.
+**⚠️ WhisperKit fork:** Using `ekabanov/WhisperKit` (fork of `argmaxinc/WhisperKit`) pinned to commit `69c0a9d`. The only change from upstream is `swift-transformers` constraint relaxed from `< 1.2.0` to `>= 1.2.0` in `Package.swift`. This unblocks MLXSwiftLM `branch: main`. If upstream WhisperKit ever ships a release with `swift-transformers >= 1.2.0`, revert to `argmaxinc/WhisperKit` with `from: "0.x.0"`.
 
 ## Calendar Integration
 
