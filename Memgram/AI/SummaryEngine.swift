@@ -7,6 +7,9 @@ final class SummaryEngine: ObservableObject {
 
     /// Meeting IDs currently being summarised. Observed by UI for progress indicators.
     @Published private(set) var activeMeetingIds: Set<String> = []
+    /// Partial summary text being streamed, keyed by meetingId.
+    /// Non-nil only while generation is in progress for that meeting.
+    @Published private(set) var streamingText: [String: String] = [:]
     @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
@@ -69,15 +72,34 @@ final class SummaryEngine: ObservableObject {
 
         do {
             let summary: String
+            // Closure that updates streamingText after stripping think-tags.
+            // Suppressed while a <think> block is still open (reasoning models).
+            let onChunk: (String) -> Void = { [weak self] accumulated in
+                guard let self else { return }
+                let isThinking = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .hasPrefix("<think>") && !accumulated.contains("</think>")
+                if !isThinking {
+                    let visible = self.stripThinkingTags(accumulated)
+                    if !visible.isEmpty {
+                        Task { @MainActor [weak self] in
+                            self?.streamingText[meetingId] = visible
+                        }
+                    }
+                }
+            }
+
             if (meeting.durationSeconds ?? 0) > 3600 {
                 print("[SummaryEngine] Long meeting (>60min) — chunked summarisation")
-                summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx, provider: provider)
+                summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx,
+                                                  provider: provider, onChunk: onChunk)
             } else {
-                summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx, provider: provider)
+                summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx,
+                                                   provider: provider, onChunk: onChunk)
             }
             let cleanSummary = stripThinkingTags(summary)
             print("[SummaryEngine] ✓ Summary generated (\(cleanSummary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
+            streamingText.removeValue(forKey: meetingId)
             // Clear the active indicator and notify UI BEFORE title generation so progress clears immediately
             await MainActor.run {
                 NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
@@ -87,6 +109,7 @@ final class SummaryEngine: ObservableObject {
             await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
         } catch {
             print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
+            streamingText.removeValue(forKey: meetingId)
             await MainActor.run {
                 self.lastError = (meetingId: meetingId, message: error.localizedDescription)
             }
@@ -177,7 +200,9 @@ final class SummaryEngine: ObservableObject {
         }
     }
 
-    private func summarizeShort(transcript: String, calendarContext: CalendarContext?, provider: any LLMProvider) async throws -> String {
+    private func summarizeShort(transcript: String, calendarContext: CalendarContext?,
+                                 provider: any LLMProvider,
+                                 onChunk: ((String) -> Void)? = nil) async throws -> String {
         var contextBlock = ""
         if let ctx = calendarContext {
             contextBlock = """
@@ -213,10 +238,16 @@ final class SummaryEngine: ObservableObject {
 
         Rules: use markdown formatting (bold, bullets, headings). No meta-commentary about the transcript.
         """
-        return try await provider.complete(system: systemPrompt, user: user)
+        var accumulated = ""
+        for try await chunk in provider.stream(system: systemPrompt, user: user) {
+            accumulated += chunk
+            onChunk?(accumulated)
+        }
+        return accumulated
     }
 
-    private func summarizeFinal(chunkSummaries: [String], provider: any LLMProvider) async throws -> String {
+    private func summarizeFinal(chunkSummaries: [String], provider: any LLMProvider,
+                                 onChunk: ((String) -> Void)? = nil) async throws -> String {
         let combined = chunkSummaries.enumerated()
             .map { "Segment \($0.offset + 1):\n\($0.element)" }
             .joined(separator: "\n\n")
@@ -234,10 +265,17 @@ final class SummaryEngine: ObservableObject {
         Use these sections with ## headings: ## Participants, ## Topics Discussed (with ### subheadings \
         per topic), ## Key Decisions, ## Action Items.
         """
-        return try await provider.complete(system: systemPrompt, user: user)
+        var accumulated = ""
+        for try await chunk in provider.stream(system: systemPrompt, user: user) {
+            accumulated += chunk
+            onChunk?(accumulated)
+        }
+        return accumulated
     }
 
-    private func summarizeLong(meetingId: String, calendarContext: CalendarContext?, provider: any LLMProvider) async throws -> String {
+    private func summarizeLong(meetingId: String, calendarContext: CalendarContext?,
+                                provider: any LLMProvider,
+                                onChunk: ((String) -> Void)? = nil) async throws -> String {
         let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
         let windows = chunkByTime(segments, windowMinutes: 20)
 
@@ -248,7 +286,7 @@ final class SummaryEngine: ObservableObject {
             chunkSummaries.append(summary)
         }
 
-        return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider)
+        return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider, onChunk: onChunk)
     }
 
     private func chunkByTime(_ segments: [MeetingSegment], windowMinutes: Double) -> [[MeetingSegment]] {
