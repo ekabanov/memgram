@@ -389,7 +389,7 @@
 				94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				C9251B3719E5DBC75CF79002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				968C53C4C799846CCB446EFB /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
-				6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */,
+				8209D07005DC688B7B1D68E1 /* XCRemoteSwiftPackageReference "WhisperKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6CD5661289553449E8126190 /* Products */;
@@ -661,12 +661,12 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+		8209D07005DC688B7B1D68E1 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/argmaxinc/WhisperKit";
+			repositoryURL = "https://github.com/ekabanov/WhisperKit";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.9.0;
+				kind = revision;
+				revision = 69c0a9d60199725ac216e80797a732836c473c1f;
 			};
 		};
 		94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
@@ -689,8 +689,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm";
 			requirement = {
-				kind = revision;
-				revision = 405162196eb484eeaa4afcc7bd354f9b559a11d5;
+				branch = main;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -713,7 +713,7 @@
 		};
 		F979AADA93C8B3A477894A87 /* WhisperKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 6B38548969158661FA20E176 /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			package = 8209D07005DC688B7B1D68E1 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
 		};
 /* End XCSwiftPackageProductDependency section */
