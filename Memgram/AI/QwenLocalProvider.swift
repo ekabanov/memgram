@@ -46,6 +46,37 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         return response
     }
 
+    func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
+        // Capture container before entering the stream closure (main actor access)
+        let containerSnapshot = modelContainer
+        return AsyncThrowingStream { continuation in
+            Task.detached(priority: .userInitiated) {
+                do {
+                    // Load model if needed — must happen off main actor via loadModel's own detach
+                    let container: ModelContainer
+                    if let c = containerSnapshot {
+                        container = c
+                    } else {
+                        // Model not yet loaded — fall back to complete() which handles loading
+                        let result = try await self.complete(system: system, user: user)
+                        continuation.yield(result)
+                        continuation.finish()
+                        return
+                    }
+                    print("[QwenLocal] stream() — starting token-by-token generation")
+                    let session = ChatSession(container, instructions: system)
+                    for try await chunk in session.streamResponse(to: user) {
+                        continuation.yield(chunk)
+                    }
+                    continuation.finish()
+                    print("[QwenLocal] stream() — generation complete")
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
     func embed(text: String) async throws -> [Float] {
         // Qwen local model does not support embeddings.
         // Semantic search requires a cloud provider (Claude, OpenAI, or Gemini) configured in Settings.
