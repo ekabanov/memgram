@@ -320,23 +320,20 @@ struct MeetingDetailView: View {
             let streamingContent = summaryEngine.streamingText[meetingId]
 
             if let live = streamingContent, !live.isEmpty {
-                ScrollView {
-                    Markdown(live)
-                        .markdownTheme(.gitHub)
-                        .textSelection(.enabled)
-                        .padding()
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    HStack(spacing: 4) {
-                        ProgressView().controlSize(.mini)
-                        Text("Generating…")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                Markdown(live)
+                    .markdownTheme(.gitHub)
+                    .textSelection(.enabled)
+                    .overlay(alignment: .bottomTrailing) {
+                        HStack(spacing: 4) {
+                            ProgressView().controlSize(.mini)
+                            Text("Generating…")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(8)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(8)
                     }
-                    .padding(8)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
-                    .padding(8)
-                }
             } else if let summary = meeting?.summary, !summary.isEmpty {
                 Markdown(summary)
                     .markdownTheme(.gitHub)

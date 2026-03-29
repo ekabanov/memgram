@@ -40,7 +40,10 @@ final class SummaryEngine: ObservableObject {
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
     func summarize(meetingId: String, overrideBackend: LLMBackend? = nil) async {
         activeMeetingIds.insert(meetingId)
-        defer { activeMeetingIds.remove(meetingId) }
+        defer {
+            activeMeetingIds.remove(meetingId)
+            streamingText.removeValue(forKey: meetingId)
+        }
         lastError = nil
         print("[SummaryEngine] Starting summarisation for \(meetingId)")
 
