@@ -34,15 +34,20 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         // Run inference in a detached task so it always executes off the main actor.
         // This prevents deadlocks when complete() is called through an existential
         // (any LLMProvider) which doesn't guarantee actor hops under minimal concurrency.
-        print("[QwenLocal] Creating ChatSession — system prompt: \(system.prefix(80))…")
+        print("[QwenLocal] complete() — starting generation")
         let start = Date()
-        print("[QwenLocal] Generating response…")
+        // Use streamResponse() — session.respond() deadlocks with MLX's AsyncMutex
         let response = try await Task.detached(priority: .userInitiated) {
-            let session = ChatSession(container, instructions: system)
-            return try await session.respond(to: user)
+            let session = ChatSession(container, instructions: system,
+                                      additionalContext: ["enable_thinking": false])
+            var result = ""
+            for try await chunk in session.streamResponse(to: user) {
+                result += chunk
+            }
+            return result
         }.value
         let elapsed = Date().timeIntervalSince(start)
-        print("[QwenLocal] ✓ Response generated in \(String(format: "%.1f", elapsed))s — \(response.count) chars")
+        print("[QwenLocal] ✓ complete() done in \(String(format: "%.1f", elapsed))s — \(response.count) chars")
         return response
     }
 
