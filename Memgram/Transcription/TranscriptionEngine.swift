@@ -1,5 +1,6 @@
 import AVFoundation
 import Combine
+import OSLog
 import WhisperKit
 
 enum AudioChannel: String {
@@ -19,6 +20,7 @@ struct TranscriptSegment: Identifiable {
 
 final class TranscriptionEngine {
 
+    private let log = Logger.make("Transcription")
     private var whisperKit: WhisperKit?
     private let subject = PassthroughSubject<TranscriptSegment, Never>()
     private var accumulatedSeconds: Double = 0
@@ -46,16 +48,16 @@ final class TranscriptionEngine {
 
     /// Load (and if needed download) the WhisperKit model, then warm up CoreML compilation.
     func prepare(modelName: String) async throws {
-        print("[TranscriptionEngine] Loading WhisperKit model: \(modelName)")
+        log.info("Loading WhisperKit model: \(modelName, privacy: .public)")
         let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
         self.whisperKit = wk
-        print("[TranscriptionEngine] ✓ WhisperKit loaded — triggering CoreML warm-up (first run only)…")
+        log.info("WhisperKit loaded — triggering CoreML warm-up")
 
         // Run a silent 1-second dummy transcription to force CoreML compilation now,
         // rather than stalling the first real recording chunk.
         let silence = [Float](repeating: 0, count: 16000)
         _ = try? await wk.transcribe(audioArray: silence)
-        print("[TranscriptionEngine] ✓ WhisperKit ready — model: \(modelName)")
+        log.info("WhisperKit ready — model: \(modelName, privacy: .public)")
         drainIfIdle()  // process any chunks that arrived before the model was ready
     }
 
@@ -100,16 +102,13 @@ final class TranscriptionEngine {
                 )
                 let rms = chunk.samples.reduce(0.0) { $0 + $1 * $1 }
                 let energy = sqrt(rms / Float(max(1, chunk.samples.count)))
-                print("[TranscriptionEngine] Transcribing chunk — \(chunk.samples.count) samples (\(Int(Double(chunk.samples.count)/16000))s), RMS energy: \(String(format: "%.5f", energy))")
+                log.debug("Transcribing chunk — \(chunk.samples.count) samples (\(Int(Double(chunk.samples.count)/16000))s)")
                 let results: [TranscriptionResult] = try await whisperKit.transcribe(
                     audioArray: chunk.samples,
                     decodeOptions: options
                 )
                 let allSegments = results.flatMap(\.segments)
-                print("[TranscriptionEngine] ✓ Got \(results.count) result(s), \(allSegments.count) segment(s)")
-                for seg in allSegments {
-                    print("[TranscriptionEngine]   seg: '\(seg.text)' [\(seg.start)→\(seg.end)s]")
-                }
+                log.debug("Got \(results.count) result(s), \(allSegments.count) segment(s)")
 
                 for result in results {
                     for seg in result.segments {
@@ -138,7 +137,7 @@ final class TranscriptionEngine {
                     }
                 }
             } catch {
-                print("[TranscriptionEngine] ✗ Chunk transcription threw: \(error)")
+                log.error("Chunk transcription failed: \(error)")
             }
             self.isTranscribing = false
             if self.pendingChunks.isEmpty {
