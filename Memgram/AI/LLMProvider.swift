@@ -1,14 +1,7 @@
 import Foundation
 
-enum LLMBackendCategory: String, CaseIterable {
-    case freeLocal  = "Free Local"
-    case selfHosted = "Self-Hosted"
-    case cloud      = "Cloud"
-}
-
 enum LLMBackend: String, CaseIterable, Identifiable {
     case qwen    = "qwen"     // Local Qwen via MLX
-    case ollama  = "ollama"
     case custom  = "custom"
     case claude  = "claude"
     case openai  = "openai"
@@ -19,7 +12,6 @@ enum LLMBackend: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .qwen:   return "Default (Qwen 3.5 9B)"
-        case .ollama: return "Ollama"
         case .custom: return "Custom Server"
         case .claude: return "Claude"
         case .openai: return "OpenAI"
@@ -27,17 +19,9 @@ enum LLMBackend: String, CaseIterable, Identifiable {
         }
     }
 
-    var category: LLMBackendCategory {
-        switch self {
-        case .qwen, .ollama:            return .freeLocal
-        case .custom:                   return .selfHosted
-        case .claude, .openai, .gemini: return .cloud
-        }
-    }
-
     var badge: String {
         switch self {
-        case .qwen, .ollama: return "Free"
+        case .qwen: return "Free"
         case .custom: return "Self-hosted"
         case .claude, .openai, .gemini: return "API key"
         }
@@ -46,8 +30,8 @@ enum LLMBackend: String, CaseIterable, Identifiable {
     /// Returns true if this backend has enough configuration to attempt a request.
     var isConfigured: Bool {
         switch self {
-        case .qwen, .ollama:
-            return true  // always available — Qwen auto-downloads, Ollama just needs the daemon
+        case .qwen:
+            return true  // always available — Qwen auto-downloads
         case .custom:
             return true  // always show — same logic as Ollama; connection errors surface separately
         case .claude:
