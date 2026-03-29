@@ -20,6 +20,7 @@ struct PopoverView: View {
                 LiveTranscriptView(segments: session.segments)
                     .frame(maxHeight: 180)
             } else {
+                downloadCards
                 upcomingEventCard
                 statusSection
                     .padding(.horizontal, 16)
@@ -136,6 +137,63 @@ struct PopoverView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
+    }
+
+    // MARK: - Download Cards
+
+    @ViewBuilder
+    private var downloadCards: some View {
+        if modelManager.isWhisperDownloading {
+            downloadProgressCard(
+                icon: "arrow.down.circle",
+                iconColor: .blue,
+                title: "Setting up Whisper",
+                subtitle: "\(modelManager.selectedModel.sizeMB) MB · first run only",
+                progress: nil
+            )
+        }
+        #if canImport(MLXLLM)
+        if #available(macOS 14, *) {
+            QwenDownloadCard()
+        }
+        #endif
+    }
+
+    private func downloadProgressCard(
+        icon: String,
+        iconColor: Color,
+        title: String,
+        subtitle: String,
+        progress: Double?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(iconColor)
+                Text(title)
+                    .font(.caption.bold())
+                Spacer()
+                if let p = progress {
+                    Text("\(Int(p * 100))%")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let p = progress {
+                ProgressView(value: p)
+                    .tint(iconColor)
+            } else {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .tint(iconColor)
+            }
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal)
     }
 
     // MARK: - Upcoming Event Card
@@ -293,6 +351,55 @@ struct PopoverView: View {
             .frame(width: 6, height: 6)
     }
 }
+
+// MARK: - Qwen Download Card
+
+#if canImport(MLXLLM)
+@available(macOS 14, *)
+private struct QwenDownloadCard: View {
+    @ObservedObject private var qwen = QwenLocalProvider.shared
+
+    var body: some View {
+        let isDownloading = qwen.downloadProgress > 0 && qwen.downloadProgress < 1
+        let hasError = qwen.loadError != nil && !qwen.isLoaded
+
+        if isDownloading || hasError {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: hasError ? "exclamationmark.circle" : "arrow.down.circle")
+                        .foregroundStyle(hasError ? .red : .purple)
+                    Text(hasError ? "Qwen download failed" : "Downloading Qwen 3.5 9B")
+                        .font(.caption.bold())
+                    Spacer()
+                    if isDownloading {
+                        Text("\(Int(qwen.downloadProgress * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if isDownloading {
+                    ProgressView(value: qwen.downloadProgress)
+                        .tint(.purple)
+                    Text("~4.5 GB · runs locally")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else if let err = qwen.loadError {
+                    Text(err)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .lineLimit(2)
+                    Button("Retry") { qwen.preload() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                }
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal)
+        }
+    }
+}
+#endif
 
 // MARK: - Level Meter
 
