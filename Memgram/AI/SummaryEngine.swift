@@ -203,12 +203,25 @@ final class SummaryEngine: ObservableObject {
 
         \(transcript)
 
-        Write meeting notes in Markdown:
+        Write comprehensive meeting notes in **Markdown format**. Do not omit significant topics or \
+        details — a longer meeting deserves longer notes. Cover everything that was discussed.
+
+        Use these sections with ## headings:
 
         ## Participants
+        Who was in the meeting and their roles (if mentioned).
+
         ## Topics Discussed
+        For each major topic covered, use a ### subheading and write bullet points capturing the key \
+        points, information shared, and positions expressed. Be thorough — this is the main section.
+
         ## Key Decisions
+        Bullet list of each decision reached. Write "None" if there were none.
+
         ## Action Items
+        Bullet list as "**Owner:** Task". Write "None" if there were none.
+
+        Rules: use markdown formatting (bold, bullets, headings). No meta-commentary about the transcript.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
@@ -224,16 +237,16 @@ final class SummaryEngine: ObservableObject {
             .map { "Segment \($0.offset + 1):\n\($0.element)" }
             .joined(separator: "\n\n")
         let user = """
-        The following are notes from consecutive segments of a long meeting:
+        The following are notes from consecutive segments of a long meeting, each formatted in Markdown:
 
         \(combined)
 
-        Merge into combined meeting notes in Markdown:
+        Merge these into comprehensive combined meeting notes in **Markdown format**. \
+        Integrate information across segments — do not repeat the same point multiple times. \
+        Cover all significant topics and details.
 
-        ## Participants
-        ## Topics Discussed
-        ## Key Decisions
-        ## Action Items
+        Use these sections with ## headings: ## Participants, ## Topics Discussed (with ### subheadings \
+        per topic), ## Key Decisions, ## Action Items.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
