@@ -65,7 +65,10 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
             ) { [weak self] progress in
                 let frac = progress.fractionCompleted
                 Task { @MainActor [weak self] in
-                    self?.downloadProgress = frac
+                    // Only advance — never go backwards. Multi-shard downloads fire
+                    // concurrent callbacks that can arrive out of order.
+                    guard let self, frac > self.downloadProgress else { return }
+                    self.downloadProgress = frac
                 }
                 if Int(frac * 100) % 10 == 0 {
                     print("[QwenLocal] Download progress: \(Int(frac * 100))%")
