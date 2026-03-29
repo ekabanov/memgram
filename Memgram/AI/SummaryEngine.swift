@@ -13,28 +13,11 @@ final class SummaryEngine: ObservableObject {
     @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
-        You are a meeting notes assistant. Create comprehensive, well-structured notes from meeting \
-        transcripts. Capture all significant topics and details — do not omit important information, \
-        structure it well instead. Use speaker names when attributing statements.
-
-        Follow these additional rules:
-        - **Proper noun correction:** When a company name, person name, or product is phonetically \
-          transcribed inconsistently (e.g. "Vault" when surrounding context makes clear the speaker \
-          means "Bolt"), use the contextually correct version throughout. On its first corrected \
-          occurrence, add a note: *(transcript: "original")*. Do not add the note again.
-        - **Calendar context:** When calendar event metadata is provided (event title, attendee names, \
-          notes), use it to correct speaker names and proper nouns in the transcript. Map generic \
-          "Speaker 1", "Speaker 2" labels to attendee names when you can reasonably infer who is \
-          speaking based on context. Note the mapping in the Participants section.
-        - **Consistency pass:** Before writing, scan the full transcript for the same entity referred \
-          to by multiple similar-sounding names. Pick the one that fits the context and use it \
-          consistently.
-        - Mark claims that are genuinely ambiguous even after context analysis with \
-          [possibly: alternate interpretation] — but only when truly uncertain.
-        - Add brief context in [brackets] for acronyms or technical terms that benefit from \
-          explanation — only when it adds real value.
-        - Do not add commentary or reasoning steps beyond what is in the transcript.
-        - Format output as Markdown. Use bullet points and bold for clarity.
+        You are a meeting notes assistant. Create clear, concise notes from meeting \
+        transcripts. Use speaker names when attributing statements. Correct obvious \
+        transcription errors in proper nouns based on context — do not annotate the \
+        corrections. When calendar event metadata is provided, use it to identify \
+        speakers and correct proper nouns. Format output as Markdown.
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
@@ -215,31 +198,16 @@ final class SummaryEngine: ObservableObject {
             """
         }
         let user = """
-        /no_think
-
         \(contextBlock)Transcript:
 
         \(transcript)
 
-        Write comprehensive meeting notes in **Markdown format**. Do not omit significant topics or \
-        details — a longer meeting deserves longer notes. Cover everything that was discussed.
-
-        Use these sections with ## headings:
+        Write meeting notes in Markdown:
 
         ## Participants
-        Who was in the meeting and their roles (if mentioned).
-
         ## Topics Discussed
-        For each major topic covered, use a ### subheading and write bullet points capturing the key \
-        points, information shared, and positions expressed. Be thorough — this is the main section.
-
         ## Key Decisions
-        Bullet list of each decision reached. Write "None" if there were none.
-
         ## Action Items
-        Bullet list as "**Owner:** Task". Write "None" if there were none.
-
-        Rules: use markdown formatting (bold, bullets, headings). No meta-commentary about the transcript.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
@@ -255,18 +223,16 @@ final class SummaryEngine: ObservableObject {
             .map { "Segment \($0.offset + 1):\n\($0.element)" }
             .joined(separator: "\n\n")
         let user = """
-        /no_think
-
-        The following are notes from consecutive segments of a long meeting, each formatted in Markdown:
+        The following are notes from consecutive segments of a long meeting:
 
         \(combined)
 
-        Merge these into comprehensive combined meeting notes in **Markdown format**. \
-        Integrate information across segments — do not repeat the same point multiple times. \
-        Cover all significant topics and details.
+        Merge into combined meeting notes in Markdown:
 
-        Use these sections with ## headings: ## Participants, ## Topics Discussed (with ### subheadings \
-        per topic), ## Key Decisions, ## Action Items.
+        ## Participants
+        ## Topics Discussed
+        ## Key Decisions
+        ## Action Items
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
