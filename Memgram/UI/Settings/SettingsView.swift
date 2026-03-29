@@ -12,7 +12,7 @@ struct SettingsView: View {
             PrivacySettingsTab()
                 .tabItem { Label("Privacy", systemImage: "lock.shield") }
         }
-        .frame(width: 620, height: 500)
+        .frame(width: 520, height: 440)
     }
 }
 
@@ -24,42 +24,18 @@ struct AISettingsTab: View {
     @State private var isTesting = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            providerSidebar
-                .frame(width: 190)
-            Divider()
-            VStack(spacing: 0) {
-                configPanel
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                Divider()
-                testBar
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+        Form {
+            Section("AI Engine") {
+                Picker("Engine", selection: $store.selectedBackend) {
+                    ForEach(LLMBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
             }
-        }
-    }
 
-    // MARK: - Sidebar
-
-    private var providerSidebar: some View {
-        List(selection: Binding(
-            get: { store.selectedBackend },
-            set: { store.selectedBackend = $0 }
-        )) {
-            ForEach(LLMBackend.allCases) { backend in
-                ProviderRow(backend: backend)
-                    .tag(backend)
-            }
-        }
-        .listStyle(.sidebar)
-    }
-
-    // MARK: - Config panel
-
-    @ViewBuilder
-    private var configPanel: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            Section(store.selectedBackend.displayName) {
                 switch store.selectedBackend {
                 case .qwen:   QwenConfigView()
                 case .custom: CustomServerConfigView()
@@ -68,29 +44,26 @@ struct AISettingsTab: View {
                 case .gemini: APIKeyConfigView(service: "gemini", label: "Gemini API Key", placeholder: "AIza…")
                 }
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
 
-    // MARK: - Test bar
-
-    private var testBar: some View {
-        HStack {
-            Button(isTesting ? "Testing…" : "Test Connection") {
-                Task { await test() }
+            Section {
+                HStack {
+                    Button(isTesting ? "Testing…" : "Test Connection") {
+                        Task { await test() }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isTesting)
+                    if !connectionStatus.isEmpty {
+                        Text(connectionStatus)
+                            .font(.caption)
+                            .foregroundColor(connectionStatus.hasPrefix("Connected") || connectionStatus.hasPrefix("Responded") ? .green : .red)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    Spacer()
+                }
             }
-            .buttonStyle(.bordered)
-            .disabled(isTesting)
-            if !connectionStatus.isEmpty {
-                Text(connectionStatus)
-                    .font(.caption)
-                    .foregroundColor(connectionStatus.hasPrefix("Connected") || connectionStatus.hasPrefix("Responded") ? .green : .red)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            Spacer()
         }
+        .formStyle(.grouped)
     }
 
     private func test() async {
@@ -109,23 +82,6 @@ struct AISettingsTab: View {
             connectionStatus = "✗ \(error.localizedDescription)"
         }
         isTesting = false
-    }
-}
-
-// MARK: - Sidebar row
-
-private struct ProviderRow: View {
-    let backend: LLMBackend
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(backend.displayName)
-                .font(.body)
-            Text(backend.badge)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 2)
     }
 }
 
