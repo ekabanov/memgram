@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let log = Logger.make("AI")
 
 final class ClaudeProvider: LLMProvider {
     let name = "Claude API"
@@ -40,10 +43,23 @@ final class ClaudeProvider: LLMProvider {
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.httpBody = try JSONEncoder().encode(body)
+        log.debug("→ POST \(request.url?.path ?? "?", privacy: .public)")
         let (data, resp) = try await URLSession.shared.data(for: request)
-        guard let http = resp as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+        guard let http = resp as? HTTPURLResponse else {
+            log.error("← non-HTTP response from \(request.url?.host ?? "?", privacy: .public)")
             throw URLError(.badServerResponse)
         }
-        return try JSONDecoder().decode(Response.self, from: data)
+        guard (200...299).contains(http.statusCode) else {
+            let snippet = String(data: data.prefix(200), encoding: .utf8) ?? "(binary)"
+            log.error("← HTTP \(http.statusCode) from \(request.url?.host ?? "?", privacy: .public): \(snippet, privacy: .public)")
+            throw URLError(.badServerResponse)
+        }
+        log.debug("← HTTP \(http.statusCode), \(data.count) bytes")
+        do {
+            return try JSONDecoder().decode(Response.self, from: data)
+        } catch {
+            log.error("JSON decode failed: \(error)")
+            throw error
+        }
     }
 }
