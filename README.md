@@ -8,9 +8,10 @@ Memgram is a private, offline-first macOS meeting recorder. It silently captures
 
 - **Menu bar app** — always available, never in the way
 - **Dual-channel capture** — mic (you) + system audio (remote) simultaneously
-- **Local transcription** — WhisperKit (Metal decoder + Neural Engine encoder), auto-selects model based on your RAM
+- **Local transcription** — WhisperKit (multilingual, Metal + ANE), model auto-selected by RAM
 - **Speaker diarisation** — stereo routing separates "You" from "Remote"
-- **AI summaries** — stream word-by-word as the model generates; structured Markdown with participants, topics, decisions, action items
+- **AI summaries** — stream word-by-word as the model generates; participants, topics, decisions, action items
+- **Download progress** — Qwen and Whisper model downloads shown in the popover; both preload at launch
 - **Inline search** — filter transcript segments by text or speaker; global semantic search (Cmd+F)
 - **Summary tab** — live streaming Markdown with Copy, Export PDF, Share and Regenerate
 - **Auto-titling** — LLM generates a 4–8 word title from the summary
@@ -32,7 +33,7 @@ xcodegen generate
 open Memgram.xcodeproj
 ```
 
-On first launch: grant microphone + system audio permissions, choose English or Multilingual transcription, optionally pre-load the model.
+On first launch: grant microphone + system audio permissions. Whisper and Qwen models download automatically in the background.
 
 To enable calendar integration: **Settings → Calendar** → toggle on → grant calendar access. Requires Google (or any other) calendar account added in **System Settings → Internet Accounts**.
 
@@ -44,7 +45,7 @@ WhisperKit downloads and caches models automatically. The model is chosen automa
 |-----|-------|------|
 | 16 GB+ | Large v3 Turbo (full precision) | 954 MB |
 | 8 GB | Large v3 Turbo Q (quantized) ★ | 632 MB |
-| < 8 GB | Small / Small EN | 244 MB |
+| < 8 GB | Small (multilingual) | 244 MB |
 
 CoreML compilation happens once on first use. Subsequent sessions are fast.
 
@@ -54,10 +55,9 @@ Configure your LLM in **Settings → AI** (gear icon in the popover):
 
 | Backend | Notes |
 |---------|-------|
-| **Qwen 3.5 9B (Local)** | In-process via Apple MLX. Downloads ~4.5 GB. Requires Apple Silicon. |
-| **Ollama** | Requires [Ollama](https://ollama.ai) running locally |
-| **Custom Server** | Any OpenAI-compatible server (LM Studio, vLLM, mlx_lm.server) |
-| **Claude / OpenAI / Gemini** | Cloud API, key stored in Keychain |
+| **Qwen 3.5 9B (Local)** | In-process via Apple MLX. Downloads ~4.5 GB. Requires Apple Silicon. Streams tokens in real time. |
+| **Custom Server** | Any OpenAI-compatible server (LM Studio, vLLM, Ollama, mlx_lm.server). Streams tokens in real time. |
+| **Claude / OpenAI / Gemini** | Cloud API, key stored in Keychain. Streams tokens in real time. |
 
 All providers use a 10-minute request timeout. API keys are Keychain-only — never UserDefaults or SQLite.
 
@@ -101,11 +101,9 @@ Select which calendars to monitor in **Settings → Calendar → Calendars to Mo
 | Package | Purpose |
 |---------|---------|
 | GRDB 6.x | SQLite with WAL and FTS5 |
-| WhisperKit 0.9+ | Transcription (auto-downloads models) |
-| mlx-swift-lm (pinned commit) | Qwen local inference via Apple MLX |
+| WhisperKit (ekabanov fork) | Transcription — fork relaxes `swift-transformers` constraint to allow >= 1.2.0 |
+| mlx-swift-lm (main) | Qwen local inference via Apple MLX |
 | swift-markdown-ui 2.x | Markdown rendering in summary tab |
-
-> **Note on mlx-swift-lm:** Pinned to a specific commit because WhisperKit and the mlx-swift-lm main branch require incompatible versions of `swift-transformers`. Update when WhisperKit supports `swift-transformers >= 1.2.0`.
 
 ## Privacy
 

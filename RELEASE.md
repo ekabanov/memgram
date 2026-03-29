@@ -46,9 +46,9 @@ Output: `build/Memgram-<version>.dmg`
 ### 3. Create the GitHub release
 
 ```bash
-gh release create v0.1.0 build/Memgram-0.1.0.dmg \
-  --title "Memgram 0.1.0" \
-  --notes "Release notes here."
+gh release create v0.3.0 build/Memgram-0.3.0.dmg \
+  --title "Memgram 0.3.0" \
+  --generate-notes
 ```
 
 Or use `--generate-notes` to auto-generate from commit messages.
