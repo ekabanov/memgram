@@ -54,9 +54,14 @@ protocol LLMProvider {
 extension LLMProvider {
     /// Default: wraps complete() — yields the full response as a single chunk.
     /// Providers that support real streaming override this.
+    ///
+    /// Uses Task.detached (not bare Task{}) so the call to complete() is always
+    /// explicitly off any actor context. A bare Task{} can inherit @MainActor
+    /// isolation under SWIFT_STRICT_CONCURRENCY:minimal, which deadlocks MLX's
+    /// internal AsyncMutex when called on QwenLocalProvider.
     func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
-            Task {
+            Task.detached {
                 do {
                     let result = try await self.complete(system: system, user: user)
                     continuation.yield(result)
