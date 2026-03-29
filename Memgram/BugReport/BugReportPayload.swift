@@ -126,7 +126,7 @@ final class BugReportPayloadBuilder {
     }
 
     private static func collectLogs() async -> [BugReportPayload.LogEntry] {
-        guard let store = try? OSLogStore.local() else { return [] }
+        guard let store = try? OSLogStore(scope: .currentProcessIdentifier) else { return [] }
         let since = Date().addingTimeInterval(-1800)  // last 30 minutes
         let position = store.position(date: since)
         let predicate = NSPredicate(format: "subsystem == %@", "com.memgram.app")
