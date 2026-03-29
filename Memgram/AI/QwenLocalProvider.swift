@@ -58,10 +58,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                         throw QwenError.modelNotLoaded
                     }
                     print("[QwenLocal] stream() — starting token-by-token generation")
-                    // Limit total tokens (thinking + response) to reduce time spent on reasoning.
-                    // Meeting summaries rarely need more than 2048 tokens.
-                    let params = GenerateParameters(maxTokens: 2048)
-                    let session = ChatSession(container, instructions: system, generateParameters: params)
+                    let session = ChatSession(container, instructions: system)
 
                     // Buffer tokens until the <think> block closes, then stream the real response.
                     // If no <think> block appears in the first tokens, stream immediately.
