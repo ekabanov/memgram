@@ -42,7 +42,10 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     }
 
     func embed(text: String) async throws -> [Float] {
-        try await OllamaProvider().embed(text: text)
+        // Qwen local model does not support embeddings.
+        // Semantic search requires a cloud provider (Claude, OpenAI, or Gemini) configured in Settings.
+        print("[QwenLocal] ⚠️ embed() called but Qwen does not support embeddings — returning empty")
+        return []
     }
 
     // MARK: - Model loading

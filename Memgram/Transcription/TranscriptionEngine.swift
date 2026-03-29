@@ -52,12 +52,6 @@ final class TranscriptionEngine {
         }
 
         let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
-        wk.modelStateCallback = { _, newState in
-            let busy = newState == .downloading || newState == .loading || newState == .prewarming
-            Task { @MainActor in
-                WhisperModelManager.shared.isWhisperDownloading = busy
-            }
-        }
         self.whisperKit = wk
 
         await MainActor.run {
