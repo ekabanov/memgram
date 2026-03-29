@@ -1,4 +1,7 @@
 import AppKit
+import OSLog
+
+private let log = Logger.make("Export")
 
 /// Renders a meeting summary to PDF data using AppKit.
 /// Uses NSTextView + dataWithPDF — no WebKit, no entitlements required.
@@ -17,6 +20,7 @@ final class PDFExporter: NSObject {
             throw ExportError.noSummary
         }
 
+        log.info("PDF export started — summary \(summary.count) chars")
         let attrString = buildAttributedString(meeting: meeting, summary: summary)
 
         // Lay out text to determine required height
@@ -29,6 +33,7 @@ final class PDFExporter: NSObject {
         layoutManager.addTextContainer(textContainer)
         layoutManager.ensureLayout(for: textContainer)
         let usedHeight = layoutManager.usedRect(for: textContainer).height
+        log.debug("PDF layout: width=\(Int(contentWidth))pt height=\(Int(usedHeight))pt")
 
         // Create off-screen text view sized to content
         let inset: CGFloat = 48
@@ -43,7 +48,9 @@ final class PDFExporter: NSObject {
         textView.isEditable = false
         textView.textStorage?.setAttributedString(attrString)
 
-        return textView.dataWithPDF(inside: textView.bounds)
+        let pdfData = textView.dataWithPDF(inside: textView.bounds)
+        log.info("PDF export complete — \(pdfData.count) bytes")
+        return pdfData
     }
 
     static func suggestedFilename(for meeting: Meeting) -> String {

@@ -4,6 +4,9 @@ import Combine
 import AVFoundation
 import EventKit
 import UserNotifications
+import OSLog
+
+private let appLog = Logger.make("App")
 
 enum RecordingState {
     case idle
@@ -27,16 +30,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var calendarCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        appLog.info("App launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?", privacy: .public) (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?", privacy: .public))")
         NSApp.setActivationPolicy(.accessory)
 
         setupStatusItem()
         setupPopover()
         showOnboardingIfNeeded()
         RecordingSession.shared.loadInterruptedMeetings()
+        appLog.info("Interrupted meetings on launch: \(RecordingSession.shared.interruptedMeetings.count)")
         SummaryEngine.shared.cleanExistingSummaries()
 
         if #available(macOS 14.0, *) {
             CloudSyncEngine.shared.start()
+            appLog.info("CloudSync started")
         }
 
         UNUserNotificationCenter.current().delegate = self
@@ -50,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 _ = await CalendarNotificationService.shared.requestPermission()
             }
         }
+        appLog.info("Calendar integration enabled: \(CalendarManager.shared.isEnabled)")
 
         // Keep menu bar icon in sync with recording state
         sessionCancellable = RecordingSession.shared.$isRecording
