@@ -91,10 +91,12 @@ final class BugReportPayloadBuilder {
 
     private static func calendarPermissionString() -> String {
         switch EKEventStore.authorizationStatus(for: .event) {
-        case .fullAccess:  return "fullAccess"
-        case .restricted:  return "restricted"
-        case .denied:      return "denied"
-        default:           return "notDetermined"
+        case .fullAccess:    return "fullAccess"
+        case .writeOnly:     return "writeOnly"
+        case .restricted:    return "restricted"
+        case .denied:        return "denied"
+        case .notDetermined: return "notDetermined"
+        @unknown default:    return "unknown"
         }
     }
 
@@ -176,6 +178,8 @@ final class BugReportPayloadBuilder {
             .first?.0
 
         guard let recent else { return nil }
-        return try? String(contentsOf: recent, encoding: .utf8)
+        guard let text = try? String(contentsOf: recent, encoding: .utf8) else { return nil }
+        // Cap at 50 KB to keep the payload size reasonable
+        return text.count > 50_000 ? String(text.prefix(50_000)) + "\n[truncated]" : text
     }
 }
