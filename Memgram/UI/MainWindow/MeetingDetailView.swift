@@ -317,11 +317,31 @@ struct MeetingDetailView: View {
                 }
             }
 
-            if let summary = meeting?.summary, !summary.isEmpty {
+            let streamingContent = summaryEngine.streamingText[meetingId]
+
+            if let live = streamingContent, !live.isEmpty {
+                ScrollView {
+                    Markdown(live)
+                        .markdownTheme(.gitHub)
+                        .textSelection(.enabled)
+                        .padding()
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    HStack(spacing: 4) {
+                        ProgressView().controlSize(.mini)
+                        Text("Generating…")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(8)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                    .padding(8)
+                }
+            } else if let summary = meeting?.summary, !summary.isEmpty {
                 Markdown(summary)
                     .markdownTheme(.gitHub)
                     .textSelection(.enabled)
-            } else if isRegenerating {
+            } else if isRegenerating || summaryEngine.activeMeetingIds.contains(meetingId) {
                 // Skeleton placeholder while generating
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach([1.0, 0.85, 0.92, 0.6, 0.78, 0.88, 0.5], id: \.self) { width in
