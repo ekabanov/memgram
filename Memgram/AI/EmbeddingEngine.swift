@@ -1,7 +1,9 @@
 import Foundation
+import OSLog
 
 final class EmbeddingEngine {
     static let shared = EmbeddingEngine()
+    private let log = Logger.make("AI")
     private init() {}
 
     func embed(meetingId: String) async {
@@ -25,7 +27,7 @@ final class EmbeddingEngine {
                 )
                 try MeetingStore.shared.insertEmbedding(embedding)
             } catch {
-                print("[EmbeddingEngine] Failed to embed chunk: \(error)")
+                self.log.error("Failed to embed chunk: \(error)")
             }
         }
     }

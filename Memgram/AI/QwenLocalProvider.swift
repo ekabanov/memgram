@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 #if canImport(MLXLLM)
 import MLXLLM
 import MLXLMCommon
@@ -16,27 +17,28 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     @Published var loadError: String?
 
     private var modelContainer: ModelContainer?
+    private let log = Logger.make("AI")
     private init() {}
 
     // MARK: - LLMProvider
 
     func complete(system: String, user: String) async throws -> String {
-        print("[QwenLocal] complete() called — model loaded: \(isLoaded)")
+        log.debug("complete() called — model loaded: \(self.isLoaded)")
         if modelContainer == nil {
-            print("[QwenLocal] Model not loaded yet, loading…")
+            log.info("Model not loaded yet, loading")
             try await loadModel()
         }
         guard let container = modelContainer else {
-            print("[QwenLocal] ✗ Model container is nil after load attempt")
+            log.error("Model container is nil after load attempt")
             throw QwenError.modelNotLoaded
         }
-        print("[QwenLocal] Creating ChatSession — system prompt: \(system.prefix(80))…")
+        log.debug("Creating ChatSession")
         let session = ChatSession(container, instructions: system)
         let start = Date()
-        print("[QwenLocal] Generating response…")
+        log.debug("Generating response")
         let response = try await session.respond(to: user)
         let elapsed = Date().timeIntervalSince(start)
-        print("[QwenLocal] ✓ Response generated in \(String(format: "%.1f", elapsed))s — \(response.count) chars")
+        log.info("Response generated in \(String(format: "%.1f", elapsed))s — \(response.count) chars")
         return response
     }
 
@@ -48,11 +50,11 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
 
     func loadModel() async throws {
         guard !isLoaded else {
-            print("[QwenLocal] Model already loaded, skipping")
+            log.debug("Model already loaded, skipping")
             return
         }
 
-        print("[QwenLocal] Loading model: \(Self.modelID)")
+        log.info("Loading model: \(Self.modelID, privacy: .public)")
         loadError = nil
         downloadProgress = 0
 
@@ -70,28 +72,28 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                     self?.downloadProgress = frac
                 }
                 if Int(frac * 100) % 10 == 0 {
-                    print("[QwenLocal] Download progress: \(Int(frac * 100))%")
+                    self?.log.debug("Download progress: \(Int(frac * 100))%")
                 }
             }
 
             modelContainer = container
             isLoaded = true
             downloadProgress = 1.0
-            print("[QwenLocal] ✓ Model loaded successfully")
+            log.info("Model loaded successfully")
         } catch {
-            print("[QwenLocal] ✗ Model load failed: \(error)")
+            log.error("Model load failed: \(error)")
             loadError = error.localizedDescription
             throw error
         }
     }
 
     func preload() {
-        print("[QwenLocal] preload() called")
+        log.info("preload() called")
         Task {
             do { try await loadModel() }
             catch {
-                print("[QwenLocal] ✗ preload() failed: \(error)")
-                loadError = error.localizedDescription
+                self.log.error("preload() failed: \(error)")
+                self.loadError = error.localizedDescription
             }
         }
     }
