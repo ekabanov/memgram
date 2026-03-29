@@ -1,9 +1,12 @@
 import Foundation
+import OSLog
 
 @MainActor
 final class SummaryEngine: ObservableObject {
     static let shared = SummaryEngine()
     private init() {}
+
+    private let log = Logger.make("AI")
 
     /// Meeting IDs currently being summarised. Observed by UI for progress indicators.
     @Published private(set) var activeMeetingIds: Set<String> = []
@@ -39,10 +42,10 @@ final class SummaryEngine: ObservableObject {
         activeMeetingIds.insert(meetingId)
         defer { activeMeetingIds.remove(meetingId) }
         lastError = nil
-        print("[SummaryEngine] Starting summarisation for \(meetingId)")
+        log.info("Starting summarisation for \(meetingId, privacy: .public)")
 
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {
-            print("[SummaryEngine] ⚠️ Meeting not found: \(meetingId)")
+            log.warning("Meeting not found: \(meetingId, privacy: .public)")
             return
         }
         // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings)
@@ -52,11 +55,11 @@ final class SummaryEngine: ObservableObject {
         } else {
             let segs = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
             guard !segs.isEmpty else {
-                print("[SummaryEngine] ⚠️ No transcript or segments found — skipping")
+                log.warning("No transcript or segments found — skipping")
                 return
             }
             transcript = segs.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
-            print("[SummaryEngine] ⚠️ rawTranscript missing — rebuilt from \(segs.count) DB segments")
+            log.warning("rawTranscript missing — rebuilt from \(segs.count) DB segments")
         }
 
         let calendarCtx = meeting.calendarContext.flatMap { CalendarContext.fromJSON($0) }
@@ -65,28 +68,28 @@ final class SummaryEngine: ObservableObject {
             overrideBackend.map { LLMProviderStore.shared.providerFor($0) }
                 ?? LLMProviderStore.shared.currentProvider
         }
-        print("[SummaryEngine] Using provider: \(provider.name) | transcript length: \(transcript.count) chars")
+        log.info("Using provider: \(provider.name, privacy: .public) | transcript: \(transcript.count) chars")
 
         do {
             let summary: String
             if (meeting.durationSeconds ?? 0) > 3600 {
-                print("[SummaryEngine] Long meeting (>60min) — chunked summarisation")
+                log.info("Long meeting (>60min) — chunked summarisation")
                 summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx, provider: provider)
             } else {
                 summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx, provider: provider)
             }
             let cleanSummary = stripThinkingTags(summary)
-            print("[SummaryEngine] ✓ Summary generated (\(cleanSummary.count) chars) — saving")
+            log.info("Summary generated (\(cleanSummary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
             // Clear the active indicator and notify UI BEFORE title generation so progress clears immediately
             await MainActor.run {
                 NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             }
-            print("[SummaryEngine] ✓ Saved and notified")
+            log.info("Summary saved and UI notified")
             // Auto-title runs after UI is unblocked (defer handles cleanup on all paths)
             await generateTitle(meetingId: meetingId, overrideBackend: overrideBackend)
         } catch {
-            print("[SummaryEngine] ✗ Failed to summarise meeting \(meetingId): \(error)")
+            log.error("Failed to summarise meeting \(meetingId, privacy: .public): \(error)")
             await MainActor.run {
                 self.lastError = (meetingId: meetingId, message: error.localizedDescription)
             }
@@ -100,7 +103,7 @@ final class SummaryEngine: ObservableObject {
 
         // Only auto-title if the current title looks like the default
         guard meeting.title.hasPrefix("Meeting ") else {
-            print("[SummaryEngine] Skipping auto-title — meeting has custom title")
+            log.debug("Skipping auto-title — meeting has custom title")
             return
         }
 
@@ -131,9 +134,9 @@ final class SummaryEngine: ObservableObject {
             guard !generated.isEmpty, generated.count < 120 else { return }
             try MeetingStore.shared.updateTitle(meetingId, title: generated)
             NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-            print("[SummaryEngine] ✓ Auto-title: \"\(generated)\"")
+            log.info("Auto-title generated (\(generated.count) chars)")
         } catch {
-            print("[SummaryEngine] ✗ Auto-title failed: \(error)")
+            log.error("Auto-title failed: \(error)")
         }
     }
 
@@ -168,7 +171,7 @@ final class SummaryEngine: ObservableObject {
                       summary.contains("<think>") else { continue }
                 let cleanedSummary = self.stripThinkingTags(summary)
                 try? MeetingStore.shared.saveSummary(meetingId: meeting.id, summary: cleanedSummary)
-                print("[SummaryEngine] Cleaned <think> tags from meeting \(meeting.id)")
+                self.log.info("Cleaned <think> tags from meeting \(meeting.id, privacy: .public)")
                 cleaned = true
             }
             if cleaned {
