@@ -244,19 +244,7 @@ struct PopoverView: View {
     }
 
     private var footerSection: some View {
-        VStack(spacing: 6) {
-            HStack {
-                Spacer()
-                Button("Report a Bug…") {
-                    NSApp.sendAction(#selector(AppDelegate.showBugReport), to: nil, from: nil)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .buttonStyle(.plain)
-                Spacer()
-            }
-            Divider()
-            HStack {
+        HStack {
                 settingsButton
                     .help("Settings")
                 permissionsStatus
@@ -287,7 +275,6 @@ struct PopoverView: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
-            }
         }
     }
 

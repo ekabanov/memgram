@@ -11,6 +11,8 @@ struct SettingsView: View {
                 }
             PrivacySettingsTab()
                 .tabItem { Label("Privacy", systemImage: "lock.shield") }
+            BugReportView()
+                .tabItem { Label("Help", systemImage: "questionmark.circle") }
         }
         .frame(width: 620, height: 500)
     }

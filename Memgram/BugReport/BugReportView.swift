@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct BugReportView: View {
-    @Environment(\.dismiss) private var dismiss
-
     @State private var description = ""
     @State private var steps = ""
     @State private var isSubmitting = false
@@ -13,71 +11,69 @@ struct BugReportView: View {
     @State private var showLogPreview = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Report a Bug")
-                .font(.headline)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Report a Bug")
+                    .font(.headline)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("What happened?").font(.subheadline).foregroundStyle(.secondary)
-                TextEditor(text: $description)
-                    .frame(minHeight: 80, maxHeight: 120)
-                    .font(.body)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Steps to reproduce (optional)").font(.subheadline).foregroundStyle(.secondary)
-                TextEditor(text: $steps)
-                    .frame(minHeight: 40, maxHeight: 80)
-                    .font(.body)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-            }
-
-            DisclosureGroup("What will be sent", isExpanded: $showLogPreview) {
-                ScrollView {
-                    Text(logPreview)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 120)
-                .background(Color(NSColor.textBackgroundColor))
-                .cornerRadius(4)
-                Text("Transcript and summary content are never included.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let error = errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            if let url = submittedURL {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Report submitted!").font(.subheadline).bold()
-                    if let dest = URL(string: url) {
-                        Link(url, destination: dest)
-                            .font(.caption)
+                    Text("What happened?").font(.subheadline).foregroundStyle(.secondary)
+                    TextEditor(text: $description)
+                        .frame(minHeight: 80, maxHeight: 120)
+                        .font(.body)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Steps to reproduce (optional)").font(.subheadline).foregroundStyle(.secondary)
+                    TextEditor(text: $steps)
+                        .frame(minHeight: 40, maxHeight: 80)
+                        .font(.body)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+                }
+
+                DisclosureGroup("What will be sent", isExpanded: $showLogPreview) {
+                    ScrollView {
+                        Text(logPreview)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 120)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(4)
+                    Text("Transcript and summary content are never included.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let error = errorMessage {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                if let url = submittedURL {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Report submitted!").font(.subheadline).bold()
+                        if let dest = URL(string: url) {
+                            Link(url, destination: dest)
+                                .font(.caption)
+                        }
                     }
                 }
-            }
 
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.escape)
-                    .disabled(isSubmitting)
-                Button(isSubmitting ? "Submitting…" : "Submit Report") {
-                    Task { await submit() }
+                HStack {
+                    Spacer()
+                    Button(isSubmitting ? "Submitting…" : "Submit Report") {
+                        Task { await submit() }
+                    }
+                    .keyboardShortcut(.return)
+                    .disabled(description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting || submittedURL != nil)
+                    .buttonStyle(.borderedProminent)
                 }
-                .keyboardShortcut(.return)
-                .disabled(description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting || submittedURL != nil)
-                .buttonStyle(.borderedProminent)
             }
+            .padding(20)
         }
-        .padding(20)
-        .frame(width: 480)
         .task { await loadLogPreview() }
     }
 

@@ -23,7 +23,7 @@ struct MeetingDetailView: View {
     @State private var copiedFeedback = false
     @State private var isExporting = false
     @State private var exportError: String?
-    @State private var showingBugReport = false
+
     @State private var localQuery = ""
     @State private var showLocalSearch = false
 
@@ -91,9 +91,6 @@ struct MeetingDetailView: View {
             Button("OK", role: .cancel) { exportError = nil }
         } message: {
             Text(exportError ?? "")
-        }
-        .sheet(isPresented: $showingBugReport) {
-            BugReportView()
         }
     }
 
@@ -179,9 +176,7 @@ struct MeetingDetailView: View {
                             showDeleteConfirm = true
                         } label: { Label("Delete Meeting", systemImage: "trash") }
 
-                        Divider()
 
-                        Button("Report a Bug…") { showingBugReport = true }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .foregroundColor(.secondary)
