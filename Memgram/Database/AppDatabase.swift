@@ -1,5 +1,8 @@
 import Foundation
 import GRDB
+import OSLog
+
+private let dbLog = Logger.make("Database")
 
 final class AppDatabase {
     static let shared: AppDatabase = {
@@ -10,7 +13,7 @@ final class AppDatabase {
         let backupName = "memgram.db.corrupted-\(Int(Date().timeIntervalSince1970))"
         let backupURL = appSupport.appendingPathComponent("Memgram/\(backupName)")
         try? FileManager.default.moveItem(at: dbURL, to: backupURL)
-        print("[AppDatabase] ⚠️ Database corrupted — moved to \(backupName), starting fresh")
+        dbLog.critical("Database corrupted — moved to \(backupName, privacy: .public), starting fresh")
         do { return try AppDatabase() }
         catch { fatalError("[AppDatabase] Cannot open database even after recovery: \(error)") }
     }()

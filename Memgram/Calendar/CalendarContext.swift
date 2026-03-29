@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let log = Logger.make("Calendar")
 
 /// Captured calendar event metadata, stored as JSON on the Meeting record.
 /// Snapshot at recording time — survives calendar event deletion or modification.
@@ -15,7 +18,7 @@ struct CalendarContext: Codable, Equatable {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(self) else {
-            print("[CalendarContext] ⚠️ JSON encode failed")
+            log.error("JSON encode failed")
             return nil
         }
         return String(data: data, encoding: .utf8)
@@ -26,11 +29,11 @@ struct CalendarContext: Codable, Equatable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let data = json.data(using: .utf8) else {
-            print("[CalendarContext] ⚠️ JSON decode failed: invalid UTF-8")
+            log.error("JSON decode failed: invalid UTF-8")
             return nil
         }
         guard let result = try? decoder.decode(CalendarContext.self, from: data) else {
-            print("[CalendarContext] ⚠️ JSON decode failed: schema mismatch or corrupt data")
+            log.error("JSON decode failed: schema mismatch or corrupt data")
             return nil
         }
         return result
