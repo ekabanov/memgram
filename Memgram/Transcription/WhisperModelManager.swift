@@ -34,6 +34,9 @@ enum WhisperModel: String, CaseIterable, Identifiable {
 final class WhisperModelManager: ObservableObject {
     static let shared = WhisperModelManager()
 
+    /// True while WhisperKit is downloading or loading the model for the first time.
+    @Published var isWhisperDownloading: Bool = false
+
     /// True = multilingual; False = English-only (faster, higher accuracy for English)
     @Published var preferMultilingual: Bool {
         didSet { UserDefaults.standard.set(preferMultilingual, forKey: "preferMultilingual") }
