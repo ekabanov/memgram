@@ -6,7 +6,17 @@ final class LLMProviderStore: ObservableObject {
     static let shared = LLMProviderStore()
 
     @Published var selectedBackend: LLMBackend {
-        didSet { UserDefaults.standard.set(selectedBackend.rawValue, forKey: "llmBackend") }
+        didSet {
+            UserDefaults.standard.set(selectedBackend.rawValue, forKey: "llmBackend")
+            // Cancel any in-progress Qwen download when user switches away
+            if oldValue == .qwen && selectedBackend != .qwen {
+                #if canImport(MLXLLM)
+                if #available(macOS 14, *) {
+                    QwenLocalProvider.shared.cancelDownload()
+                }
+                #endif
+            }
+        }
     }
     @Published var customServerURL: String {
         didSet { UserDefaults.standard.set(customServerURL, forKey: "customServerURL") }
