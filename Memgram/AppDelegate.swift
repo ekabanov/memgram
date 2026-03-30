@@ -155,8 +155,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
             let image = NSImage(systemSymbolName: "mic", accessibilityDescription: "Memgram idle")?
                 .withSymbolConfiguration(config)
+            image?.isTemplate = true
             button.image = image
-            button.contentTintColor = .secondaryLabelColor
+            button.contentTintColor = nil
 
         case .upcoming:
             let paletteConfig = NSImage.SymbolConfiguration(paletteColors: [.systemPurple])
@@ -183,8 +184,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
             let image = NSImage(systemSymbolName: "hourglass", accessibilityDescription: "Memgram processing")?
                 .withSymbolConfiguration(config)
+            image?.isTemplate = true
             button.image = image
-            button.contentTintColor = .secondaryLabelColor
+            button.contentTintColor = nil
         }
     }
 
