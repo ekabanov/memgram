@@ -114,8 +114,9 @@ final class SummaryEngine: ObservableObject {
     func generateTitle(meetingId: String, overrideBackend: LLMBackend? = nil) async {
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else { return }
 
-        // Only auto-title if the current title looks like the default
-        guard meeting.title.hasPrefix("Meeting ") else {
+        // Only auto-title if the current title looks like a default (Mac or iPhone)
+        let isDefaultTitle = meeting.title.hasPrefix("Meeting ") || meeting.title == "iPhone Recording"
+        guard isDefaultTitle else {
             log.debug("Skipping auto-title — meeting has custom title")
             return
         }
