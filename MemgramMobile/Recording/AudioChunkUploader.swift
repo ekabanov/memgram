@@ -10,6 +10,7 @@ final class AudioChunkUploader: ObservableObject {
 
     @Published private(set) var currentMeetingId: String?
     @Published private(set) var pendingChunks: Int = 0
+    @Published private(set) var uploadedMeetingId: String?
 
     private let store = MeetingStore.shared
     private let chunkService = AudioChunkService.shared
@@ -23,6 +24,7 @@ final class AudioChunkUploader: ObservableObject {
 
     /// Creates a new meeting in the local database and returns its ID.
     func startMeeting(title: String, calendarContext: CalendarContext? = nil) throws -> String {
+        uploadedMeetingId = nil
         let meeting = try store.createMeeting(
             title: title,
             calendarContext: calendarContext
@@ -92,6 +94,7 @@ final class AudioChunkUploader: ObservableObject {
             log.error("Failed to update meeting status: \(error.localizedDescription, privacy: .public)")
         }
 
+        uploadedMeetingId = meetingId
         currentMeetingId = nil
 
         // Schedule a fetch after delay to pick up Mac's transcription results.
@@ -102,5 +105,10 @@ final class AudioChunkUploader: ObservableObject {
             log.info("Post-recording fetch triggered")
             await CloudSyncEngine.shared.fetchNow()
         }
+    }
+
+    /// Called by UI when Mac has finished processing or tracking is no longer needed.
+    func clearUploadedMeeting() {
+        uploadedMeetingId = nil
     }
 }
