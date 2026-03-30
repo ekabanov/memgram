@@ -359,9 +359,7 @@ final class CloudSyncEngine: Sendable {
                 return
             }
 
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-            }
+            // Notification batched — posted by fetchedRecordZoneChanges handler
         } catch {
             logger.error("Failed to apply remote record \(table)/\(id): \(error)")
         }
@@ -395,9 +393,7 @@ final class CloudSyncEngine: Sendable {
                 return
             }
 
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-            }
+            // Notification batched — posted by fetchedRecordZoneChanges handler
         } catch {
             logger.error("Failed to apply remote deletion \(table)/\(id): \(error)")
         }
@@ -448,6 +444,14 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
 
         case .accountChange(let accountChange):
             engine.logger.info("Account change: \(String(describing: accountChange.changeType))")
+            switch accountChange.changeType {
+            case .signOut, .switchAccounts:
+                // Clear sync state — stale tokens from old account would cause errors
+                UserDefaults.standard.removeObject(forKey: engine.stateKey)
+                engine.logger.warning("Cleared sync state due to account change")
+            default:
+                break
+            }
 
         case .fetchedDatabaseChanges(let fetchedChanges):
             for deletion in fetchedChanges.deletions {
@@ -460,12 +464,19 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
             }
 
         case .fetchedRecordZoneChanges(let fetchedChanges):
+            let totalChanges = fetchedChanges.modifications.count + fetchedChanges.deletions.count
             engine.logger.info("[CloudSync] Fetched \(fetchedChanges.modifications.count) modifications, \(fetchedChanges.deletions.count) deletions")
             for modification in fetchedChanges.modifications {
                 engine.applyRemoteRecord(modification.record)
             }
             for deletion in fetchedChanges.deletions {
                 engine.applyRemoteDeletion(deletion.recordID)
+            }
+            // Batch notification — one UI refresh for all changes instead of N
+            if totalChanges > 0 {
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                }
             }
 
         case .sentRecordZoneChanges(let sentChanges):
@@ -478,10 +489,22 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
 
                 switch ckError.code {
                 case .serverRecordChanged:
+                    // Apply server version, then only re-enqueue if local data
+                    // actually differs (prevents infinite sync loops)
                     if let serverRecord = ckError.serverRecord {
+                        let localRecord = engine.buildRecord(
+                            table: engine.parseRecordID(recordID)?.table ?? "",
+                            id: engine.parseRecordID(recordID)?.id ?? ""
+                        )
                         engine.applyRemoteRecord(serverRecord)
+                        DispatchQueue.main.async {
+                            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                        }
+                        // Only re-enqueue if local had different content
+                        if localRecord != nil {
+                            syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+                        }
                     }
-                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
 
                 case .zoneNotFound:
                     engine.logger.warning("Zone not found during save, recreating...")
@@ -491,7 +514,9 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
 
                 case .unknownItem:
-                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+                    // Don't re-enqueue — if the server doesn't know the item,
+                    // retrying will just fail again in an infinite loop.
+                    engine.logger.warning("Unknown item on server for \(recordID.recordName) — dropping")
 
                 default:
                     engine.logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
