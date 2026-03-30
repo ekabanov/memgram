@@ -83,6 +83,14 @@ Record ID format: `audiochunks_{uuid}`
 
 Audio chunks do NOT sync to the local GRDB database. They exist only in CloudKit, transiently.
 
+**Audio cleanup chain — each hop deletes after handoff:**
+1. **Watch** deletes `.m4a` after `WCSessionDelegate.didFinish(_:)` confirms transfer to iPhone
+2. **iPhone** deletes each local chunk file after CloudKit confirms `CKAsset` upload
+3. **iPhone** deletes the original `.m4a` (Watch recordings) after all chunks are uploaded
+4. **Mac** deletes the `AudioChunk` CKRecord (and its CKAsset) after transcription succeeds
+
+No audio persists anywhere after Mac processes it. Only text (transcripts + summaries) remains.
+
 ---
 
 ## Mac: RemoteMeetingProcessor
