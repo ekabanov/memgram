@@ -4,7 +4,7 @@ import SwiftUI
 struct MemgramWatchApp: App {
     var body: some Scene {
         WindowGroup {
-            Text("Memgram Watch")
+            WatchRecordingView()
         }
     }
 }

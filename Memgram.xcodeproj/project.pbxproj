@@ -33,6 +33,7 @@
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
+		4E195EEFF87CD35038D1C79B /* WatchSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 369F5F9AB4741C6A50EDD44C /* WatchSessionManager.swift */; };
 		4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
 		537C46FEEB97EC11C3502F9F /* MobileAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4971E41907B7402C709746FD /* MobileAudioRecorder.swift */; };
@@ -40,6 +41,7 @@
 		579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
 		68CC120C94C930131B47651F /* AudioChunkUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5334E3AF08B770900274F14 /* AudioChunkUploader.swift */; };
 		697082341F362921D9038502 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
+		6A969FF46620FB9A2ED8A4A3 /* WatchRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B482E61B5508E0AC4D9425ED /* WatchRecordingView.swift */; };
 		7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = F979AADA93C8B3A477894A87 /* WhisperKit */; };
 		7FB48F758AB985BDCBAFF851 /* MicrophoneCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F902E1020C4FC6C2401E92 /* MicrophoneCapture.swift */; };
 		7FE3F16981AD5F54CD3B31BE /* Speaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1E2B84348CF7B813409F0F /* Speaker.swift */; };
@@ -58,6 +60,7 @@
 		A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
+		AEB4A0B204DEF76B384B1B62 /* MemgramWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D919650FC3167304940F8D /* MemgramWatchApp.swift */; };
 		B4E7A2364343DE306272E7E5 /* AudioChunkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */; };
 		B5CBEBC0E1FCD4F926D7CC72 /* AudioChunkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
@@ -70,6 +73,7 @@
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
 		C7371E546701757DA40B291F /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
+		D13DB41166E75B5527836089 /* WatchAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
 		D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5103ED0654B4C0BBA443C7E3 /* CoreAudioTapCapture.swift */; };
 		D6216859EFD788A1BD76CFAF /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
@@ -108,11 +112,14 @@
 		2F2DB830E61400E377DD20C8 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		3102F3CC3D158F04D5C1AE9A /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
 		32E55D49539467A72F54AB7B /* MobileMeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileMeetingListView.swift; sourceTree = "<group>"; };
+		369F5F9AB4741C6A50EDD44C /* WatchSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionManager.swift; sourceTree = "<group>"; };
+		3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAudioRecorder.swift; sourceTree = "<group>"; };
 		3F9518923B9FA68D6694C5AD /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaProvider.swift; sourceTree = "<group>"; };
 		45C4DEB4673DB88282F219CF /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		4971E41907B7402C709746FD /* MobileAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileAudioRecorder.swift; sourceTree = "<group>"; };
 		5103ED0654B4C0BBA443C7E3 /* CoreAudioTapCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioTapCapture.swift; sourceTree = "<group>"; };
+		5126F4EB711D849DE1E0FB0E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		56F902E1020C4FC6C2401E92 /* MicrophoneCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneCapture.swift; sourceTree = "<group>"; };
 		58EB6A7B2486BFE9ED71546A /* SegmentRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentRowView.swift; sourceTree = "<group>"; };
 		62950E39FB985A055D5464B8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -121,6 +128,8 @@
 		6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
 		6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncEngine.swift; sourceTree = "<group>"; };
 		71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		75C7EACFA298FDFF496AD296 /* MemgramWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MemgramWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		77D919650FC3167304940F8D /* MemgramWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramWatchApp.swift; sourceTree = "<group>"; };
 		78F963FAD214383E6C348061 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		8009E920FB91831616BDC1FD /* SummaryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEngine.swift; sourceTree = "<group>"; };
 		8855497AAD103E0546ABADB5 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
@@ -137,6 +146,7 @@
 		AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramMobileApp.swift; sourceTree = "<group>"; };
 		AF09BEF692E4C86B766A5C7A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		B3EBB33D41210D3EF28EE697 /* MobileRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRecordingView.swift; sourceTree = "<group>"; };
+		B482E61B5508E0AC4D9425ED /* WatchRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRecordingView.swift; sourceTree = "<group>"; };
 		B565F886405D70876367BB2D /* LiveTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptView.swift; sourceTree = "<group>"; };
 		B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
 		BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenLocalProvider.swift; sourceTree = "<group>"; };
@@ -220,6 +230,7 @@
 			children = (
 				2811899A9B266E67EBE5320B /* Memgram */,
 				85B258C9AD0EB396E0CCA255 /* MemgramMobile */,
+				8D04DD49FEDC5FFBA362742E /* MemgramWatch */,
 				6CD5661289553449E8126190 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -273,6 +284,13 @@
 			path = Sync;
 			sourceTree = "<group>";
 		};
+		41CB028EB056CD42E912BB73 /* WatchConnectivity */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = WatchConnectivity;
+			sourceTree = "<group>";
+		};
 		5B3C62C1DD64D77CE9F27711 /* UI */ = {
 			isa = PBXGroup;
 			children = (
@@ -299,6 +317,7 @@
 			children = (
 				9B83A48D9B5013FC9151290B /* Memgram.app */,
 				F884A263AF447AADEB507CEB /* MemgramMobile.app */,
+				75C7EACFA298FDFF496AD296 /* MemgramWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -344,9 +363,22 @@
 				978A802309C7747DEC9302A9 /* Recording */,
 				761BDE7C5D364362DAAE6B8C /* Resources */,
 				5B3C62C1DD64D77CE9F27711 /* UI */,
+				41CB028EB056CD42E912BB73 /* WatchConnectivity */,
 				AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */,
 			);
 			path = MemgramMobile;
+			sourceTree = "<group>";
+		};
+		8D04DD49FEDC5FFBA362742E /* MemgramWatch */ = {
+			isa = PBXGroup;
+			children = (
+				5126F4EB711D849DE1E0FB0E /* Info.plist */,
+				77D919650FC3167304940F8D /* MemgramWatchApp.swift */,
+				3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */,
+				B482E61B5508E0AC4D9425ED /* WatchRecordingView.swift */,
+				369F5F9AB4741C6A50EDD44C /* WatchSessionManager.swift */,
+			);
+			path = MemgramWatch;
 			sourceTree = "<group>";
 		};
 		978A802309C7747DEC9302A9 /* Recording */ = {
@@ -499,6 +531,23 @@
 			productReference = 9B83A48D9B5013FC9151290B /* Memgram.app */;
 			productType = "com.apple.product-type.application";
 		};
+		89E529CC025C8C11DF8FBAC5 /* MemgramWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A54C49D8CFD081E63B627028 /* Build configuration list for PBXNativeTarget "MemgramWatch" */;
+			buildPhases = (
+				CEDEA45B4C4CCB845A46F3ED /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MemgramWatch;
+			packageProductDependencies = (
+			);
+			productName = MemgramWatch;
+			productReference = 75C7EACFA298FDFF496AD296 /* MemgramWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -513,6 +562,10 @@
 						ProvisioningStyle = Automatic;
 					};
 					87FC04F2AE7E4EA4D3D13462 = {
+						DevelopmentTeam = 6N57Z7GY37;
+						ProvisioningStyle = Automatic;
+					};
+					89E529CC025C8C11DF8FBAC5 = {
 						DevelopmentTeam = 6N57Z7GY37;
 						ProvisioningStyle = Automatic;
 					};
@@ -540,6 +593,7 @@
 			targets = (
 				87FC04F2AE7E4EA4D3D13462 /* Memgram */,
 				0C9C49FFC12CF22D056B2572 /* MemgramMobile */,
+				89E529CC025C8C11DF8FBAC5 /* MemgramWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -594,6 +648,17 @@
 				0B16A0702A486EC342E0D718 /* Notifications.swift in Sources */,
 				2906587B26F2B992240106FE /* RemoteMeetingProcessor.swift in Sources */,
 				0AABB16BFDF50846A5EB1FF4 /* Speaker.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CEDEA45B4C4CCB845A46F3ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AEB4A0B204DEF76B384B1B62 /* MemgramWatchApp.swift in Sources */,
+				D13DB41166E75B5527836089 /* WatchAudioRecorder.swift in Sources */,
+				6A969FF46620FB9A2ED8A4A3 /* WatchRecordingView.swift in Sources */,
+				4E195EEFF87CD35038D1C79B /* WatchSessionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -709,6 +774,25 @@
 			};
 			name = Release;
 		};
+		4CCF6D4B58245B858E7D98F1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6N57Z7GY37;
+				INFOPLIST_FILE = MemgramWatch/Info.plist;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.mobile.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
 		52BCA19CC7EF9BE163030DF3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -732,6 +816,25 @@
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
+		};
+		54457106F066BEA72EE0DFCC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6N57Z7GY37;
+				INFOPLIST_FILE = MemgramWatch/Info.plist;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.mobile.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
 		};
 		A07A2ACF07D243115CBC9B58 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -817,6 +920,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Debug;
 		};
@@ -873,6 +977,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
 			};
 			name = Release;
 		};
@@ -884,6 +989,15 @@
 			buildConfigurations = (
 				52BCA19CC7EF9BE163030DF3 /* Debug */,
 				22F7AAABE313DCF779AADF9F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A54C49D8CFD081E63B627028 /* Build configuration list for PBXNativeTarget "MemgramWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4CCF6D4B58245B858E7D98F1 /* Debug */,
+				54457106F066BEA72EE0DFCC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
