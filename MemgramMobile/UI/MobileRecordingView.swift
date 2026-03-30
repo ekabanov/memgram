@@ -14,7 +14,6 @@ struct MobileRecordingView: View {
     @State private var segments: [MeetingSegment] = []
     @State private var errorMessage: String?
     @State private var pendingMacMeetingId: String?
-    @State private var recordingFinishedAt: Date?
     @State private var lastSegmentArrivedAt: Date?
     @State private var previousSegmentCount: Int = 0
     @State private var showMacWarning: Bool = false
@@ -201,8 +200,7 @@ struct MobileRecordingView: View {
 
     private func startRecording() {
         pendingMacMeetingId = nil
-        recordingFinishedAt = nil
-        lastSegmentArrivedAt = nil
+        lastSegmentArrivedAt = Date()
         previousSegmentCount = 0
         showMacWarning = false
         errorMessage = nil
@@ -239,44 +237,30 @@ struct MobileRecordingView: View {
         Task {
             await uploader.finishRecording()
             pendingMacMeetingId = uploader.uploadedMeetingId
-            recordingFinishedAt = Date()
-            lastSegmentArrivedAt = nil
-            previousSegmentCount = 0
-            showMacWarning = false
-            log.info("Recording finished and uploaded — tracking Mac processing")
+            log.info("Recording finished and uploaded")
         }
     }
 
     private func updateMacWarningState() {
-        guard let meetingId = pendingMacMeetingId,
-              let finishedAt = recordingFinishedAt else {
+        // Warning only shown during active recording
+        guard recorder.isRecording else {
             showMacWarning = false
-            return
-        }
-
-        // Check if meeting is done — clear tracking entirely
-        if let meeting = try? MeetingStore.shared.fetchMeeting(meetingId),
-           meeting.status == .done {
-            pendingMacMeetingId = nil
-            recordingFinishedAt = nil
-            lastSegmentArrivedAt = nil
-            previousSegmentCount = 0
-            showMacWarning = false
-            uploader.clearUploadedMeeting()
             return
         }
 
         // Detect newly arrived segments — update last-activity timestamp
-        let currentCount = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId))?.count ?? 0
-        if currentCount < previousSegmentCount {
-            previousSegmentCount = currentCount  // reset if sync re-seeded the table
-        }
-        if currentCount > previousSegmentCount {
-            previousSegmentCount = currentCount
-            lastSegmentArrivedAt = Date()
+        let meetingId = uploader.currentMeetingId ?? pendingMacMeetingId
+        if let meetingId {
+            let currentCount = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId))?.count ?? 0
+            if currentCount < previousSegmentCount {
+                previousSegmentCount = currentCount  // reset if sync re-seeded the table
+            }
+            if currentCount > previousSegmentCount {
+                previousSegmentCount = currentCount
+                lastSegmentArrivedAt = Date()
+            }
         }
 
-        let gracePeriodElapsed = Date().timeIntervalSince(finishedAt) > 2 * 60
         let noRecentSegments: Bool
         if let lastArrival = lastSegmentArrivedAt {
             noRecentSegments = Date().timeIntervalSince(lastArrival) > 2 * 60
@@ -284,7 +268,7 @@ struct MobileRecordingView: View {
             noRecentSegments = true
         }
 
-        showMacWarning = gracePeriodElapsed && noRecentSegments
+        showMacWarning = noRecentSegments
     }
 
     private func refreshSegments() {
