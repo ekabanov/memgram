@@ -280,6 +280,7 @@ final class CloudSyncEngine: Sendable {
 
             case "segments":
                 let meetingId = record["meetingId"] as? String ?? ""
+                logger.info("[CloudSync] Applying segment \(id) for meeting \(meetingId)")
                 let segment = MeetingSegment(
                     id: id,
                     meetingId: meetingId,
@@ -303,8 +304,10 @@ final class CloudSyncEngine: Sendable {
                     }
                     if try MeetingSegment.fetchOne(db, key: id) != nil {
                         try segment.update(db)
+                        logger.info("[CloudSync] Updated segment \(id)")
                     } else {
                         try segment.insert(db)
+                        logger.info("[CloudSync] Inserted segment \(id) for meeting \(meetingId)")
                     }
                 }
 
@@ -358,9 +361,11 @@ final class CloudSyncEngine: Sendable {
         do {
             switch table {
             case "meetings":
+                logger.info("[CloudSync] Deleting meeting \(id)")
                 try db.write { db in
                     try db.execute(sql: "DELETE FROM meetings WHERE id = ?", arguments: [id])
                 }
+                logger.info("[CloudSync] Meeting deleted: \(id)")
             case "segments":
                 try db.write { db in
                     try db.execute(sql: "DELETE FROM segments WHERE id = ?", arguments: [id])
