@@ -71,6 +71,7 @@
 		BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 53BD9539689CB76F94BBDACC /* MLXLLM */; };
 		C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = AE534A3FFDD02E4A672EDB9C /* MarkdownUI */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
+		C5955F8EC91D01049201D5E5 /* PhoneSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A253A3494876D3BB2458974 /* PhoneSessionManager.swift */; };
 		C7371E546701757DA40B291F /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D13DB41166E75B5527836089 /* WatchAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */; };
@@ -103,6 +104,7 @@
 
 /* Begin PBXFileReference section */
 		0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioCaptureProvider.swift; sourceTree = "<group>"; };
+		1A253A3494876D3BB2458974 /* PhoneSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneSessionManager.swift; sourceTree = "<group>"; };
 		201C8D6048B8ABDC78FB3CDF /* EmbeddingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingEngine.swift; sourceTree = "<group>"; };
 		212D0221DE67444BF6FAA347 /* MemgramApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramApp.swift; sourceTree = "<group>"; };
 		216D6741B51925547324E122 /* RemoteMeetingProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteMeetingProcessor.swift; sourceTree = "<group>"; };
@@ -287,6 +289,7 @@
 		41CB028EB056CD42E912BB73 /* WatchConnectivity */ = {
 			isa = PBXGroup;
 			children = (
+				1A253A3494876D3BB2458974 /* PhoneSessionManager.swift */,
 			);
 			path = WatchConnectivity;
 			sourceTree = "<group>";
@@ -646,6 +649,7 @@
 				FDF659B9D2542BF950454459 /* MobileRecordingView.swift in Sources */,
 				0FB5B1262EC050D38DAE6023 /* MobileSettingsView.swift in Sources */,
 				0B16A0702A486EC342E0D718 /* Notifications.swift in Sources */,
+				C5955F8EC91D01049201D5E5 /* PhoneSessionManager.swift in Sources */,
 				2906587B26F2B992240106FE /* RemoteMeetingProcessor.swift in Sources */,
 				0AABB16BFDF50846A5EB1FF4 /* Speaker.swift in Sources */,
 			);
@@ -757,7 +761,7 @@
 				CODE_SIGN_ENTITLEMENTS = Memgram/Resources/Memgram.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6N57Z7GY37;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Memgram/Resources/Info.plist;
@@ -766,7 +770,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.app;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -800,7 +804,7 @@
 				CODE_SIGN_ENTITLEMENTS = Memgram/Resources/Memgram.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6N57Z7GY37;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Memgram/Resources/Info.plist;
@@ -809,7 +813,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.3.0;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.app;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;
