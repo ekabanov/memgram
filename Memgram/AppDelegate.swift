@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import AVFoundation
 import EventKit
+import ServiceManagement
 import UserNotifications
 import OSLog
 
@@ -36,6 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         setupPopover()
         showOnboardingIfNeeded()
+        // Enable launch at login by default on first run
+        if !UserDefaults.standard.bool(forKey: "didSetDefaultLaunchAtLogin") {
+            UserDefaults.standard.set(true, forKey: "didSetDefaultLaunchAtLogin")
+            try? SMAppService.mainApp.register()
+        }
+
         RecordingSession.shared.loadInterruptedMeetings()
         appLog.info("Interrupted meetings on launch: \(RecordingSession.shared.interruptedMeetings.count)")
         SummaryEngine.shared.cleanExistingSummaries()
