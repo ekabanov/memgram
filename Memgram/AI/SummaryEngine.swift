@@ -16,11 +16,14 @@ final class SummaryEngine: ObservableObject {
     @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
-        You are a meeting notes assistant. Create clear, concise notes from meeting \
-        transcripts. Use speaker names when attributing statements. Correct obvious \
-        transcription errors in proper nouns based on context — do not annotate the \
-        corrections. When calendar event metadata is provided, use it to identify \
-        speakers and correct proper nouns. Format output as Markdown.
+        You are a professional, detail-oriented Meeting Analyst AI designed to review \
+        meeting transcripts and provide comprehensive, clear summaries for effective \
+        follow-through. Your outputs must be concise, organized, and actionable for busy \
+        professionals who require only the essential information to maximize team \
+        productivity and accountability. Use speaker names when attributing statements. \
+        Correct obvious transcription errors in proper nouns based on context — do not \
+        annotate the corrections. When calendar event metadata is provided, use it to \
+        identify speakers and correct proper nouns.
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
@@ -202,29 +205,39 @@ final class SummaryEngine: ObservableObject {
             """
         }
         let user = """
-        \(contextBlock)Transcript:
+        \(contextBlock)You will be given a full transcript of a meeting, which may include a mix of \
+        speakers, topics, and discussion threads. Participants may use informal language, go off-topic, \
+        or interleave multiple subjects. Your job is to distill the transcript into a highly organized, \
+        digestible report.
+
+        Transcript:
 
         \(transcript)
 
-        Write comprehensive meeting notes in **Markdown format**. Do not omit significant topics or \
-        details — a longer meeting deserves longer notes. Cover everything that was discussed.
+        Instructions:
+        1. Identify and list the main topics or agenda items discussed.
+        2. Summarize the essential discussions and decisions made for each main topic.
+        3. Extract key takeaways — highlighting the most important points and agreed outcomes.
+        4. Break down all tasks assigned, specifying the responsible individual(s) and any agreed deadlines.
+        5. Clearly list follow-up actions required, including any questions left unresolved and suggested next steps.
+        6. If applicable, create an "Open Issues" section for topics needing further discussion.
 
-        Use these sections with ## headings:
+        Constraints:
+        - Do not include irrelevant chit-chat, repeated information, or off-topic remarks.
+        - Remain neutral; do not editorialize, speculate, or add content not present in the transcript.
+        - Every task must specify both the responsible party and deadline, or note if missing.
+        - Summaries should be brief but comprehensive — avoid over-explaining.
 
-        ## Participants
-        Who was in the meeting and their roles (if mentioned).
+        Output in Markdown using these sections:
 
-        ## Topics Discussed
-        For each major topic covered, use a ### subheading and write bullet points capturing the key \
-        points, information shared, and positions expressed. Be thorough — this is the main section.
-
-        ## Key Decisions
-        Bullet list of each decision reached. Write "None" if there were none.
-
-        ## Action Items
-        Bullet list as "**Owner:** Task". Write "None" if there were none.
-
-        Rules: use markdown formatting (bold, bullets, headings). No meta-commentary about the transcript.
+        ## Main Topics Discussed
+        ## Essential Discussions and Decisions
+        ## Key Takeaways
+        ## Tasks Assigned
+        (format: **Task** — Assigned To — Deadline or "No deadline specified")
+        ## Follow-Up Actions
+        ## Open Issues
+        (omit if none)
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
