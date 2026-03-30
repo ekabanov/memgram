@@ -7,7 +7,7 @@ final class MeetingStore {
     private init() {}
 
     private var sync: CloudSyncEngine? {
-        if #available(macOS 14.0, *) { return CloudSyncEngine.shared }
+        if #available(macOS 14.0, iOS 17.0, *) { return CloudSyncEngine.shared }
         return nil
     }
 
@@ -50,6 +50,7 @@ final class MeetingStore {
         sync?.enqueueSave(table: "meetings", id: id)
     }
 
+    #if os(macOS)
     func appendSegment(_ segment: TranscriptSegment, toMeeting meetingId: String) throws {
         let dbSegment = MeetingSegment(
             id: segment.id.uuidString,
@@ -63,6 +64,7 @@ final class MeetingStore {
         try db.write { db in try dbSegment.insert(db) }
         sync?.enqueueSave(table: "segments", id: dbSegment.id)
     }
+    #endif
 
     func updateStatus(_ meetingId: String, status: MeetingStatus) throws {
         try db.write { db in

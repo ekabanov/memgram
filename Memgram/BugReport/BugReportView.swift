@@ -39,7 +39,11 @@ struct BugReportView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxHeight: 120)
+                    #if os(macOS)
                     .background(Color(NSColor.textBackgroundColor))
+                    #else
+                    .background(Color(UIColor.secondarySystemBackground))
+                    #endif
                     .cornerRadius(4)
                     Text("Transcript and summary content are never included.")
                         .font(.caption)
@@ -82,8 +86,8 @@ struct BugReportView: View {
         builtPayload = payload
         let lines = payload.logs.suffix(20).map { "[\($0.category)] \($0.level): \($0.message)" }
         let header = """
-        App: \(payload.appVersion) | macOS: \(payload.macosVersion)
-        Whisper: \(payload.whisperModel) | LLM: \(payload.llmBackend)
+        App: \(payload.appVersion) | OS: \(payload.macosVersion)
+        Whisper: \(payload.whisperModel ?? "n/a") | LLM: \(payload.llmBackend ?? "n/a")
         Meetings: \(payload.meetingsMetadata.count) | Crash log: \(payload.crashLog != nil ? "yes" : "no")
         Last \(payload.logs.count) log entries (showing 20):
 

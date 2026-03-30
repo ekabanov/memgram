@@ -7,13 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		072D6650B6ACD328FD896788 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF09BEF692E4C86B766A5C7A /* Log.swift */; };
 		0A4A6FAF2578E27545AE7053 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF09BEF692E4C86B766A5C7A /* Log.swift */; };
+		0AABB16BFDF50846A5EB1FF4 /* Speaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1E2B84348CF7B813409F0F /* Speaker.swift */; };
+		0B16A0702A486EC342E0D718 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		0B4A45336C12AFF1B2CB2090 /* MeetingEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */; };
 		0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */; };
 		10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A335CC4E14196465F8F057 /* AppDelegate.swift */; };
 		11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = F7F968E28E3536B2BD9133D2 /* GRDB */; };
 		1429C65DF2D432E7767682D2 /* PDFExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28822E40CBC23C661FBD955 /* PDFExporter.swift */; };
 		15A508C1BFE79B2C91F22FF5 /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */; };
+		16ADFE2A92D92C4A4F401700 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4A5A3AD19643274E5F43547E /* MarkdownUI */; };
 		17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		1870B967E488562E6551E2F2 /* SummaryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8009E920FB91831616BDC1FD /* SummaryEngine.swift */; };
 		29B9E8EA107ACD884B77613A /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5DFF25E171256C015392B0 /* SearchEngine.swift */; };
@@ -34,31 +38,45 @@
 		7FB48F758AB985BDCBAFF851 /* MicrophoneCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F902E1020C4FC6C2401E92 /* MicrophoneCapture.swift */; };
 		7FE3F16981AD5F54CD3B31BE /* Speaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE1E2B84348CF7B813409F0F /* Speaker.swift */; };
 		833A3C45383F91821935CB27 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62950E39FB985A055D5464B8 /* OnboardingView.swift */; };
+		83A2FE7D0DC89F89105692D0 /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9518923B9FA68D6694C5AD /* AudioConverter.swift */; };
+		84971C3AB07B6DBEA10A8413 /* MemgramMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */; };
+		88756ABD2C04E7905CDA378D /* MeetingEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */; };
+		8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AF2D313FD0669F68D81F39 /* BugReportView.swift */; };
 		9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269098F6F8AD2D7EAE48AC4C /* ClaudeProvider.swift */; };
 		A014CBA98A79D45243C72F8D /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */; };
 		A24CDC605E52AC049DE52718 /* EmbeddingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 201C8D6048B8ABDC78FB3CDF /* EmbeddingEngine.swift */; };
+		A577CA15E023D4D211055BB4 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		A5FAF5B5110002A277AA27F3 /* BugReportPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */; };
+		A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
+		B8B8D0D3C2D996D6231E076B /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 78F963FAD214383E6C348061 /* AppIcon.icns */; };
+		BBDA264735DA142DC5450BC7 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 3842E4DA71627336F760CD87 /* GRDB */; };
 		BC578E3DA71EB07461ADF16E /* BugReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AF2D313FD0669F68D81F39 /* BugReportView.swift */; };
 		BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 53BD9539689CB76F94BBDACC /* MLXLLM */; };
 		C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = AE534A3FFDD02E4A672EDB9C /* MarkdownUI */; };
 		C3714C5E429430C8E70C935F /* MeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */; };
+		C7371E546701757DA40B291F /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		D105640AC8B1F2D04BE94707 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
 		D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5103ED0654B4C0BBA443C7E3 /* CoreAudioTapCapture.swift */; };
 		D6216859EFD788A1BD76CFAF /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
+		D784D0550CFDB55EC6F63319 /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
+		D90DF73E2533908C36EBC624 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		D988057B16B21C4C29578766 /* SegmentRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58EB6A7B2486BFE9ED71546A /* SegmentRowView.swift */; };
 		DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D989A419F160963B1D52B3 /* LLMProvider.swift */; };
 		DA6DBBEEAF18E108551B16C3 /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */; };
+		DC7AA8E55BAD1D8F559F68F4 /* MeetingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CADF3A54BCED319651C9AC /* MeetingStore.swift */; };
 		E01FC78E3EFA15B52E3C1712 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45C4DEB4673DB88282F219CF /* SettingsView.swift */; };
 		E02E7D769872AE7D33A392F5 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B16CE774DDB719F2117948 /* KeychainHelper.swift */; };
 		E043CB179060BDCFFFD24E44 /* ModelDownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */; };
 		E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9518923B9FA68D6694C5AD /* AudioConverter.swift */; };
 		E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */; };
 		ED80E2CBA63F035B0C98C093 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9272F36873A483ABC9FDCB0F /* SearchView.swift */; };
+		ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */; };
+		EDDA21AB9D5F339D9FFD5522 /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
 		EECD433896F09442B3E1D4CE /* SpeakerRenameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */; };
 		F4079DD0A1D5E98E12EE09D4 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */; };
 		F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3102F3CC3D158F04D5C1AE9A /* PermissionsManager.swift */; };
@@ -98,6 +116,7 @@
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D9D739005F69BB4F709259E /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramMobileApp.swift; sourceTree = "<group>"; };
 		AF09BEF692E4C86B766A5C7A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		B565F886405D70876367BB2D /* LiveTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptView.swift; sourceTree = "<group>"; };
 		B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
@@ -120,10 +139,20 @@
 		F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportSubmitter.swift; sourceTree = "<group>"; };
 		F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarContext.swift; sourceTree = "<group>"; };
+		F884A263AF447AADEB507CEB /* MemgramMobile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MemgramMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD6CF342BB0459F5A34F2B93 /* Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meeting.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		CD52DA228E198908113A4A8E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BBDA264735DA142DC5450BC7 /* GRDB in Frameworks */,
+				16ADFE2A92D92C4A4F401700 /* MarkdownUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EAF3F068D2033FF0AE46F646 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -168,6 +197,7 @@
 			isa = PBXGroup;
 			children = (
 				2811899A9B266E67EBE5320B /* Memgram */,
+				85B258C9AD0EB396E0CCA255 /* MemgramMobile */,
 				6CD5661289553449E8126190 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -219,6 +249,13 @@
 			path = Sync;
 			sourceTree = "<group>";
 		};
+		5B3C62C1DD64D77CE9F27711 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
 		6BA73221FE8D81B0538304B0 /* UI */ = {
 			isa = PBXGroup;
 			children = (
@@ -233,6 +270,7 @@
 			isa = PBXGroup;
 			children = (
 				9B83A48D9B5013FC9151290B /* Memgram.app */,
+				F884A263AF447AADEB507CEB /* MemgramMobile.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -262,6 +300,15 @@
 				78F963FAD214383E6C348061 /* AppIcon.icns */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		85B258C9AD0EB396E0CCA255 /* MemgramMobile */ = {
+			isa = PBXGroup;
+			children = (
+				5B3C62C1DD64D77CE9F27711 /* UI */,
+				AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */,
+			);
+			path = MemgramMobile;
 			sourceTree = "<group>";
 		};
 		99C6328FF10715284EFCBDDD /* BugReport */ = {
@@ -361,6 +408,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0C9C49FFC12CF22D056B2572 /* MemgramMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E2A163F688524C35A217B990 /* Build configuration list for PBXNativeTarget "MemgramMobile" */;
+			buildPhases = (
+				C7A005E586C812473EBF210F /* Sources */,
+				CD52DA228E198908113A4A8E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MemgramMobile;
+			packageProductDependencies = (
+				3842E4DA71627336F760CD87 /* GRDB */,
+				4A5A3AD19643274E5F43547E /* MarkdownUI */,
+			);
+			productName = MemgramMobile;
+			productReference = F884A263AF447AADEB507CEB /* MemgramMobile.app */;
+			productType = "com.apple.product-type.application";
+		};
 		87FC04F2AE7E4EA4D3D13462 /* Memgram */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1E761F9671DAFE1CEAFF2274 /* Build configuration list for PBXNativeTarget "Memgram" */;
@@ -393,6 +460,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					0C9C49FFC12CF22D056B2572 = {
+						DevelopmentTeam = 6N57Z7GY37;
+						ProvisioningStyle = Automatic;
+					};
 					87FC04F2AE7E4EA4D3D13462 = {
 						DevelopmentTeam = 6N57Z7GY37;
 						ProvisioningStyle = Automatic;
@@ -420,6 +491,7 @@
 			projectRoot = "";
 			targets = (
 				87FC04F2AE7E4EA4D3D13462 /* Memgram */,
+				0C9C49FFC12CF22D056B2572 /* MemgramMobile */,
 			);
 		};
 /* End PBXProject section */
@@ -436,6 +508,29 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		C7A005E586C812473EBF210F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D90DF73E2533908C36EBC624 /* AppDatabase.swift in Sources */,
+				83A2FE7D0DC89F89105692D0 /* AudioConverter.swift in Sources */,
+				B8B8D0D3C2D996D6231E076B /* BugReportConfig.swift in Sources */,
+				ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */,
+				A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */,
+				8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */,
+				C7371E546701757DA40B291F /* CalendarContext.swift in Sources */,
+				EDDA21AB9D5F339D9FFD5522 /* CloudSyncEngine.swift in Sources */,
+				072D6650B6ACD328FD896788 /* Log.swift in Sources */,
+				A577CA15E023D4D211055BB4 /* Meeting.swift in Sources */,
+				88756ABD2C04E7905CDA378D /* MeetingEmbedding.swift in Sources */,
+				D784D0550CFDB55EC6F63319 /* MeetingSegment.swift in Sources */,
+				DC7AA8E55BAD1D8F559F68F4 /* MeetingStore.swift in Sources */,
+				84971C3AB07B6DBEA10A8413 /* MemgramMobileApp.swift in Sources */,
+				0B16A0702A486EC342E0D718 /* Notifications.swift in Sources */,
+				0AABB16BFDF50846A5EB1FF4 /* Speaker.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F6FFDC712DA4AD1FD0C356FE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -498,6 +593,30 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		0729B0571D6B216FE5FA94C0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MemgramMobile/Resources/MemgramMobile.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6N57Z7GY37;
+				INFOPLIST_FILE = MemgramMobile/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.mobile;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		22F7AAABE313DCF779AADF9F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -543,6 +662,30 @@
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		A07A2ACF07D243115CBC9B58 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MemgramMobile/Resources/MemgramMobile.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6N57Z7GY37;
+				INFOPLIST_FILE = MemgramMobile/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.memgram.mobile;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -597,12 +740,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -654,11 +797,11 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -682,6 +825,15 @@
 			buildConfigurations = (
 				C93EFC52D1B4807D99A10450 /* Debug */,
 				E2912C51C1A8837B972314BF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E2A163F688524C35A217B990 /* Build configuration list for PBXNativeTarget "MemgramMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A07A2ACF07D243115CBC9B58 /* Debug */,
+				0729B0571D6B216FE5FA94C0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -724,6 +876,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		3842E4DA71627336F760CD87 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		4A5A3AD19643274E5F43547E /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 968C53C4C799846CCB446EFB /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
 		53BD9539689CB76F94BBDACC /* MLXLLM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C9251B3719E5DBC75CF79002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */;

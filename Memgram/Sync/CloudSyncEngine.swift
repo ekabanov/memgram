@@ -5,7 +5,7 @@ import os
 
 // MARK: - CloudSyncEngine
 
-@available(macOS 14.0, *)
+@available(macOS 14.0, iOS 17.0, *)
 final class CloudSyncEngine: Sendable {
 
     static let shared = CloudSyncEngine()
@@ -393,7 +393,7 @@ final class CloudSyncEngine: Sendable {
 
 // MARK: - SyncDelegate
 
-@available(macOS 14.0, *)
+@available(macOS 14.0, iOS 17.0, *)
 private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
 
     var engine: CloudSyncEngine!

@@ -48,11 +48,11 @@ final class BugReportSubmitter {
         | macOS | \(payload.macosVersion) |
         | Hardware | \(payload.hardwareModel) |
         | RAM | \(payload.physicalMemoryGB) GB |
-        | Whisper Model | \(payload.whisperModel) |
-        | LLM Backend | \(payload.llmBackend) |
-        | Recording State | \(payload.recordingState) |
+        | Whisper Model | \(payload.whisperModel ?? "n/a") |
+        | LLM Backend | \(payload.llmBackend ?? "n/a") |
+        | Recording State | \(payload.recordingState ?? "n/a") |
         | Calendar Permission | \(payload.calendarPermission) |
-        | Microphone Permission | \(payload.microphonePermission) |
+        | Microphone Permission | \(payload.microphonePermission ?? "n/a") |
         | iCloud Sync | \(payload.icloudSyncEnabled ? "enabled" : "disabled") |
 
         <details>

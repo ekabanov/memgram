@@ -1,6 +1,8 @@
 import Foundation
 import OSLog
+#if os(macOS)
 import AVFoundation
+#endif
 import EventKit
 
 struct BugReportPayload: Codable {
@@ -9,11 +11,11 @@ struct BugReportPayload: Codable {
     let macosVersion: String
     let hardwareModel: String
     let physicalMemoryGB: Int
-    let whisperModel: String
-    let llmBackend: String
-    let recordingState: String
+    let whisperModel: String?
+    let llmBackend: String?
+    let recordingState: String?
     let calendarPermission: String
-    let microphonePermission: String
+    let microphonePermission: String?
     let icloudSyncEnabled: Bool
     let meetingsMetadata: [MeetingMeta]
     let logs: [LogEntry]
@@ -44,17 +46,25 @@ final class BugReportPayloadBuilder {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build   = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
 
-        let macosVersion = processInfo.operatingSystemVersionString
+        let osVersion = processInfo.operatingSystemVersionString
         let ramGB = Int(processInfo.physicalMemory / (1024 * 1024 * 1024))
 
         let hardwareModel = Self.hardwareModelIdentifier()
-        let whisperModel  = WhisperModelManager.shared.selectedModel.whisperKitName
-        let llmBackend    = LLMProviderStore.shared.selectedBackend.rawValue
-        let recordingState = RecordingSession.shared.isRecording ? "recording" : "idle"
+
+        #if os(macOS)
+        let whisperModel: String? = WhisperModelManager.shared.selectedModel.whisperKitName
+        let llmBackend: String?   = LLMProviderStore.shared.selectedBackend.rawValue
+        let recordingState: String? = RecordingSession.shared.isRecording ? "recording" : "idle"
+        let micPerm: String?      = Self.microphonePermissionString()
+        #else
+        let whisperModel: String? = nil
+        let llmBackend: String?   = nil
+        let recordingState: String? = nil
+        let micPerm: String?      = nil
+        #endif
 
         let calendarPerm = Self.calendarPermissionString()
-        let micPerm      = Self.microphonePermissionString()
-        // CloudSyncEngine.shared is always present on macOS 14+ (our deployment target)
+        // CloudSyncEngine.shared is always present on macOS 14+ / iOS 17+ (our deployment targets)
         let icloudEnabled = true
 
         let meetingsMeta = await Self.buildMeetingsMeta()
@@ -64,7 +74,7 @@ final class BugReportPayloadBuilder {
         return BugReportPayload(
             schemaVersion: 1,
             appVersion: "\(version) (\(build))",
-            macosVersion: macosVersion,
+            macosVersion: osVersion,
             hardwareModel: hardwareModel,
             physicalMemoryGB: ramGB,
             whisperModel: whisperModel,
@@ -100,6 +110,7 @@ final class BugReportPayloadBuilder {
         }
     }
 
+    #if os(macOS)
     private static func microphonePermissionString() -> String {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized:    return "granted"
@@ -109,6 +120,7 @@ final class BugReportPayloadBuilder {
         @unknown default:    return "unknown"
         }
     }
+    #endif
 
     private static func buildMeetingsMeta() async -> [BugReportPayload.MeetingMeta] {
         let meetings = (try? MeetingStore.shared.fetchAll()) ?? []
