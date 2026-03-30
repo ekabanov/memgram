@@ -147,6 +147,7 @@ targets:
         product: GRDB
       - package: MarkdownUI
         product: MarkdownUI
+      - target: MemgramWatch
     scheme:
       testTargets: []
 
