@@ -276,7 +276,7 @@ struct MobileRecordingView: View {
             lastSegmentArrivedAt = Date()
         }
 
-        let gracePeriodElapsed = Date().timeIntervalSince(finishedAt) > 10 * 60
+        let gracePeriodElapsed = Date().timeIntervalSince(finishedAt) > 2 * 60
         let noRecentSegments: Bool
         if let lastArrival = lastSegmentArrivedAt {
             noRecentSegments = Date().timeIntervalSince(lastArrival) > 2 * 60

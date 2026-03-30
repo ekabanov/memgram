@@ -95,6 +95,7 @@ final class AudioChunkUploader: ObservableObject {
         }
 
         uploadedMeetingId = meetingId
+        UserDefaults.standard.set(Date(), forKey: "uploadFinishedAt_\(meetingId)")
         currentMeetingId = nil
 
         // Schedule a fetch after delay to pick up Mac's transcription results.
@@ -109,6 +110,9 @@ final class AudioChunkUploader: ObservableObject {
 
     /// Called by UI when Mac has finished processing or tracking is no longer needed.
     func clearUploadedMeeting() {
+        if let meetingId = uploadedMeetingId {
+            UserDefaults.standard.removeObject(forKey: "uploadFinishedAt_\(meetingId)")
+        }
         uploadedMeetingId = nil
     }
 }

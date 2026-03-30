@@ -15,6 +15,10 @@ struct MobileMeetingDetailView: View {
     @State private var now: Date = Date()
     @State private var viewAppearedAt: Date = Date()
 
+    private var recordingFinishedAt: Date {
+        (UserDefaults.standard.object(forKey: "uploadFinishedAt_\(meetingId)") as? Date) ?? viewAppearedAt
+    }
+
     enum DetailTab: String, CaseIterable {
         case summary = "Summary"
         case transcript = "Transcript"
@@ -131,7 +135,7 @@ struct MobileMeetingDetailView: View {
 
     private var shouldShowMacOfflineWarning: Bool {
         guard meeting != nil else { return false }
-        let gracePeriodElapsed = now.timeIntervalSince(viewAppearedAt) > 10 * 60
+        let gracePeriodElapsed = now.timeIntervalSince(recordingFinishedAt) > 10 * 60
         let noRecentSegments: Bool
         if let lastArrival = lastSegmentArrivedAt {
             noRecentSegments = now.timeIntervalSince(lastArrival) > 2 * 60
