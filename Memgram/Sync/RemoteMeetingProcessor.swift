@@ -65,6 +65,10 @@ final class RemoteMeetingProcessor {
     private func processChunk(_ record: CKRecord, meetingId: String) async {
         let chunkIndex = record["chunkIndex"] as? Int ?? 0
         let offsetSeconds = record["offsetSeconds"] as? Double ?? 0
+
+        // Atomically claim this chunk — first Mac to update wins
+        guard await AudioChunkService.shared.claimChunk(record) else { return }
+
         log.info("Processing chunk \(chunkIndex) for meeting \(meetingId, privacy: .public)")
 
         do {
@@ -93,6 +97,15 @@ final class RemoteMeetingProcessor {
             do {
                 let pending = try await AudioChunkService.shared.fetchPendingChunks(meetingId: meeting.id)
                 guard pending.isEmpty else { continue }
+
+                // Claim finalization — update status to .done atomically so only one Mac summarizes
+                try MeetingStore.shared.updateStatus(meeting.id, status: .done)
+                // Re-fetch to confirm we won (another Mac may have also written .done)
+                guard let current = try? MeetingStore.shared.fetchMeeting(meeting.id),
+                      current.rawTranscript == nil else {
+                    log.info("Meeting \(meeting.id, privacy: .public) — already finalized by another Mac")
+                    continue
+                }
 
                 log.info("Meeting \(meeting.id, privacy: .public) — all chunks processed, finalizing")
                 let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meeting.id)) ?? []

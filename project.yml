@@ -107,12 +107,15 @@ targets:
         excludes:
           - Resources/Info.plist
           - Resources/MemgramMobile.entitlements
+    resources:
+      - path: MemgramMobile/Resources/Assets.xcassets
     info:
       path: MemgramMobile/Resources/Info.plist
       properties:
         CFBundleIdentifier: com.memgram.mobile
         CFBundleName: Memgram
         CFBundleDisplayName: Memgram
+        CFBundleIconName: AppIcon
         NSCalendarsFullAccessUsageDescription: "Memgram reads your calendar to match recordings with scheduled meetings."
         NSMicrophoneUsageDescription: "Memgram records meeting audio for transcription."
         UIBackgroundModes:

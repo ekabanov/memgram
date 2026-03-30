@@ -8,6 +8,8 @@
 	<string>Memgram</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.memgram.mobile</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -24,6 +26,10 @@
 	<string>Memgram reads your calendar to match recordings with scheduled meetings.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Memgram records meeting audio for transcription.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

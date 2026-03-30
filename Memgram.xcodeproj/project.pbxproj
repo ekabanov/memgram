@@ -47,6 +47,7 @@
 		83A2FE7D0DC89F89105692D0 /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9518923B9FA68D6694C5AD /* AudioConverter.swift */; };
 		84971C3AB07B6DBEA10A8413 /* MemgramMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */; };
 		88756ABD2C04E7905CDA378D /* MeetingEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */; };
+		8D315E70057D74A40EBC0637 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC92B47E69E0FA8C25194099 /* Assets.xcassets */; };
 		8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AF2D313FD0669F68D81F39 /* BugReportView.swift */; };
 		9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269098F6F8AD2D7EAE48AC4C /* ClaudeProvider.swift */; };
 		A014CBA98A79D45243C72F8D /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */; };
@@ -154,6 +155,7 @@
 		E28822E40CBC23C661FBD955 /* PDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExporter.swift; sourceTree = "<group>"; };
 		E2DACCFEC6DB30395795F347 /* MeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingListView.swift; sourceTree = "<group>"; };
 		E3A335CC4E14196465F8F057 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		EC92B47E69E0FA8C25194099 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EE635A9AA521A55210C62EB6 /* MobileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileSettingsView.swift; sourceTree = "<group>"; };
 		F0B16CE774DDB719F2117948 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportSubmitter.swift; sourceTree = "<group>"; };
@@ -320,6 +322,14 @@
 			path = AI;
 			sourceTree = "<group>";
 		};
+		761BDE7C5D364362DAAE6B8C /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				EC92B47E69E0FA8C25194099 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		7A25DEEEE20C564ECFD8F52C /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -332,6 +342,7 @@
 			isa = PBXGroup;
 			children = (
 				978A802309C7747DEC9302A9 /* Recording */,
+				761BDE7C5D364362DAAE6B8C /* Resources */,
 				5B3C62C1DD64D77CE9F27711 /* UI */,
 				AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */,
 			);
@@ -449,6 +460,7 @@
 			buildConfigurationList = E2A163F688524C35A217B990 /* Build configuration list for PBXNativeTarget "MemgramMobile" */;
 			buildPhases = (
 				C7A005E586C812473EBF210F /* Sources */,
+				B5883CE33E9B77E9957DD18B /* Resources */,
 				CD52DA228E198908113A4A8E /* Frameworks */,
 			);
 			buildRules = (
@@ -538,6 +550,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5883CE33E9B77E9957DD18B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D315E70057D74A40EBC0637 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

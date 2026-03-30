@@ -58,6 +58,27 @@ final class AudioChunkService {
         return try results.map { try $0.1.get() }
     }
 
+    /// Atomically claim a chunk by updating status from "pending" → "processing".
+    /// Uses ifServerRecordUnchanged so only one Mac wins the race.
+    /// Returns true if this Mac claimed it, false if another Mac got there first.
+    func claimChunk(_ record: CKRecord) async -> Bool {
+        record["status"] = "processing" as CKRecordValue
+        do {
+            let op = CKModifyRecordsOperation(recordsToSave: [record], recordIDsToDelete: nil)
+            op.savePolicy = .ifServerRecordUnchanged
+            op.qualityOfService = .userInitiated
+            try await database.modifyRecords(saving: [record], deleting: [])
+            log.info("Claimed chunk: \(record.recordID.recordName, privacy: .public)")
+            return true
+        } catch let error as CKError where error.code == .serverRecordChanged {
+            log.info("Chunk already claimed by another Mac: \(record.recordID.recordName, privacy: .public)")
+            return false
+        } catch {
+            log.error("Claim failed for chunk \(record.recordID.recordName, privacy: .public): \(error)")
+            return false
+        }
+    }
+
     /// Delete a processed audio chunk record (removes CKAsset from iCloud storage).
     func markDoneAndDelete(recordID: CKRecord.ID) async throws {
         log.info("Deleting processed chunk: \(recordID.recordName, privacy: .public)")
