@@ -93,6 +93,7 @@
 		FADCDA0A0090F756399BE4EC /* RemoteMeetingProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216D6741B51925547324E122 /* RemoteMeetingProcessor.swift */; };
 		FBAF3B5130CB76AB48FC75C6 /* StereoMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BDF9934A5067BEC5703004 /* StereoMixer.swift */; };
 		FD9134276691672C36E8604D /* MeetingListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2DACCFEC6DB30395795F347 /* MeetingListView.swift */; };
+		FDF659B9D2542BF950454459 /* MobileRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EBB33D41210D3EF28EE697 /* MobileRecordingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -134,6 +135,7 @@
 		9D9D739005F69BB4F709259E /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
 		AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramMobileApp.swift; sourceTree = "<group>"; };
 		AF09BEF692E4C86B766A5C7A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
+		B3EBB33D41210D3EF28EE697 /* MobileRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRecordingView.swift; sourceTree = "<group>"; };
 		B565F886405D70876367BB2D /* LiveTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTranscriptView.swift; sourceTree = "<group>"; };
 		B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadView.swift; sourceTree = "<group>"; };
 		BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenLocalProvider.swift; sourceTree = "<group>"; };
@@ -274,6 +276,7 @@
 			children = (
 				9C44E7E691F58F0300891B92 /* MobileMeetingDetailView.swift */,
 				32E55D49539467A72F54AB7B /* MobileMeetingListView.swift */,
+				B3EBB33D41210D3EF28EE697 /* MobileRecordingView.swift */,
 				EE635A9AA521A55210C62EB6 /* MobileSettingsView.swift */,
 			);
 			path = UI;
@@ -566,6 +569,7 @@
 				537C46FEEB97EC11C3502F9F /* MobileAudioRecorder.swift in Sources */,
 				F2520954BA649DCB552F7EDD /* MobileMeetingDetailView.swift in Sources */,
 				A064123B18214C2E1FC28FFE /* MobileMeetingListView.swift in Sources */,
+				FDF659B9D2542BF950454459 /* MobileRecordingView.swift in Sources */,
 				0FB5B1262EC050D38DAE6023 /* MobileSettingsView.swift in Sources */,
 				0B16A0702A486EC342E0D718 /* Notifications.swift in Sources */,
 				2906587B26F2B992240106FE /* RemoteMeetingProcessor.swift in Sources */,
