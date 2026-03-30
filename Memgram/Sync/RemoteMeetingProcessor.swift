@@ -64,17 +64,18 @@ final class RemoteMeetingProcessor {
 
         do {
             let chunks = try await AudioChunkService.shared.fetchAllPendingChunks()
-            guard !chunks.isEmpty else { return }
-            log.info("Found \(chunks.count) pending audio chunks")
-
-            let grouped = Dictionary(grouping: chunks) { $0["meetingId"] as? String ?? "" }
-            for (meetingId, meetingChunks) in grouped {
-                guard !meetingId.isEmpty else { continue }
-                let sorted = meetingChunks.sorted { ($0["chunkIndex"] as? Int ?? 0) < ($1["chunkIndex"] as? Int ?? 0) }
-                for chunk in sorted {
-                    await processChunk(chunk, meetingId: meetingId)
+            if !chunks.isEmpty {
+                log.info("Found \(chunks.count) pending audio chunks")
+                let grouped = Dictionary(grouping: chunks) { $0["meetingId"] as? String ?? "" }
+                for (meetingId, meetingChunks) in grouped {
+                    guard !meetingId.isEmpty else { continue }
+                    let sorted = meetingChunks.sorted { ($0["chunkIndex"] as? Int ?? 0) < ($1["chunkIndex"] as? Int ?? 0) }
+                    for chunk in sorted {
+                        await processChunk(chunk, meetingId: meetingId)
+                    }
                 }
             }
+            // Always check — finalization happens AFTER all chunks are processed
             await checkForCompletedMeetings()
         } catch {
             log.error("Poll failed: \(error)")
