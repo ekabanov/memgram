@@ -3,6 +3,7 @@ import EventKit
 import OSLog
 
 private let log = Logger.make("RecordingUI")
+private let macOfflineWarningTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
 @MainActor
 struct MobileRecordingView: View {
@@ -12,6 +13,11 @@ struct MobileRecordingView: View {
 
     @State private var segments: [MeetingSegment] = []
     @State private var errorMessage: String?
+    @State private var pendingMacMeetingId: String?
+    @State private var recordingFinishedAt: Date?
+    @State private var lastSegmentArrivedAt: Date?
+    @State private var previousSegmentCount: Int = 0
+    @State private var showMacWarning: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -29,6 +35,8 @@ struct MobileRecordingView: View {
                 if uploader.pendingChunks > 0 {
                     pendingChunksIndicator
                 }
+
+                macOfflineBanner
 
                 Spacer()
 
@@ -48,6 +56,10 @@ struct MobileRecordingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in
                 refreshSegments()
+                updateMacWarningState()
+            }
+            .onReceive(macOfflineWarningTimer) { _ in
+                updateMacWarningState()
             }
         }
     }
@@ -121,6 +133,29 @@ struct MobileRecordingView: View {
         }
     }
 
+    // MARK: - Mac Offline Banner
+
+    @ViewBuilder
+    private var macOfflineBanner: some View {
+        if showMacWarning {
+            HStack(spacing: 10) {
+                Image(systemName: "desktopcomputer.trianglebadge.exclamationmark")
+                    .foregroundStyle(.orange)
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Mac not available")
+                        .font(.subheadline.bold())
+                    Text("Transcription and summary will be ready once Memgram is open on your Mac.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(12)
+            .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
     // MARK: - Live Transcript
 
     private var liveTranscriptSection: some View {
@@ -165,6 +200,11 @@ struct MobileRecordingView: View {
     }
 
     private func startRecording() {
+        pendingMacMeetingId = nil
+        recordingFinishedAt = nil
+        lastSegmentArrivedAt = nil
+        previousSegmentCount = 0
+        showMacWarning = false
         errorMessage = nil
         segments = []
 
@@ -198,8 +238,53 @@ struct MobileRecordingView: View {
 
         Task {
             await uploader.finishRecording()
-            log.info("Recording finished and uploaded")
+            pendingMacMeetingId = uploader.uploadedMeetingId
+            recordingFinishedAt = Date()
+            lastSegmentArrivedAt = nil
+            previousSegmentCount = 0
+            showMacWarning = false
+            log.info("Recording finished and uploaded — tracking Mac processing")
         }
+    }
+
+    private func updateMacWarningState() {
+        guard let meetingId = pendingMacMeetingId,
+              let finishedAt = recordingFinishedAt else {
+            showMacWarning = false
+            return
+        }
+
+        // Check if meeting is done — clear tracking entirely
+        if let meeting = try? MeetingStore.shared.fetchMeeting(meetingId),
+           meeting.status == .done {
+            pendingMacMeetingId = nil
+            recordingFinishedAt = nil
+            lastSegmentArrivedAt = nil
+            previousSegmentCount = 0
+            showMacWarning = false
+            uploader.clearUploadedMeeting()
+            return
+        }
+
+        // Detect newly arrived segments — update last-activity timestamp
+        let currentCount = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId))?.count ?? 0
+        if currentCount < previousSegmentCount {
+            previousSegmentCount = currentCount  // reset if sync re-seeded the table
+        }
+        if currentCount > previousSegmentCount {
+            previousSegmentCount = currentCount
+            lastSegmentArrivedAt = Date()
+        }
+
+        let gracePeriodElapsed = Date().timeIntervalSince(finishedAt) > 10 * 60
+        let noRecentSegments: Bool
+        if let lastArrival = lastSegmentArrivedAt {
+            noRecentSegments = Date().timeIntervalSince(lastArrival) > 2 * 60
+        } else {
+            noRecentSegments = true
+        }
+
+        showMacWarning = gracePeriodElapsed && noRecentSegments
     }
 
     private func refreshSegments() {
