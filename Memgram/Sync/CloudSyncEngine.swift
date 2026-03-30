@@ -64,6 +64,15 @@ final class CloudSyncEngine: Sendable {
         }
     }
 
+    /// Restart the sync engine from stored state. This forces a fresh fetch
+    /// that picks up changes missed due to CKSyncEngine's change token race
+    /// (when two devices write to the same zone concurrently).
+    func forceResync() {
+        logger.info("[CloudSync] Force resync — restarting engine")
+        syncEngine = nil
+        start()
+    }
+
     /// Trigger an immediate fetch from CloudKit — use for pull-to-refresh.
     func fetchNow() async {
         guard let engine = syncEngine else { return }

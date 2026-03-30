@@ -24,9 +24,11 @@ struct MobileMeetingListView: View {
                 MobileMeetingDetailView(meetingId: meetingId)
             }
             .refreshable {
-                if #available(iOS 17.0, *) {
-                    await CloudSyncEngine.shared.fetchNow()
-                }
+                // forceResync restarts the engine to pick up changes missed
+                // due to CKSyncEngine's change token race condition
+                CloudSyncEngine.shared.forceResync()
+                // Give the engine a moment to fetch
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
                 loadMeetings()
             }
             .onAppear { loadMeetings() }

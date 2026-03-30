@@ -93,5 +93,16 @@ final class AudioChunkUploader: ObservableObject {
         }
 
         currentMeetingId = nil
+
+        // Schedule a resync after a delay to pick up Mac's transcription results.
+        // CKSyncEngine's change token can get stuck when iPhone and Mac write
+        // to the same zone concurrently — restarting the engine fixes this.
+        Task {
+            try? await Task.sleep(nanoseconds: 30_000_000_000)  // 30 seconds
+            await MainActor.run {
+                CloudSyncEngine.shared.forceResync()
+                log.info("Post-recording resync triggered")
+            }
+        }
     }
 }
