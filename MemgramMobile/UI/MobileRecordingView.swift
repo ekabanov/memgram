@@ -288,7 +288,7 @@ struct MobileRecordingView: View {
     }
 
     private func refreshSegments() {
-        guard let meetingId = uploader.currentMeetingId else { return }
+        guard let meetingId = uploader.currentMeetingId ?? pendingMacMeetingId else { return }
         do {
             segments = try MeetingStore.shared.fetchSegments(forMeeting: meetingId)
         } catch {

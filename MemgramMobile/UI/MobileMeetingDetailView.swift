@@ -1,7 +1,7 @@
 import SwiftUI
 import MarkdownUI
 
-private let detailProgressTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+private let detailProgressTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
 struct MobileMeetingDetailView: View {
     let meetingId: String
@@ -13,6 +13,7 @@ struct MobileMeetingDetailView: View {
     @State private var lastSegmentCount: Int = 0
     @State private var lastSegmentArrivedAt: Date?
     @State private var now: Date = Date()
+    @State private var viewAppearedAt: Date = Date()
 
     enum DetailTab: String, CaseIterable {
         case summary = "Summary"
@@ -48,7 +49,10 @@ struct MobileMeetingDetailView: View {
                 }
             }
         }
-        .onAppear { loadMeeting() }
+        .onAppear {
+            viewAppearedAt = Date()
+            loadMeeting()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in
             loadMeeting()
         }
@@ -126,8 +130,8 @@ struct MobileMeetingDetailView: View {
     }
 
     private var shouldShowMacOfflineWarning: Bool {
-        guard let meeting else { return false }
-        let gracePeriodElapsed = now.timeIntervalSince(meeting.startedAt) > 10 * 60
+        guard meeting != nil else { return false }
+        let gracePeriodElapsed = now.timeIntervalSince(viewAppearedAt) > 10 * 60
         let noRecentSegments: Bool
         if let lastArrival = lastSegmentArrivedAt {
             noRecentSegments = now.timeIntervalSince(lastArrival) > 2 * 60
