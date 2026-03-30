@@ -115,6 +115,8 @@ targets:
         CFBundleDisplayName: Memgram
         NSCalendarsFullAccessUsageDescription: "Memgram reads your calendar to match recordings with scheduled meetings."
         NSMicrophoneUsageDescription: "Memgram records meeting audio for transcription."
+        UIBackgroundModes:
+          - remote-notification
         UILaunchScreen: {}
     entitlements:
       path: MemgramMobile/Resources/MemgramMobile.entitlements
