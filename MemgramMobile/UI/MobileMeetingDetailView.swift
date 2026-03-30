@@ -1,6 +1,8 @@
 import SwiftUI
 import MarkdownUI
 
+private let detailProgressTimer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+
 struct MobileMeetingDetailView: View {
     let meetingId: String
 
@@ -8,6 +10,9 @@ struct MobileMeetingDetailView: View {
     @State private var segments: [MeetingSegment] = []
     @State private var selectedTab: DetailTab = .summary
     @State private var searchText = ""
+    @State private var lastSegmentCount: Int = 0
+    @State private var lastSegmentArrivedAt: Date?
+    @State private var now: Date = Date()
 
     enum DetailTab: String, CaseIterable {
         case summary = "Summary"
@@ -47,6 +52,9 @@ struct MobileMeetingDetailView: View {
         .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in
             loadMeeting()
         }
+        .onReceive(detailProgressTimer) { date in
+            now = date
+        }
     }
 
     @ViewBuilder
@@ -59,11 +67,26 @@ struct MobileMeetingDetailView: View {
                     .padding()
             }
         } else if meeting?.status == .transcribing || meeting?.status == .recording {
-            VStack(spacing: 12) {
+            VStack(spacing: 16) {
                 ProgressView()
-                Text("Processing on Mac...")
-                    .foregroundStyle(.secondary)
+                    .controlSize(.large)
+                if shouldShowMacOfflineWarning {
+                    Text("Mac not available")
+                        .font(.headline)
+                    Text("Transcription and summary will be ready once Memgram is open on your Mac.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("Processing on Mac…")
+                        .font(.headline)
+                    Text("Transcript and summary will appear here shortly.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
+            .padding(32)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             Text("No summary yet.")
@@ -94,7 +117,24 @@ struct MobileMeetingDetailView: View {
 
     private func loadMeeting() {
         meeting = try? MeetingStore.shared.fetchMeeting(meetingId)
-        segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
+        let fetched = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
+        if fetched.count > lastSegmentCount {
+            lastSegmentCount = fetched.count
+            lastSegmentArrivedAt = Date()
+        }
+        segments = fetched
+    }
+
+    private var shouldShowMacOfflineWarning: Bool {
+        guard let meeting else { return false }
+        let gracePeriodElapsed = now.timeIntervalSince(meeting.startedAt) > 10 * 60
+        let noRecentSegments: Bool
+        if let lastArrival = lastSegmentArrivedAt {
+            noRecentSegments = now.timeIntervalSince(lastArrival) > 2 * 60
+        } else {
+            noRecentSegments = true
+        }
+        return gracePeriodElapsed && noRecentSegments
     }
 }
 
