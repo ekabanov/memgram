@@ -4,6 +4,7 @@ options:
   deploymentTarget:
     macOS: "14.0"
     iOS: "17.0"
+    watchOS: "10.0"
   defaultConfig: Debug
   xcodeVersion: "15"
   groupSortPosition: top
@@ -107,6 +108,7 @@ targets:
         excludes:
           - Resources/Info.plist
           - Resources/MemgramMobile.entitlements
+      - path: MemgramMobile/WatchConnectivity
     resources:
       - path: MemgramMobile/Resources/Assets.xcassets
     info:
@@ -146,5 +148,33 @@ targets:
         product: GRDB
       - package: MarkdownUI
         product: MarkdownUI
+    scheme:
+      testTargets: []
+
+  MemgramWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: MemgramWatch
+    info:
+      path: MemgramWatch/Info.plist
+      properties:
+        CFBundleIdentifier: com.memgram.mobile.watchkitapp
+        CFBundleName: Memgram
+        CFBundleDisplayName: Memgram
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.memgram.mobile
+        NSMicrophoneUsageDescription: "Memgram records meeting audio on your Apple Watch."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.memgram.mobile.watchkitapp
+        SWIFT_VERSION: "5.9"
+        WATCHOS_DEPLOYMENT_TARGET: "10.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "6N57Z7GY37"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
     scheme:
       testTargets: []
