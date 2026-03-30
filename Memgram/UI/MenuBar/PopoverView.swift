@@ -20,11 +20,14 @@ struct PopoverView: View {
                 LiveTranscriptView(segments: session.segments)
                     .frame(maxHeight: 180)
             } else {
-                downloadCards
-                upcomingEventCard
-                statusSection
-                    .padding(.horizontal, 16)
-                Spacer()
+                ScrollView {
+                    VStack(spacing: 0) {
+                        downloadCards
+                        upcomingEventCard
+                        statusSection
+                            .padding(.horizontal, 16)
+                    }
+                }
             }
 
             if session.isRecording {
@@ -32,10 +35,6 @@ struct PopoverView: View {
                 levelMeterSection
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
-                if session.sysLevel == 0 && session.silentSysAudioSeconds > 2 {
-                    systemAudioWarning
-                        .padding(.horizontal, 16)
-                }
             }
 
             if let error = lastError {
@@ -50,7 +49,7 @@ struct PopoverView: View {
             footerSection
                 .padding(12)
         }
-        .frame(width: 400, height: 340)
+        .frame(width: 400, height: 380)
         .sheet(isPresented: $permissions.showOnboardingSheet) {
             OnboardingView()
         }
