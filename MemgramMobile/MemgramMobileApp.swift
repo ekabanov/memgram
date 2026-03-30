@@ -53,6 +53,9 @@ struct MemgramMobileApp: App {
                 CalendarManager.shared.startMonitoring()
             }
         }
+
+        // Start WatchConnectivity to receive Watch recordings
+        _ = PhoneSessionManager.shared
     }
 
     var body: some Scene {
