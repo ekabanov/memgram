@@ -272,14 +272,21 @@ final class CloudSyncEngine: Sendable {
                 )
                 try db.write { db in
                     if let existing = try Meeting.fetchOne(db, key: id) {
-                        // Never revert to a lower status — prevents sync conflicts
-                        // where a stale .transcribing record overwrites a local .done
+                        // Merge: never revert to a lower status, and preserve
+                        // locally-computed fields (summary, rawTranscript, etc.)
+                        // when the remote record has a lower status.
                         var merged = meeting
                         let statusOrder: [MeetingStatus] = [.recording, .transcribing, .done, .error]
                         let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
                         let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
                         if existingRank > remoteRank {
+                            // Remote is stale — keep all locally-computed fields
                             merged.status = existing.status
+                            merged.summary = existing.summary ?? merged.summary
+                            merged.rawTranscript = existing.rawTranscript ?? merged.rawTranscript
+                            merged.actionItems = existing.actionItems ?? merged.actionItems
+                            merged.endedAt = existing.endedAt ?? merged.endedAt
+                            merged.durationSeconds = existing.durationSeconds ?? merged.durationSeconds
                         }
                         try merged.update(db)
                     } else {

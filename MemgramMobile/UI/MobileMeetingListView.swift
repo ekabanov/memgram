@@ -24,11 +24,7 @@ struct MobileMeetingListView: View {
                 MobileMeetingDetailView(meetingId: meetingId)
             }
             .refreshable {
-                // forceResync restarts the engine to pick up changes missed
-                // due to CKSyncEngine's change token race condition
-                CloudSyncEngine.shared.forceResync()
-                // Give the engine a moment to fetch
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await CloudSyncEngine.shared.fetchNow()
                 loadMeetings()
             }
             .onAppear { loadMeetings() }

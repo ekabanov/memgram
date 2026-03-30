@@ -94,15 +94,13 @@ final class AudioChunkUploader: ObservableObject {
 
         currentMeetingId = nil
 
-        // Schedule a resync after a delay to pick up Mac's transcription results.
-        // CKSyncEngine's change token can get stuck when iPhone and Mac write
-        // to the same zone concurrently — restarting the engine fixes this.
+        // Schedule a fetch after delay to pick up Mac's transcription results.
+        // With push notifications working, this is a safety net — the push
+        // should trigger a fetch sooner.
         Task {
             try? await Task.sleep(nanoseconds: 30_000_000_000)  // 30 seconds
-            await MainActor.run {
-                CloudSyncEngine.shared.forceResync()
-                log.info("Post-recording resync triggered")
-            }
+            log.info("Post-recording fetch triggered")
+            await CloudSyncEngine.shared.fetchNow()
         }
     }
 }
