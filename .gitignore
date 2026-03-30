@@ -32,3 +32,4 @@ docs/superpowers/
 # Bug report config (contains GitHub token — never commit)
 Memgram/BugReport/BugReportConfig.swift
 build/
+typescript
