@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.memgram
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   defaultConfig: Debug
   xcodeVersion: "15"
   groupSortPosition: top
@@ -82,6 +83,55 @@ targets:
         product: WhisperKit
       - package: MLXSwiftLM
         product: MLXLLM
+      - package: MarkdownUI
+        product: MarkdownUI
+    scheme:
+      testTargets: []
+
+  MemgramMobile:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Memgram/Database
+      - path: Memgram/Sync
+      - path: Memgram/Calendar/CalendarContext.swift
+      - path: Memgram/Utilities
+      - path: Memgram/BugReport
+        excludes:
+          - BugReportConfig.swift.example
+      - path: MemgramMobile
+        excludes:
+          - Resources/Info.plist
+          - Resources/MemgramMobile.entitlements
+    info:
+      path: MemgramMobile/Resources/Info.plist
+      properties:
+        CFBundleIdentifier: com.memgram.mobile
+        CFBundleName: Memgram
+        CFBundleDisplayName: Memgram
+        UILaunchScreen: {}
+    entitlements:
+      path: MemgramMobile/Resources/MemgramMobile.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.memgram.app
+        com.apple.developer.icloud-services:
+          - CloudKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.memgram.mobile
+        SWIFT_VERSION: "5.9"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "6N57Z7GY37"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - package: GRDB
+        product: GRDB
       - package: MarkdownUI
         product: MarkdownUI
     scheme:
