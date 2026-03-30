@@ -64,6 +64,18 @@ final class CloudSyncEngine: Sendable {
         }
     }
 
+    /// Trigger an immediate fetch from CloudKit — use for pull-to-refresh.
+    func fetchNow() async {
+        guard let engine = syncEngine else { return }
+        do {
+            logger.info("[CloudSync] Manual fetch triggered")
+            try await engine.fetchChanges()
+            logger.info("[CloudSync] Manual fetch complete")
+        } catch {
+            logger.error("[CloudSync] Manual fetch failed: \(error)")
+        }
+    }
+
     // MARK: - Enqueue Helpers
 
     func enqueueSave(table: String, id: String) {

@@ -23,7 +23,12 @@ struct MobileMeetingListView: View {
             .navigationDestination(for: String.self) { meetingId in
                 MobileMeetingDetailView(meetingId: meetingId)
             }
-            .refreshable { loadMeetings() }
+            .refreshable {
+                if #available(iOS 17.0, *) {
+                    await CloudSyncEngine.shared.fetchNow()
+                }
+                loadMeetings()
+            }
             .onAppear { loadMeetings() }
             .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in
                 loadMeetings()
