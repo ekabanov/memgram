@@ -127,7 +127,6 @@ targets:
       path: MemgramMobile/Resources/MemgramMobile.entitlements
       properties:
         com.apple.security.personal-information.calendars: true
-        aps-environment: development
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.memgram.app
         com.apple.developer.icloud-services:
