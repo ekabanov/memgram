@@ -262,8 +262,17 @@ final class CloudSyncEngine: Sendable {
                     calendarContext: record["calendarContext"] as? String
                 )
                 try db.write { db in
-                    if try Meeting.fetchOne(db, key: id) != nil {
-                        try meeting.update(db)
+                    if let existing = try Meeting.fetchOne(db, key: id) {
+                        // Never revert to a lower status — prevents sync conflicts
+                        // where a stale .transcribing record overwrites a local .done
+                        var merged = meeting
+                        let statusOrder: [MeetingStatus] = [.recording, .transcribing, .done, .error]
+                        let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
+                        let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
+                        if existingRank > remoteRank {
+                            merged.status = existing.status
+                        }
+                        try merged.update(db)
                     } else {
                         try meeting.insert(db)
                     }

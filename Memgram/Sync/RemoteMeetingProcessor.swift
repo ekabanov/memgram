@@ -13,6 +13,10 @@ final class RemoteMeetingProcessor {
     private let transcriptionEngine = TranscriptionEngine()
     private var pollTimer: Timer?
     private var isProcessing = false
+    /// Meeting IDs that had audio chunks processed in this session.
+    /// Only these meetings are eligible for finalization — prevents
+    /// RemoteMeetingProcessor from touching locally-recorded Mac meetings.
+    private var processedMeetingIds: Set<String> = []
 
     private init() {}
 
@@ -85,6 +89,7 @@ final class RemoteMeetingProcessor {
                 try? MeetingStore.shared.appendRemoteSegment(segment)
             }
             try await AudioChunkService.shared.markDoneAndDelete(recordID: record.recordID)
+            processedMeetingIds.insert(meetingId)
             log.info("Chunk \(chunkIndex) processed and deleted")
         } catch {
             log.error("Failed to process chunk \(chunkIndex): \(error)")
@@ -92,8 +97,10 @@ final class RemoteMeetingProcessor {
     }
 
     private func checkForCompletedMeetings() async {
+        guard !processedMeetingIds.isEmpty else { return }
         let meetings = (try? MeetingStore.shared.fetchAll()) ?? []
-        for meeting in meetings where meeting.status == .transcribing {
+        for meeting in meetings where meeting.status == .transcribing
+                                  && processedMeetingIds.contains(meeting.id) {
             do {
                 let pending = try await AudioChunkService.shared.fetchPendingChunks(meetingId: meeting.id)
                 guard pending.isEmpty else { continue }
