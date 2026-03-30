@@ -230,14 +230,18 @@ final class SummaryEngine: ObservableObject {
 
         Output in Markdown using these sections:
 
-        ## Main Topics Discussed
-        ## Essential Discussions and Decisions
-        ## Key Takeaways
-        ## Tasks Assigned
-        (format: **Task** — Assigned To — Deadline or "No deadline specified")
-        ## Follow-Up Actions
-        ## Open Issues
-        (omit if none)
+        ## Participants
+        Who was in the meeting and their roles (if mentioned).
+
+        ## Topics Discussed
+        For each major topic, use a ### subheading with bullet points.
+
+        ## Key Decisions
+        Bullet list of decisions reached. Write "None" if there were none.
+
+        ## Action Items
+        Format: **Owner** — Task — Deadline (or "no deadline specified")
+        Write "None" if there were none.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
