@@ -66,6 +66,14 @@ final class MeetingStore {
     }
     #endif
 
+    func appendRemoteSegment(_ segment: MeetingSegment) throws {
+        try db.write { db in
+            var seg = segment
+            try seg.insert(db)
+        }
+        sync?.enqueueSave(table: "segments", id: segment.id)
+    }
+
     func updateStatus(_ meetingId: String, status: MeetingStatus) throws {
         try db.write { db in
             try db.execute(

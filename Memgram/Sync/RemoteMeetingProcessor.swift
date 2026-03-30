@@ -1,0 +1,114 @@
+#if os(macOS)
+import CloudKit
+import Foundation
+import OSLog
+
+/// Watches CloudKit for audio chunks uploaded by iPhone, transcribes them,
+/// and triggers summarization when a meeting is complete.
+@MainActor
+final class RemoteMeetingProcessor {
+    static let shared = RemoteMeetingProcessor()
+
+    private let log = Logger.make("RemoteProcessor")
+    private let transcriptionEngine = TranscriptionEngine()
+    private var pollTimer: Timer?
+    private var isProcessing = false
+
+    private init() {}
+
+    func start() {
+        log.info("RemoteMeetingProcessor started")
+        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
+        Task {
+            do {
+                try await transcriptionEngine.prepare(modelName: modelName)
+                log.info("Remote transcription engine ready")
+            } catch {
+                log.error("Failed to prepare remote transcription engine: \(error)")
+            }
+        }
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.pollForChunks() }
+        }
+        Task { await pollForChunks() }
+    }
+
+    func stop() {
+        pollTimer?.invalidate()
+        pollTimer = nil
+    }
+
+    private func pollForChunks() async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+
+        do {
+            let chunks = try await AudioChunkService.shared.fetchAllPendingChunks()
+            guard !chunks.isEmpty else { return }
+            log.info("Found \(chunks.count) pending audio chunks")
+
+            let grouped = Dictionary(grouping: chunks) { $0["meetingId"] as? String ?? "" }
+            for (meetingId, meetingChunks) in grouped {
+                guard !meetingId.isEmpty else { continue }
+                let sorted = meetingChunks.sorted { ($0["chunkIndex"] as? Int ?? 0) < ($1["chunkIndex"] as? Int ?? 0) }
+                for chunk in sorted {
+                    await processChunk(chunk, meetingId: meetingId)
+                }
+            }
+            await checkForCompletedMeetings()
+        } catch {
+            log.error("Poll failed: \(error)")
+        }
+    }
+
+    private func processChunk(_ record: CKRecord, meetingId: String) async {
+        let chunkIndex = record["chunkIndex"] as? Int ?? 0
+        let offsetSeconds = record["offsetSeconds"] as? Double ?? 0
+        log.info("Processing chunk \(chunkIndex) for meeting \(meetingId, privacy: .public)")
+
+        do {
+            guard let audioURL = try AudioChunkService.shared.downloadAudioAsset(from: record) else { return }
+            defer { try? FileManager.default.removeItem(at: audioURL) }
+
+            let data = try Data(contentsOf: audioURL)
+            let samples = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+
+            let segments = try await transcriptionEngine.transcribeRawAudio(
+                samples: samples, meetingId: meetingId, offsetSeconds: offsetSeconds
+            )
+            for segment in segments {
+                try? MeetingStore.shared.appendRemoteSegment(segment)
+            }
+            try await AudioChunkService.shared.markDoneAndDelete(recordID: record.recordID)
+            log.info("Chunk \(chunkIndex) processed and deleted")
+        } catch {
+            log.error("Failed to process chunk \(chunkIndex): \(error)")
+        }
+    }
+
+    private func checkForCompletedMeetings() async {
+        let meetings = (try? MeetingStore.shared.fetchAll()) ?? []
+        for meeting in meetings where meeting.status == .transcribing {
+            do {
+                let pending = try await AudioChunkService.shared.fetchPendingChunks(meetingId: meeting.id)
+                guard pending.isEmpty else { continue }
+
+                log.info("Meeting \(meeting.id, privacy: .public) — all chunks processed, finalizing")
+                let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meeting.id)) ?? []
+                let rawTranscript = segments
+                    .sorted { $0.startSeconds < $1.startSeconds }
+                    .map { "\($0.speaker): \($0.text)" }
+                    .joined(separator: "\n")
+
+                try MeetingStore.shared.finalizeMeeting(meeting.id, endedAt: Date(), rawTranscript: rawTranscript)
+                await SummaryEngine.shared.summarize(meetingId: meeting.id)
+                await EmbeddingEngine.shared.embed(meetingId: meeting.id)
+                log.info("Meeting \(meeting.id, privacy: .public) — summarized and done")
+            } catch {
+                log.error("Failed to finalize meeting \(meeting.id, privacy: .public): \(error)")
+            }
+        }
+    }
+}
+#endif

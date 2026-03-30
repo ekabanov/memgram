@@ -58,6 +58,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if #available(macOS 14.0, *) {
             CloudSyncEngine.shared.start()
             appLog.info("CloudSync started")
+            RemoteMeetingProcessor.shared.start()
+            appLog.info("RemoteMeetingProcessor started")
         }
 
         UNUserNotificationCenter.current().delegate = self

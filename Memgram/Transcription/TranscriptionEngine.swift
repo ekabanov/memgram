@@ -9,6 +9,11 @@ enum AudioChannel: String {
     case unknown    = "unknown"
 }
 
+enum TranscriptionError: LocalizedError {
+    case modelNotLoaded
+    var errorDescription: String? { "Whisper model is not loaded" }
+}
+
 struct TranscriptSegment: Identifiable {
     let id: UUID
     let startSeconds: Double
@@ -152,6 +157,46 @@ final class TranscriptionEngine {
                 self.drainIfIdle()
             }
         }
+    }
+
+    // MARK: - Raw Audio Transcription
+
+    /// Transcribe a raw Float32 audio array and return segments.
+    /// Used by RemoteMeetingProcessor for remote audio chunks.
+    func transcribeRawAudio(samples: [Float], meetingId: String, offsetSeconds: Double) async throws -> [MeetingSegment] {
+        guard let whisperKit else {
+            throw TranscriptionError.modelNotLoaded
+        }
+
+        let options = DecodingOptions(
+            task: .transcribe,
+            temperature: 0.0,
+            skipSpecialTokens: true
+        )
+        let results: [TranscriptionResult] = try await whisperKit.transcribe(
+            audioArray: samples,
+            decodeOptions: options
+        )
+
+        var segments: [MeetingSegment] = []
+        for result in results {
+            for segment in result.segments {
+                let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { continue }
+                segments.append(MeetingSegment(
+                    id: UUID().uuidString,
+                    meetingId: meetingId,
+                    speaker: "Remote",
+                    channel: "microphone",
+                    startSeconds: offsetSeconds + Double(segment.start),
+                    endSeconds: offsetSeconds + Double(segment.end),
+                    text: text,
+                    ckSystemFields: nil
+                ))
+            }
+        }
+        log.info("Transcribed \(segments.count) segments from \(samples.count) samples at offset \(offsetSeconds)s")
+        return segments
     }
 
     // MARK: - Diarization
