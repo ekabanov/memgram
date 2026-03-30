@@ -115,7 +115,7 @@ final class SummaryEngine: ObservableObject {
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else { return }
 
         // Only auto-title if the current title looks like a default (Mac or iPhone)
-        let isDefaultTitle = meeting.title.hasPrefix("Meeting ") || meeting.title == "iPhone Recording"
+        let isDefaultTitle = meeting.title == "Untitled Meeting"
         guard isDefaultTitle else {
             log.debug("Skipping auto-title — meeting has custom title")
             return

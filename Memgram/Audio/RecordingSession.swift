@@ -69,8 +69,7 @@ final class RecordingSession: ObservableObject {
     func start(calendarContext: CalendarContext? = nil) async throws {
         guard !isRecording else { return }
 
-        let title = calendarContext?.eventTitle
-            ?? "Meeting \(DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short))"
+        let title = calendarContext?.eventTitle ?? "Untitled Meeting"
         let meeting = try MeetingStore.shared.createMeeting(
             title: title,
             calendarEventId: nil,

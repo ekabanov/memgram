@@ -170,7 +170,7 @@ struct MobileRecordingView: View {
 
         // Check for nearby calendar event
         var calendarContext: CalendarContext?
-        var title = "iPhone Recording"
+        var title = "Untitled Meeting"
 
         if let event = calendarManager.upcomingEvent ?? calendarManager.findEvent(around: Date()) {
             calendarContext = calendarManager.context(for: event)
