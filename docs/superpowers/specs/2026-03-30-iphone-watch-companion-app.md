@@ -182,14 +182,23 @@ Same `Logger.make()` infrastructure as Mac — all logs go through `OSLog` with 
 ### Recording flow
 
 1. **On appear**: Send `WatchConnectivity.sendMessage(["requestCalendarContext": true])` to iPhone. iPhone queries `CalendarManager` and replies with `CalendarContext` JSON (or nil).
-2. **Record**: `AVAudioSession` records to a temp `.m4a` file on Watch. Compressed audio — Watch storage is limited.
-3. **Stop**: Transfer to iPhone via `WatchConnectivity.transferFile(fileURL, metadata:)` where metadata contains `calendarContext` JSON and `startedAt` timestamp. Transfer is background-safe and survives brief disconnects.
+2. **Record**: `AVAudioSession` records to a local `.m4a` file on Watch. Compressed audio (~1 MB/min). Watch does NOT chunk audio — it records the entire meeting as one file.
+3. **Stop**: Queue transfer to iPhone via `WatchConnectivity.transferFile(fileURL, metadata:)` where metadata contains `calendarContext` JSON (if obtained in step 1) and `startedAt` timestamp.
 4. **iPhone receives**: Converts `.m4a` to 16kHz mono Float32 PCM → chunks into 30s segments → creates meeting record with `CalendarContext` → uploads chunks to CloudKit. Same path as iPhone-recorded audio from this point.
 5. **Status**: iPhone sends completion updates back to Watch via `sendMessage()`.
 
+Watch recordings are always batch-processed — no near-real-time transcript during a Watch recording (unlike iPhone recordings where chunks upload as they're captured).
+
+### Offline resilience
+
+- **iPhone out of Bluetooth range during recording**: Not a problem. Watch records locally. `transferFile()` is a background queue — the file transfers automatically next time Watch and iPhone are in range. Recording is never interrupted or lost.
+- **iPhone has no internet after receiving the file**: iPhone queues chunks locally and uploads when connectivity returns.
+- **iPhone completely off**: Watch keeps the `.m4a` file on local storage until transfer succeeds. Watch has ~4–8 GB free, enough for hours of compressed audio (~60 MB per hour).
+- **Worst case**: Watch records with no connectivity at all. File sits on Watch until iPhone is reachable, then transfers → iPhone chunks and uploads → Mac processes. Total lag = time until devices reconnect + a few minutes of processing.
+
 ### Calendar context
 
-Watch does not access EventKit directly. It requests calendar context from the paired iPhone at recording start. If iPhone is unreachable, recording proceeds without calendar context — the summary will still work, just without attendee/title metadata.
+Watch does not access EventKit directly. It requests calendar context from the paired iPhone at recording start via `sendMessage()`. If iPhone is unreachable at that moment, recording proceeds without calendar context — the summary will still work, just without attendee/title metadata for speaker identification.
 
 ---
 
