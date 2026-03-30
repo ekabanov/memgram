@@ -15,8 +15,7 @@ struct MobileRecordingView: View {
     @State private var errorMessage: String?
     @State private var pendingMacMeetingId: String?
     @State private var lastSegmentArrivedAt: Date?
-    @State private var previousSegmentCount: Int = 0
-    @State private var showMacWarning: Bool = false
+    @State private var now: Date = Date()
 
     var body: some View {
         NavigationStack {
@@ -55,10 +54,9 @@ struct MobileRecordingView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in
                 refreshSegments()
-                updateMacWarningState()
             }
-            .onReceive(macOfflineWarningTimer) { _ in
-                updateMacWarningState()
+            .onReceive(macOfflineWarningTimer) { date in
+                now = date
             }
         }
     }
@@ -136,7 +134,8 @@ struct MobileRecordingView: View {
 
     @ViewBuilder
     private var macOfflineBanner: some View {
-        if showMacWarning {
+        let noRecentSegments = lastSegmentArrivedAt.map { now.timeIntervalSince($0) > 2 * 60 } ?? false
+        if recorder.isRecording && noRecentSegments {
             HStack(spacing: 10) {
                 Image(systemName: "desktopcomputer.trianglebadge.exclamationmark")
                     .foregroundStyle(.orange)
@@ -201,8 +200,6 @@ struct MobileRecordingView: View {
     private func startRecording() {
         pendingMacMeetingId = nil
         lastSegmentArrivedAt = Date()
-        previousSegmentCount = 0
-        showMacWarning = false
         errorMessage = nil
         segments = []
 
@@ -241,43 +238,13 @@ struct MobileRecordingView: View {
         }
     }
 
-    private func updateMacWarningState() {
-        // Warning only shown during active recording
-        guard recorder.isRecording else {
-            showMacWarning = false
-            return
-        }
-
-        // Detect newly arrived segments — update last-activity timestamp
-        let meetingId = uploader.currentMeetingId ?? pendingMacMeetingId
-        if let meetingId {
-            let currentCount = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId))?.count ?? 0
-            if currentCount < previousSegmentCount {
-                previousSegmentCount = currentCount  // reset if sync re-seeded the table
-            }
-            if currentCount > previousSegmentCount {
-                previousSegmentCount = currentCount
-                lastSegmentArrivedAt = Date()
-            }
-        }
-
-        let noRecentSegments: Bool
-        if let lastArrival = lastSegmentArrivedAt {
-            noRecentSegments = Date().timeIntervalSince(lastArrival) > 2 * 60
-        } else {
-            noRecentSegments = true
-        }
-
-        showMacWarning = noRecentSegments
-    }
-
     private func refreshSegments() {
         guard let meetingId = uploader.currentMeetingId ?? pendingMacMeetingId else { return }
-        do {
-            segments = try MeetingStore.shared.fetchSegments(forMeeting: meetingId)
-        } catch {
-            log.error("Failed to fetch segments: \(error.localizedDescription, privacy: .public)")
+        let fetched = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
+        if fetched.count > segments.count {
+            lastSegmentArrivedAt = Date()
         }
+        segments = fetched
     }
 
     // MARK: - Helpers
