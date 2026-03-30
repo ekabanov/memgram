@@ -20,21 +20,36 @@ final class RemoteMeetingProcessor {
 
     private init() {}
 
+    private var modelReady = false
+
     func start() {
+        guard pollTimer == nil else { return }  // prevent double-start
         log.info("RemoteMeetingProcessor started")
-        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
-        Task {
-            do {
-                try await transcriptionEngine.prepare(modelName: modelName)
-                log.info("Remote transcription engine ready")
-            } catch {
-                log.error("Failed to prepare remote transcription engine: \(error)")
-            }
-        }
+        loadModelWithRetry()
         pollTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.pollForChunks() }
         }
-        Task { await pollForChunks() }
+    }
+
+    /// Load WhisperKit model, retrying every 30 seconds on failure.
+    private func loadModelWithRetry() {
+        let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
+        Task {
+            for attempt in 1...10 {
+                do {
+                    try await transcriptionEngine.prepare(modelName: modelName)
+                    modelReady = true
+                    log.info("Remote transcription engine ready (attempt \(attempt))")
+                    return
+                } catch {
+                    log.error("Model load attempt \(attempt) failed: \(error)")
+                    if attempt < 10 {
+                        try? await Task.sleep(nanoseconds: 30_000_000_000)  // 30s between retries
+                    }
+                }
+            }
+            log.error("Model load failed after 10 attempts — remote processing disabled")
+        }
     }
 
     func stop() {
@@ -43,7 +58,7 @@ final class RemoteMeetingProcessor {
     }
 
     private func pollForChunks() async {
-        guard !isProcessing else { return }
+        guard !isProcessing, modelReady else { return }
         isProcessing = true
         defer { isProcessing = false }
 
