@@ -20,6 +20,10 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Memgram reads your calendar to match recordings with scheduled meetings.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Memgram records meeting audio for transcription.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

@@ -95,7 +95,10 @@ targets:
     sources:
       - path: Memgram/Database
       - path: Memgram/Sync
+      - path: Memgram/Sync/AudioChunkService.swift
       - path: Memgram/Calendar/CalendarContext.swift
+      - path: Memgram/Calendar/CalendarManager.swift
+      - path: Memgram/Calendar/CalendarNotificationService.swift
       - path: Memgram/Utilities
       - path: Memgram/BugReport
         excludes:
@@ -110,10 +113,13 @@ targets:
         CFBundleIdentifier: com.memgram.mobile
         CFBundleName: Memgram
         CFBundleDisplayName: Memgram
+        NSCalendarsFullAccessUsageDescription: "Memgram reads your calendar to match recordings with scheduled meetings."
+        NSMicrophoneUsageDescription: "Memgram records meeting audio for transcription."
         UILaunchScreen: {}
     entitlements:
       path: MemgramMobile/Resources/MemgramMobile.entitlements
       properties:
+        com.apple.security.personal-information.calendars: true
         com.apple.developer.icloud-container-identifiers:
           - iCloud.com.memgram.app
         com.apple.developer.icloud-services:

@@ -21,6 +21,7 @@
 		16ADFE2A92D92C4A4F401700 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4A5A3AD19643274E5F43547E /* MarkdownUI */; };
 		17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */; };
 		1870B967E488562E6551E2F2 /* SummaryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8009E920FB91831616BDC1FD /* SummaryEngine.swift */; };
+		1C4E24564A5C75F2F6D02270 /* CalendarNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284FFDFB89EFEAA3CE9776D1 /* CalendarNotificationService.swift */; };
 		29B9E8EA107ACD884B77613A /* SearchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B5DFF25E171256C015392B0 /* SearchEngine.swift */; };
 		2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B935CBFDAA46A9FE07A6B5A /* ScreenCaptureKitCapture.swift */; };
 		2BC7E07D5B22256B343F7B2B /* GeminiProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8855497AAD103E0546ABADB5 /* GeminiProvider.swift */; };
@@ -29,6 +30,7 @@
 		3055A0EA01B2ADE26050B931 /* CustomServerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
+		488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
@@ -52,6 +54,8 @@
 		A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
 		ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2DB830E61400E377DD20C8 /* AppDatabase.swift */; };
 		ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8AE45D2E0D91977100235E /* SystemAudioCaptureProvider.swift */; };
+		B4E7A2364343DE306272E7E5 /* AudioChunkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */; };
+		B5CBEBC0E1FCD4F926D7CC72 /* AudioChunkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
 		B8B8D0D3C2D996D6231E076B /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 78F963FAD214383E6C348061 /* AppIcon.icns */; };
@@ -116,6 +120,7 @@
 		8B42916D4665E4E55C140260 /* MeetingSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSegment.swift; sourceTree = "<group>"; };
 		9272F36873A483ABC9FDCB0F /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		95BDF9934A5067BEC5703004 /* StereoMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StereoMixer.swift; sourceTree = "<group>"; };
+		96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunkService.swift; sourceTree = "<group>"; };
 		98AF2D313FD0669F68D81F39 /* BugReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportView.swift; sourceTree = "<group>"; };
 		9B5DFF25E171256C015392B0 /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -250,6 +255,7 @@
 		36D0B7EB2C0A4AA8F984A9BC /* Sync */ = {
 			isa = PBXGroup;
 			children = (
+				96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */,
 				6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */,
 			);
 			path = Sync;
@@ -314,10 +320,18 @@
 		85B258C9AD0EB396E0CCA255 /* MemgramMobile */ = {
 			isa = PBXGroup;
 			children = (
+				978A802309C7747DEC9302A9 /* Recording */,
 				5B3C62C1DD64D77CE9F27711 /* UI */,
 				AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */,
 			);
 			path = MemgramMobile;
+			sourceTree = "<group>";
+		};
+		978A802309C7747DEC9302A9 /* Recording */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Recording;
 			sourceTree = "<group>";
 		};
 		99C6328FF10715284EFCBDDD /* BugReport */ = {
@@ -522,12 +536,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				D90DF73E2533908C36EBC624 /* AppDatabase.swift in Sources */,
+				B5CBEBC0E1FCD4F926D7CC72 /* AudioChunkService.swift in Sources */,
 				83A2FE7D0DC89F89105692D0 /* AudioConverter.swift in Sources */,
 				B8B8D0D3C2D996D6231E076B /* BugReportConfig.swift in Sources */,
 				ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */,
 				A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */,
 				8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */,
 				C7371E546701757DA40B291F /* CalendarContext.swift in Sources */,
+				488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */,
+				1C4E24564A5C75F2F6D02270 /* CalendarNotificationService.swift in Sources */,
 				EDDA21AB9D5F339D9FFD5522 /* CloudSyncEngine.swift in Sources */,
 				072D6650B6ACD328FD896788 /* Log.swift in Sources */,
 				A577CA15E023D4D211055BB4 /* Meeting.swift in Sources */,
@@ -549,6 +566,7 @@
 			files = (
 				ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */,
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
+				B4E7A2364343DE306272E7E5 /* AudioChunkService.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
 				4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */,
 				A5FAF5B5110002A277AA27F3 /* BugReportPayload.swift in Sources */,
