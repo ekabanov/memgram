@@ -9,6 +9,13 @@ struct MemgramMobileApp: App {
         log.info("Memgram Mobile launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?", privacy: .public)")
         CloudSyncEngine.shared.start()
         log.info("CloudSync started")
+
+        if CalendarManager.shared.isEnabled {
+            Task {
+                _ = await CalendarManager.shared.requestAccess()
+                CalendarManager.shared.startMonitoring()
+            }
+        }
     }
 
     var body: some Scene {
@@ -17,6 +24,10 @@ struct MemgramMobileApp: App {
                 MobileMeetingListView()
                     .tabItem {
                         Label("Meetings", systemImage: "rectangle.stack")
+                    }
+                MobileRecordingView()
+                    .tabItem {
+                        Label("Record", systemImage: "mic.fill")
                     }
                 MobileSettingsView()
                     .tabItem {
