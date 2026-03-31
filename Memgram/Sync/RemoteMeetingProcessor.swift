@@ -104,6 +104,8 @@ final class RemoteMeetingProcessor {
             for segment in segments {
                 try? MeetingStore.shared.appendRemoteSegment(segment)
             }
+            // Notify UI so Mac transcript view refreshes as segments arrive
+            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             try await AudioChunkService.shared.markDoneAndDelete(recordID: record.recordID)
             processedMeetingIds.insert(meetingId)
             log.info("Chunk \(chunkIndex) processed and deleted")
