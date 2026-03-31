@@ -87,10 +87,28 @@ final class CloudSyncEngine: Sendable {
     /// from CloudKit. Use when the local DB is out of sync with the server
     /// (e.g., stuck "Syncing…" placeholder meetings).
     func resetAndResync() {
-        logger.info("[CloudSync] Full reset — clearing sync state and re-downloading")
+        logger.info("[CloudSync] Full reset — wiping local data and re-downloading from CloudKit")
         syncEngine = nil
         isResetting = true
         fetchedDuringReset = []
+
+        // Wipe local meetings, segments, and speakers so CloudKit becomes the
+        // sole source of truth. Embeddings and FTS are rebuilt by triggers.
+        do {
+            try db.write { db in
+                try db.execute(sql: "DELETE FROM segments")
+                try db.execute(sql: "DELETE FROM speakers")
+                try db.execute(sql: "DELETE FROM meetings")
+            }
+            logger.info("[CloudSync] Local data wiped")
+        } catch {
+            logger.error("[CloudSync] Failed to wipe local data: \(error)")
+        }
+
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+        }
+
         UserDefaults.standard.removeObject(forKey: stateKey)
         start()
     }

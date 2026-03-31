@@ -41,7 +41,7 @@ struct MobileSettingsView: View {
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text("This clears the local sync state and re-downloads all meetings from iCloud. Use if meetings appear stuck or out of date.")
+                        Text("This deletes all local meetings and re-downloads them from iCloud. Use if meetings appear stuck or out of sync between devices.")
                     }
                 }
 
