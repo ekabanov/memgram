@@ -10,6 +10,8 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Calendar", systemImage: "calendar")
                 }
+            SyncSettingsTab()
+                .tabItem { Label("Sync", systemImage: "arrow.triangle.2.circlepath") }
             PrivacySettingsTab()
                 .tabItem { Label("Privacy", systemImage: "lock.shield") }
             BugReportView()
@@ -298,6 +300,45 @@ struct CalendarSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+// MARK: - Sync Settings
+
+struct SyncSettingsTab: View {
+    @State private var showResyncConfirm = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("iCloud Sync").font(.headline)
+                    Text("Meetings are synced across your devices via iCloud. Transcripts and summaries stay in your private CloudKit database.")
+                        .font(.body).foregroundColor(.secondary)
+                }
+            }
+            Divider()
+            Button("Re-sync from iCloud") {
+                showResyncConfirm = true
+            }
+            .buttonStyle(.bordered)
+            .confirmationDialog(
+                "Re-sync from iCloud?",
+                isPresented: $showResyncConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Re-sync", role: .destructive) {
+                    CloudSyncEngine.shared.resetAndResync()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This clears the local sync state and re-downloads all meetings from iCloud. Use if meetings appear stuck or out of date.")
+            }
+        }
+        .padding()
     }
 }
 
