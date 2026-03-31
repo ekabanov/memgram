@@ -100,7 +100,7 @@ final class StereoMixer {
         lock.lock()
         _latestMicLevel = level
         micAccumulator.append(contentsOf: mixed)
-        let shouldFlush = micAccumulator.count >= Self.framesPerChunk && sysAccumulator.count >= Self.framesPerChunk
+        let shouldFlush = micAccumulator.count >= Self.framesPerChunk
         lock.unlock()
 
         if shouldFlush { flushChunk() }
@@ -113,23 +113,27 @@ final class StereoMixer {
         lock.lock()
         _latestSysLevel = rmsLevel(samples)
         sysAccumulator.append(contentsOf: samples)
-        let shouldFlush = micAccumulator.count >= Self.framesPerChunk && sysAccumulator.count >= Self.framesPerChunk
         lock.unlock()
-
-        if shouldFlush { flushChunk() }
     }
 
     private func flushChunk() {
         lock.lock()
-        guard micAccumulator.count >= Self.framesPerChunk,
-              sysAccumulator.count >= Self.framesPerChunk else {
+        guard micAccumulator.count >= Self.framesPerChunk else {
             lock.unlock()
             return
         }
         let micSlice = Array(micAccumulator.prefix(Self.framesPerChunk))
-        let sysSlice = Array(sysAccumulator.prefix(Self.framesPerChunk))
+        // Take however much system audio has arrived; pad with silence if tap is behind or dead
+        let sysAvailable = min(sysAccumulator.count, Self.framesPerChunk)
+        let sysSlice: [Float]
+        if sysAvailable == Self.framesPerChunk {
+            sysSlice = Array(sysAccumulator.prefix(Self.framesPerChunk))
+            sysAccumulator.removeFirst(Self.framesPerChunk)
+        } else {
+            sysSlice = Array(sysAccumulator.prefix(sysAvailable)) + [Float](repeating: 0, count: Self.framesPerChunk - sysAvailable)
+            if sysAvailable > 0 { sysAccumulator.removeFirst(sysAvailable) }
+        }
         micAccumulator.removeFirst(Self.framesPerChunk)
-        sysAccumulator.removeFirst(Self.framesPerChunk)
         lock.unlock()
 
         guard let chunk = buildStereoBuffer(left: micSlice, right: sysSlice) else { return }
