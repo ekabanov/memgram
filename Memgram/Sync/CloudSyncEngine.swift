@@ -151,6 +151,28 @@ final class CloudSyncEngine: Sendable {
         }
     }
 
+    // MARK: - Clear System Fields
+
+    /// Clear ckSystemFields for a record so the next upload sends it as a create
+    /// rather than a modify. Used when CloudKit returns .unknownItem for a record
+    /// that has stale ckSystemFields from a prior upload that was later deleted.
+    fileprivate func clearSystemFields(for record: CKRecord) {
+        guard let parsed = parseRecordID(record.recordID) else { return }
+        let (table, id) = parsed
+        let sql: String
+        switch table {
+        case "meetings": sql = "UPDATE meetings SET ck_system_fields = NULL WHERE id = ?"
+        case "segments": sql = "UPDATE segments SET ck_system_fields = NULL WHERE id = ?"
+        case "speakers": sql = "UPDATE speakers SET ck_system_fields = NULL WHERE id = ?"
+        default: return
+        }
+        do {
+            try db.write { db in try db.execute(sql: sql, arguments: [id]) }
+        } catch {
+            logger.error("[CloudSync] Failed to clear ckSystemFields for \(table)/\(id): \(error)")
+        }
+    }
+
     // MARK: - Orphan Re-enqueue
 
     /// Re-enqueue records that were written to GRDB but never acknowledged by CloudKit.
@@ -645,9 +667,15 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
                     syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
 
                 case .unknownItem:
-                    // Don't re-enqueue — if the server doesn't know the item,
-                    // retrying will just fail again in an infinite loop.
-                    engine.logger.warning("Unknown item on server for \(recordID.recordName) — dropping")
+                    // The record was sent as a modify (has a changeTag) but CloudKit
+                    // says it doesn't exist. This happens when a record was deleted from
+                    // CloudKit (e.g., zone wipe on another device) while the local device
+                    // still holds stale ckSystemFields from when it was last uploaded.
+                    // Fix: clear ckSystemFields so the next upload sends a fresh create
+                    // (no changeTag) instead of a modify against a non-existent record.
+                    engine.logger.warning("[CloudSync] Unknown item — clearing ckSystemFields and re-enqueuing as create: \(recordID.recordName)")
+                    engine.clearSystemFields(for: failedSave.record)
+                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
 
                 default:
                     engine.logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
