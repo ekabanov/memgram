@@ -283,23 +283,30 @@ final class CloudSyncEngine: Sendable {
                 try db.write { db in
                     if let existing = try Meeting.fetchOne(db, key: id) {
                         var merged = meeting
-                        // Only apply anti-regression merge for real local records.
-                        // Placeholders (created for FK satisfaction) have nil ckSystemFields
-                        // and must be fully replaced by the authoritative remote record.
+                        // ckSystemFields: always use remote — it's authoritative CloudKit metadata.
+                        // Using stale local system fields causes recordChangeTag conflicts on next upload.
+                        merged.ckSystemFields = systemFieldsData
+
+                        // Locally-computed content: keep local if it has a value and remote doesn't.
+                        // These fields are written by the transcription/summary pipeline, not by the
+                        // recording device at upload time, so they may legitimately be nil on the remote
+                        // when a newer local version already has them.
+                        merged.summary = existing.summary ?? merged.summary
+                        merged.rawTranscript = existing.rawTranscript ?? merged.rawTranscript
+                        merged.actionItems = existing.actionItems ?? merged.actionItems
+
+                        // Status: keep local only if it represents more progress than the remote.
+                        // This prevents a late-arriving .recording or .transcribing from rolling
+                        // back a .done meeting. Skip for placeholders (nil ckSystemFields on existing).
                         if existing.ckSystemFields != nil {
                             let statusOrder: [MeetingStatus] = [.recording, .transcribing, .done, .error]
                             let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
                             let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
                             if existingRank > remoteRank {
-                                // Remote is stale — keep all locally-computed fields
                                 merged.status = existing.status
-                                merged.summary = existing.summary ?? merged.summary
-                                merged.rawTranscript = existing.rawTranscript ?? merged.rawTranscript
-                                merged.actionItems = existing.actionItems ?? merged.actionItems
-                                merged.endedAt = existing.endedAt ?? merged.endedAt
-                                merged.durationSeconds = existing.durationSeconds ?? merged.durationSeconds
                             }
                         }
+
                         try merged.update(db)
                     } else {
                         try meeting.insert(db)
