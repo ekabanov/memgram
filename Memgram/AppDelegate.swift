@@ -116,13 +116,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
-        // CloudKit silent push — check if it's for our audio chunk subscription
-        if let ck = CKNotification(fromRemoteNotificationDictionary: userInfo),
-           ck.subscriptionID == "AudioChunk-pending" {
-            if #available(macOS 14.0, *) {
-                RemoteMeetingProcessor.shared.handleRemoteNotification()
-            }
-        }
+        // CKSyncEngine handles zone change pushes automatically — AudioChunk
+        // records in the zone trigger RemoteMeetingProcessor via applyRemoteRecord.
+        appLog.info("Remote notification received")
     }
 
     // MARK: - Status Item

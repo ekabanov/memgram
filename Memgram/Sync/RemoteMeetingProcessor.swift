@@ -18,10 +18,6 @@ final class RemoteMeetingProcessor {
     /// RemoteMeetingProcessor from touching locally-recorded Mac meetings.
     private var processedMeetingIds: Set<String> = []
 
-    private let container = CKContainer(identifier: "iCloud.com.memgram.app")
-    private let zoneID = CKRecordZone.ID(zoneName: "MemgramZone")
-    private let subscriptionID = "AudioChunk-pending"
-
     private init() {}
 
     private var modelReady = false
@@ -30,45 +26,18 @@ final class RemoteMeetingProcessor {
         guard pollTimer == nil else { return }  // prevent double-start
         log.info("RemoteMeetingProcessor started")
         loadModelWithRetry()
-        subscribeToNewChunks()
-        // Poll timer is a fallback — push notifications are the primary trigger.
+        // Poll timer is a fallback — CKSyncEngine zone change notifications
+        // are the primary trigger (via handleRemoteNotification).
         pollTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.pollForChunks() }
         }
     }
 
-    /// Called by AppDelegate when a CloudKit push notification arrives.
+    /// Called by CloudSyncEngine when it detects an AudioChunk record in the zone.
+    /// This piggybacks on CKSyncEngine's existing push notification infrastructure.
     func handleRemoteNotification() {
-        log.info("Push notification received — polling for chunks")
+        log.info("AudioChunk detected — polling for chunks")
         Task { await pollForChunks() }
-    }
-
-    // MARK: - CloudKit Subscription
-
-    private func subscribeToNewChunks() {
-        let predicate = NSPredicate(format: "status == %@", "pending")
-        let subscription = CKQuerySubscription(
-            recordType: AudioChunkService.recordType,
-            predicate: predicate,
-            subscriptionID: subscriptionID,
-            options: [.firesOnRecordCreation]
-        )
-        subscription.zoneID = zoneID
-
-        let info = CKSubscription.NotificationInfo()
-        info.shouldSendContentAvailable = true  // silent push
-        subscription.notificationInfo = info
-
-        container.privateCloudDatabase.save(subscription) { [log] _, error in
-            if let error = error as? CKError, error.code == .serverRejectedRequest {
-                // Subscription already exists — that's fine
-                log.info("AudioChunk subscription already exists")
-            } else if let error {
-                log.error("Failed to create AudioChunk subscription: \(error)")
-            } else {
-                log.info("AudioChunk subscription created")
-            }
-        }
     }
 
     /// Load WhisperKit model, retrying every 30 seconds on failure.

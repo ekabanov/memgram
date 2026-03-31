@@ -498,6 +498,20 @@ final class CloudSyncEngine: Sendable {
                     }
                 }
 
+            case "audiochunk":
+                // AudioChunk records live in the same zone but are handled by
+                // RemoteMeetingProcessor, not CKSyncEngine. Trigger an immediate
+                // poll so the Mac processes the chunk without waiting for the timer.
+                #if os(macOS)
+                if #available(macOS 14.0, *) {
+                    logger.info("[CloudSync] AudioChunk detected — notifying RemoteMeetingProcessor")
+                    Task { @MainActor in
+                        RemoteMeetingProcessor.shared.handleRemoteNotification()
+                    }
+                }
+                #endif
+                return
+
             default:
                 logger.warning("Unknown table for remote record: \(table)")
                 return
@@ -532,6 +546,9 @@ final class CloudSyncEngine: Sendable {
                 try db.write { db in
                     try db.execute(sql: "DELETE FROM speakers WHERE id = ?", arguments: [id])
                 }
+            case "audiochunk":
+                return  // AudioChunks are transient — deletions are expected and ignored
+
             default:
                 logger.warning("Unknown table for deletion: \(table)")
                 return
