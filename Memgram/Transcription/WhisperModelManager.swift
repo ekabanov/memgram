@@ -34,13 +34,14 @@ enum WhisperModel: String, CaseIterable, Identifiable {
 final class WhisperModelManager: ObservableObject {
     static let shared = WhisperModelManager()
 
-    /// True while WhisperKit is downloading or loading the model for the first time.
+    /// True while WhisperKit is downloading, loading, or compiling the model.
     @Published var isWhisperDownloading: Bool = false
+
+    /// True once the model is fully loaded and CoreML warm-up is complete.
+    @Published var isWhisperReady: Bool = false
 
     /// Model chosen automatically based on available RAM. Always multilingual.
     var selectedModel: WhisperModel { autoSelectedModel }
-
-    var isModelReady: Bool { true }
 
     /// How much physical RAM this machine has (GiB).
     static var ramGB: Double {

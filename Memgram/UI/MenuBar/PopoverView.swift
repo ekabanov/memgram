@@ -101,7 +101,7 @@ struct PopoverView: View {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 32))
                     .foregroundColor(.red)
-                Text(modelManager.isModelReady ? "Recording & transcribing…" : "Recording…")
+                Text(modelManager.isWhisperReady ? "Recording & transcribing…" : "Recording…")
                     .font(.body)
             } else {
                 VStack(spacing: 10) {
@@ -111,15 +111,9 @@ struct PopoverView: View {
                     Text("Ready to record")
                         .font(.body)
                         .foregroundColor(.primary)
-                    if !modelManager.isModelReady {
-                        Text("Download a model to enable transcription")
-                            .font(.caption)
-                            .foregroundColor(Color(NSColor.tertiaryLabelColor))
-                    } else {
-                        Text("Click Start Recording to begin")
-                            .font(.caption)
-                            .foregroundColor(Color(NSColor.tertiaryLabelColor))
-                    }
+                    Text("Click Start Recording to begin")
+                        .font(.caption)
+                        .foregroundColor(Color(NSColor.tertiaryLabelColor))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
@@ -218,7 +212,8 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(!permissions.microphoneGranted || !permissions.systemAudioGranted)
+                .disabled(!permissions.microphoneGranted || !permissions.systemAudioGranted || !modelManager.isWhisperReady)
+                .help(modelManager.isWhisperReady ? "" : "Whisper is loading — ready shortly")
             }
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
@@ -322,6 +317,8 @@ struct PopoverView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(!modelManager.isWhisperReady)
+                    .help(modelManager.isWhisperReady ? "" : "Whisper is loading — ready shortly")
                 }
         }
     }

@@ -41,7 +41,7 @@ final class RecordingSession: ObservableObject {
             do {
                 try await transcriptionEngine.prepare(modelName: modelName)
             } catch {
-                print("[RecordingSession] ⚠️ Whisper preload failed: \(error)")
+                log.error("Whisper preload failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

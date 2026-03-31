@@ -61,7 +61,6 @@ final class TranscriptionEngine {
         await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = true }
         let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
         self.whisperKit = wk
-        await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = false }
         log.info("WhisperKit loaded — triggering CoreML warm-up")
 
         // Run a silent 1-second dummy transcription to force CoreML compilation now,
@@ -69,6 +68,10 @@ final class TranscriptionEngine {
         let silence = [Float](repeating: 0, count: 16000)
         _ = try? await wk.transcribe(audioArray: silence)
         log.info("WhisperKit ready — model: \(modelName, privacy: .public)")
+        await MainActor.run {
+            WhisperModelManager.shared.isWhisperDownloading = false
+            WhisperModelManager.shared.isWhisperReady = true
+        }
         drainIfIdle()  // process any chunks that arrived before the model was ready
     }
 
