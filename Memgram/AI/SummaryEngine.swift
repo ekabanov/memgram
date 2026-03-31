@@ -80,7 +80,12 @@ final class SummaryEngine: ObservableObject {
                 }
             }
 
-            if transcript.count > 32_000 {
+            // Qwen 3.5 has a 32K token context window. With ~3.5 chars/token and
+            // ~3K tokens reserved for system prompt, instructions, and output,
+            // ~29K tokens (~100K chars) remain for the transcript. Use 80K as a
+            // conservative threshold. Cloud providers (Claude/OpenAI/Gemini) have
+            // much larger windows so this only triggers for very long transcripts.
+            if transcript.count > 80_000 {
                 log.info("Long transcript (\(transcript.count) chars) — chunked summarisation")
                 summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx,
                                                   provider: provider, onChunk: onChunk)
@@ -281,7 +286,8 @@ final class SummaryEngine: ObservableObject {
                                 provider: any LLMProvider,
                                 onChunk: ((String) -> Void)? = nil) async throws -> String {
         let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
-        let windows = chunkByTime(segments, windowMinutes: 20)
+        let windows = chunkByCharCount(segments, maxChars: 70_000)
+        log.info("Chunked \(segments.count) segments into \(windows.count) windows")
 
         var chunkSummaries: [String] = []
         for window in windows {
@@ -293,19 +299,23 @@ final class SummaryEngine: ObservableObject {
         return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider, onChunk: onChunk)
     }
 
-    private func chunkByTime(_ segments: [MeetingSegment], windowMinutes: Double) -> [[MeetingSegment]] {
-        let windowSeconds = windowMinutes * 60
+    /// Split segments into windows that each fit within `maxChars` of formatted
+    /// transcript text. Segments are never split — if a single segment exceeds
+    /// `maxChars` it gets its own window.
+    private func chunkByCharCount(_ segments: [MeetingSegment], maxChars: Int) -> [[MeetingSegment]] {
         guard !segments.isEmpty else { return [] }
         var chunks: [[MeetingSegment]] = []
         var current: [MeetingSegment] = []
-        var windowStart = segments[0].startSeconds
+        var currentChars = 0
         for seg in segments {
-            if seg.startSeconds >= windowStart + windowSeconds {
-                if !current.isEmpty { chunks.append(current) }
+            let segChars = seg.speaker.count + 2 + seg.text.count + 1 // "speaker: text\n"
+            if currentChars + segChars > maxChars && !current.isEmpty {
+                chunks.append(current)
                 current = [seg]
-                windowStart = seg.startSeconds
+                currentChars = segChars
             } else {
                 current.append(seg)
+                currentChars += segChars
             }
         }
         if !current.isEmpty { chunks.append(current) }
