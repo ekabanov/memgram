@@ -478,7 +478,12 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
         case .fetchedRecordZoneChanges(let fetchedChanges):
             let totalChanges = fetchedChanges.modifications.count + fetchedChanges.deletions.count
             engine.logger.info("[CloudSync] Fetched \(fetchedChanges.modifications.count) modifications, \(fetchedChanges.deletions.count) deletions")
-            for modification in fetchedChanges.modifications {
+            // Process meetings first so parent rows exist before segments/speakers arrive.
+            // This eliminates placeholder creation for intra-batch ordering issues.
+            let sortedMods = fetchedChanges.modifications.sorted { a, _ in
+                a.record.recordType == "Meeting"
+            }
+            for modification in sortedMods {
                 engine.applyRemoteRecord(modification.record)
             }
             for deletion in fetchedChanges.deletions {
