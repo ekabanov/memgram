@@ -18,7 +18,7 @@ final class MobileAudioRecorder: ObservableObject {
     // MARK: - Constants
 
     private let targetSampleRate: Double = 16_000
-    private let chunkDurationSeconds: Double = 30
+    private let chunkDurationSeconds: Double = 10
     private var samplesPerChunk: Int { Int(targetSampleRate * chunkDurationSeconds) }
 
     // MARK: - Audio engine

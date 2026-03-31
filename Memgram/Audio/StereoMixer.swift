@@ -2,12 +2,12 @@ import AVFoundation
 import Combine
 
 /// Receives mono 16kHz Float32 buffers from mic (Left) and system audio (Right),
-/// accumulates them into 30-second stereo chunks, and emits each chunk.
+/// accumulates them into 10-second stereo chunks, and emits each chunk.
 final class StereoMixer {
 
-    static let chunkDuration: Double = 30.0  // seconds
+    static let chunkDuration: Double = 10.0  // seconds
     static let sampleRate: Double = 16000.0
-    static let framesPerChunk = Int(chunkDuration * sampleRate)  // 480 000
+    static let framesPerChunk = Int(chunkDuration * sampleRate)  // 160 000
 
     private var micAccumulator: [Float] = []
     private var sysAccumulator: [Float] = []
