@@ -24,7 +24,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     var name: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
         if ram >= 32 { return "Qwen 3.5 27B (local)" }
-        if ram >= 16 { return "Qwen 3.5 9B (local)" }
+        if ram >= 16 { return "Qwen 3.5 (local)" }
         return "Qwen 3.5 2B (local)"
     }
 

@@ -11,7 +11,7 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .qwen:   return "Default (Qwen 3.5 9B)"
+        case .qwen:   return "Default (Qwen 3.5)"
         case .custom: return "Custom Server"
         case .claude: return "Claude"
         case .openai: return "OpenAI"

@@ -55,7 +55,7 @@ Configure your LLM in **Settings → AI** (gear icon in the popover):
 
 | Backend | Notes |
 |---------|-------|
-| **Qwen 3.5 9B (Local)** | In-process via Apple MLX. Downloads ~4.5 GB. Requires Apple Silicon. Streams tokens in real time. |
+| **Qwen 3.5 (Local)** | In-process via Apple MLX. Downloads ~4.5 GB. Requires Apple Silicon. Streams tokens in real time. |
 | **Custom Server** | Any OpenAI-compatible server (LM Studio, vLLM, Ollama, mlx_lm.server). Streams tokens in real time. |
 | **Claude / OpenAI / Gemini** | Cloud API, key stored in Keychain. Streams tokens in real time. |
 

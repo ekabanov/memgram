@@ -358,7 +358,7 @@ private struct QwenDownloadCard: View {
                 HStack {
                     Image(systemName: hasError ? "exclamationmark.circle" : "arrow.down.circle")
                         .foregroundStyle(hasError ? .red : .purple)
-                    Text(hasError ? "Qwen download failed" : "Downloading Qwen 3.5 9B")
+                    Text(hasError ? "Qwen download failed" : "Downloading Qwen 3.5")
                         .font(.caption.bold())
                     Spacer()
                     if isDownloading {
