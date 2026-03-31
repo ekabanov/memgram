@@ -1,4 +1,5 @@
 import AppKit
+import CloudKit
 import SwiftUI
 import Combine
 import AVFoundation
@@ -62,6 +63,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appLog.info("RemoteMeetingProcessor started")
         }
 
+        // Register for silent push notifications (CloudKit subscriptions)
+        NSApp.registerForRemoteNotifications(matching: [.badge, .sound, .alert])
+
         UNUserNotificationCenter.current().delegate = self
 
         // Calendar integration
@@ -99,6 +103,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.recordingState = .idle
                 }
             }
+    }
+
+    // MARK: - Remote Notifications
+
+    func application(_ application: NSApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        appLog.info("Registered for remote notifications (\(deviceToken.count) bytes)")
+    }
+
+    func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        appLog.error("Remote notification registration failed: \(error.localizedDescription, privacy: .public)")
+    }
+
+    func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
+        // CloudKit silent push — check if it's for our audio chunk subscription
+        if let ck = CKNotification(fromRemoteNotificationDictionary: userInfo),
+           ck.subscriptionID == "AudioChunk-pending" {
+            if #available(macOS 14.0, *) {
+                RemoteMeetingProcessor.shared.handleRemoteNotification()
+            }
+        }
     }
 
     // MARK: - Status Item
