@@ -31,9 +31,11 @@
 		3055A0EA01B2ADE26050B931 /* CustomServerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
+		476B60BFCCD286137DC7646F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39857EC942E8388EC18A787D /* Assets.xcassets */; };
 		488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
 		4E195EEFF87CD35038D1C79B /* WatchSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 369F5F9AB4741C6A50EDD44C /* WatchSessionManager.swift */; };
+		4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		501FEB83850E856B56431C2B /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFAFCF13A818C8FE3EB1C2D /* PopoverView.swift */; };
 		537C46FEEB97EC11C3502F9F /* MobileAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4971E41907B7402C709746FD /* MobileAudioRecorder.swift */; };
 		561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B565F886405D70876367BB2D /* LiveTranscriptView.swift */; };
@@ -64,6 +66,7 @@
 		B4E7A2364343DE306272E7E5 /* AudioChunkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */; };
 		B5CBEBC0E1FCD4F926D7CC72 /* AudioChunkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F2D2884276F9773BB32FA6 /* AudioChunkService.swift */; };
 		B800E5F4F93F0007BFDE95AE /* MemgramApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212D0221DE67444BF6FAA347 /* MemgramApp.swift */; };
+		B8B8D0D3C2D996D6231E076B /* BugReportConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E27492E6BDFF29042C71E300 /* BugReportConfig.swift */; };
 		B921D55BF445935B44146ED3 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 78F963FAD214383E6C348061 /* AppIcon.icns */; };
 		BBDA264735DA142DC5450BC7 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 3842E4DA71627336F760CD87 /* GRDB */; };
 		BC578E3DA71EB07461ADF16E /* BugReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AF2D313FD0669F68D81F39 /* BugReportView.swift */; };
@@ -138,6 +141,7 @@
 		3102F3CC3D158F04D5C1AE9A /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
 		32E55D49539467A72F54AB7B /* MobileMeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileMeetingListView.swift; sourceTree = "<group>"; };
 		369F5F9AB4741C6A50EDD44C /* WatchSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionManager.swift; sourceTree = "<group>"; };
+		39857EC942E8388EC18A787D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAudioRecorder.swift; sourceTree = "<group>"; };
 		3F9518923B9FA68D6694C5AD /* AudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioConverter.swift; sourceTree = "<group>"; };
 		4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaProvider.swift; sourceTree = "<group>"; };
@@ -186,6 +190,7 @@
 		D5334E3AF08B770900274F14 /* AudioChunkUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunkUploader.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
 		E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
+		E27492E6BDFF29042C71E300 /* BugReportConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportConfig.swift; sourceTree = "<group>"; };
 		E28822E40CBC23C661FBD955 /* PDFExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExporter.swift; sourceTree = "<group>"; };
 		E2DACCFEC6DB30395795F347 /* MeetingListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingListView.swift; sourceTree = "<group>"; };
 		E3A335CC4E14196465F8F057 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -270,6 +275,8 @@
 				2E90FC5C4B06C2904334B8C7 /* Export */,
 				3592EE7D6628062A2FE2A6AF /* Permissions */,
 				7A25DEEEE20C564ECFD8F52C /* Resources */,
+				F3AFF10886A5D1372189B8F3 /* Search */,
+				B7C3E54B8624B6D69A678BA8 /* Storage */,
 				36D0B7EB2C0A4AA8F984A9BC /* Sync */,
 				FAD869B59D73800AFEDEE945 /* Transcription */,
 				6BA73221FE8D81B0538304B0 /* UI */,
@@ -395,6 +402,7 @@
 		8D04DD49FEDC5FFBA362742E /* MemgramWatch */ = {
 			isa = PBXGroup;
 			children = (
+				39857EC942E8388EC18A787D /* Assets.xcassets */,
 				5126F4EB711D849DE1E0FB0E /* Info.plist */,
 				77D919650FC3167304940F8D /* MemgramWatchApp.swift */,
 				3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */,
@@ -416,6 +424,7 @@
 		99C6328FF10715284EFCBDDD /* BugReport */ = {
 			isa = PBXGroup;
 			children = (
+				E27492E6BDFF29042C71E300 /* BugReportConfig.swift */,
 				BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */,
 				F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */,
 				98AF2D313FD0669F68D81F39 /* BugReportView.swift */,
@@ -446,6 +455,14 @@
 			path = MainWindow;
 			sourceTree = "<group>";
 		};
+		B7C3E54B8624B6D69A678BA8 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				CD3CDFCF7479291FD29F257E /* Models */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
 		B919AABD577F8DA313FCC24F /* Calendar */ = {
 			isa = PBXGroup;
 			children = (
@@ -467,12 +484,26 @@
 			path = MenuBar;
 			sourceTree = "<group>";
 		};
+		CD3CDFCF7479291FD29F257E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
 		DD5C597A85C2EB7FCF978634 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
 				45C4DEB4673DB88282F219CF /* SettingsView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		F3AFF10886A5D1372189B8F3 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Search;
 			sourceTree = "<group>";
 		};
 		FAD869B59D73800AFEDEE945 /* Transcription */ = {
@@ -538,6 +569,7 @@
 			buildConfigurationList = A54C49D8CFD081E63B627028 /* Build configuration list for PBXNativeTarget "MemgramWatch" */;
 			buildPhases = (
 				CEDEA45B4C4CCB845A46F3ED /* Sources */,
+				C07AB87CED39AF0D49076B82 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -617,6 +649,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C07AB87CED39AF0D49076B82 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				476B60BFCCD286137DC7646F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -628,6 +668,7 @@
 				B5CBEBC0E1FCD4F926D7CC72 /* AudioChunkService.swift in Sources */,
 				68CC120C94C930131B47651F /* AudioChunkUploader.swift in Sources */,
 				83A2FE7D0DC89F89105692D0 /* AudioConverter.swift in Sources */,
+				B8B8D0D3C2D996D6231E076B /* BugReportConfig.swift in Sources */,
 				ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */,
 				A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */,
 				8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */,
@@ -672,6 +713,7 @@
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
 				B4E7A2364343DE306272E7E5 /* AudioChunkService.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
+				4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */,
 				A5FAF5B5110002A277AA27F3 /* BugReportPayload.swift in Sources */,
 				579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */,
 				BC578E3DA71EB07461ADF16E /* BugReportView.swift in Sources */,
@@ -738,6 +780,7 @@
 		0729B0571D6B216FE5FA94C0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MemgramMobile/Resources/MemgramMobile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -848,6 +891,7 @@
 		A07A2ACF07D243115CBC9B58 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MemgramMobile/Resources/MemgramMobile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";

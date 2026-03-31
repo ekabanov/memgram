@@ -131,6 +131,7 @@ targets:
           - iCloud.com.memgram.app
         com.apple.developer.icloud-services:
           - CloudKit
+        aps-environment: $(APS_ENVIRONMENT)
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.memgram.mobile
@@ -142,6 +143,11 @@ targets:
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
+      configs:
+        Debug:
+          APS_ENVIRONMENT: development
+        Release:
+          APS_ENVIRONMENT: production
     dependencies:
       - package: GRDB
         product: GRDB
@@ -157,12 +163,15 @@ targets:
     deploymentTarget: "10.0"
     sources:
       - path: MemgramWatch
+    resources:
+      - path: MemgramWatch/Assets.xcassets
     info:
       path: MemgramWatch/Info.plist
       properties:
         CFBundleIdentifier: com.memgram.mobile.watchkitapp
         CFBundleName: Memgram
         CFBundleDisplayName: Memgram
+        CFBundleIconName: AppIcon
         WKApplication: true
         WKCompanionAppBundleIdentifier: com.memgram.mobile
         NSMicrophoneUsageDescription: "Memgram records meeting audio on your Apple Watch."
