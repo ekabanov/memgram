@@ -80,8 +80,8 @@ final class SummaryEngine: ObservableObject {
                 }
             }
 
-            if (meeting.durationSeconds ?? 0) > 3600 {
-                log.info("Long meeting (>60min) — chunked summarisation")
+            if transcript.count > 32_000 {
+                log.info("Long transcript (\(transcript.count) chars) — chunked summarisation")
                 summary = try await summarizeLong(meetingId: meetingId, calendarContext: calendarCtx,
                                                   provider: provider, onChunk: onChunk)
             } else {
