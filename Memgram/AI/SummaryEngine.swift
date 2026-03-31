@@ -16,12 +16,18 @@ final class SummaryEngine: ObservableObject {
     @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
-        You are a professional, detail-oriented Meeting Analyst AI designed to review \
-        meeting transcripts and provide comprehensive, clear summaries for effective \
-        follow-through. Your outputs must be concise, organized, and actionable for busy \
-        professionals who require only the essential information to maximize team \
-        productivity and accountability. Use speaker names when attributing statements. \
-        Correct obvious transcription errors in proper nouns based on context — do not \
+        You are an expert meeting analyst. You produce accurate, comprehensive, \
+        and well-structured meeting summaries. You extract every substantive point \
+        discussed — nothing important is lost.
+
+        CRITICAL RULES:
+        - ONLY include information explicitly present in the transcript.
+        - NEVER fabricate, infer, or assume details not stated.
+        - If a section has no relevant content, write "None identified" and move on.
+        - Attribute statements, decisions, and tasks to specific speakers when \
+        identifiable from the transcript.
+        - Preserve the reasoning and context behind decisions, not just the outcomes.
+        - Correct obvious transcription errors in proper nouns based on context — do not \
         annotate the corrections. When calendar event metadata is provided, use it to \
         identify speakers and correct proper nouns.
         """
@@ -211,43 +217,41 @@ final class SummaryEngine: ObservableObject {
             """
         }
         let user = """
-        \(contextBlock)You will be given a full transcript of a meeting, which may include a mix of \
-        speakers, topics, and discussion threads. Participants may use informal language, go off-topic, \
-        or interleave multiple subjects. Your job is to distill the transcript into a highly organized, \
-        digestible report.
+        \(contextBlock)Analyze the meeting transcript below and produce a structured summary in \
+        Markdown format. Follow these steps internally before writing:
+
+        1. Identify all distinct topics/agenda items discussed.
+        2. For each topic, extract: key points, decisions, rationale, and any \
+        disagreements or alternatives considered.
+        3. Identify all action items with owners and deadlines.
+        4. Identify all open questions and unresolved issues.
+
+        Then produce the summary using EXACTLY this structure:
+
+        ## Key discussion topics
+        For each major topic discussed, provide a subsection:
+        ### [Topic name]
+        Summarize the discussion thoroughly — include specific arguments, data \
+        points, examples, and context mentioned. Do not compress away nuance. \
+        Note who raised key points where identifiable.
+
+        ## Open questions and follow-ups
+        List unresolved questions, items explicitly deferred, topics needing \
+        further investigation, and any disagreements that were not resolved.
+
+        ## Action items
+
+        FORMATTING RULES:
+        - Use concise but complete language — do not sacrifice detail for brevity.
+        - If no action items or open questions exist, write \
+        "None identified" for that section rather than omitting it.
+        - Exclude small talk, greetings, and filler unless they directly affect \
+        a decision or action.
+        - When uncertain about speaker identity, write "[Unidentified speaker]."
 
         Transcript:
 
         \(transcript)
-
-        Instructions:
-        1. Identify and list the main topics or agenda items discussed.
-        2. Summarize the essential discussions and decisions made for each main topic.
-        3. Extract key takeaways — highlighting the most important points and agreed outcomes.
-        4. Break down all tasks assigned, specifying the responsible individual(s) and any agreed deadlines.
-        5. Clearly list follow-up actions required, including any questions left unresolved and suggested next steps.
-        6. If applicable, create an "Open Issues" section for topics needing further discussion.
-
-        Constraints:
-        - Do not include irrelevant chit-chat, repeated information, or off-topic remarks.
-        - Remain neutral; do not editorialize, speculate, or add content not present in the transcript.
-        - Every task must specify both the responsible party and deadline, or note if missing.
-        - Summaries should be brief but comprehensive — avoid over-explaining.
-
-        Output in Markdown using these sections:
-
-        ## Participants
-        Who was in the meeting and their roles (if mentioned).
-
-        ## Topics Discussed
-        For each major topic, use a ### subheading with bullet points.
-
-        ## Key Decisions
-        Bullet list of decisions reached. Write "None" if there were none.
-
-        ## Action Items
-        Format: **Owner** — Task — Deadline (or "no deadline specified")
-        Write "None" if there were none.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
