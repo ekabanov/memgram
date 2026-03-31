@@ -66,6 +66,7 @@ targets:
           - iCloud.com.memgram.app
         com.apple.developer.icloud-services:
           - CloudKit
+        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.memgram.app
