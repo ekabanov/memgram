@@ -324,7 +324,7 @@ struct MeetingDetailView: View {
 
             if let live = streamingContent, !live.isEmpty {
                 Markdown(live)
-                    .markdownTheme(.gitHub)
+                    .markdownTheme(.memgram)
                     .textSelection(.enabled)
                     .overlay(alignment: .bottomTrailing) {
                         HStack(spacing: 4) {
@@ -339,7 +339,7 @@ struct MeetingDetailView: View {
                     }
             } else if let summary = meeting?.summary, !summary.isEmpty {
                 Markdown(summary)
-                    .markdownTheme(.gitHub)
+                    .markdownTheme(.memgram)
                     .textSelection(.enabled)
             } else if isRegenerating || summaryEngine.activeMeetingIds.contains(meetingId) {
                 // Skeleton placeholder while generating
@@ -491,6 +491,16 @@ struct MeetingDetailView: View {
         try? MeetingStore.shared.updateTitle(meetingId, title: trimmed)
         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
         load()
+    }
+}
+
+// MARK: - Markdown Theme
+
+extension MarkdownUI.Theme {
+    /// Memgram theme — based on gitHub but with a transparent document background
+    /// so the Markdown content blends with the surrounding window chrome.
+    static let memgram = Theme.gitHub.text {
+        BackgroundColor(nil)
     }
 }
 
