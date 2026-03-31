@@ -73,6 +73,16 @@ final class CloudSyncEngine: Sendable {
         start()
     }
 
+    /// Wipe the local sync state (change token) and re-download all records
+    /// from CloudKit. Use when the local DB is out of sync with the server
+    /// (e.g., stuck "Syncing…" placeholder meetings).
+    func resetAndResync() {
+        logger.info("[CloudSync] Full reset — clearing sync state and re-downloading")
+        syncEngine = nil
+        UserDefaults.standard.removeObject(forKey: stateKey)
+        start()
+    }
+
     /// Trigger an immediate fetch from CloudKit — use for pull-to-refresh.
     func fetchNow() async {
         guard let engine = syncEngine else { return }
@@ -272,21 +282,23 @@ final class CloudSyncEngine: Sendable {
                 )
                 try db.write { db in
                     if let existing = try Meeting.fetchOne(db, key: id) {
-                        // Merge: never revert to a lower status, and preserve
-                        // locally-computed fields (summary, rawTranscript, etc.)
-                        // when the remote record has a lower status.
                         var merged = meeting
-                        let statusOrder: [MeetingStatus] = [.recording, .transcribing, .done, .error]
-                        let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
-                        let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
-                        if existingRank > remoteRank {
-                            // Remote is stale — keep all locally-computed fields
-                            merged.status = existing.status
-                            merged.summary = existing.summary ?? merged.summary
-                            merged.rawTranscript = existing.rawTranscript ?? merged.rawTranscript
-                            merged.actionItems = existing.actionItems ?? merged.actionItems
-                            merged.endedAt = existing.endedAt ?? merged.endedAt
-                            merged.durationSeconds = existing.durationSeconds ?? merged.durationSeconds
+                        // Only apply anti-regression merge for real local records.
+                        // Placeholders (created for FK satisfaction) have nil ckSystemFields
+                        // and must be fully replaced by the authoritative remote record.
+                        if existing.ckSystemFields != nil {
+                            let statusOrder: [MeetingStatus] = [.recording, .transcribing, .done, .error]
+                            let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
+                            let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
+                            if existingRank > remoteRank {
+                                // Remote is stale — keep all locally-computed fields
+                                merged.status = existing.status
+                                merged.summary = existing.summary ?? merged.summary
+                                merged.rawTranscript = existing.rawTranscript ?? merged.rawTranscript
+                                merged.actionItems = existing.actionItems ?? merged.actionItems
+                                merged.endedAt = existing.endedAt ?? merged.endedAt
+                                merged.durationSeconds = existing.durationSeconds ?? merged.durationSeconds
+                            }
                         }
                         try merged.update(db)
                     } else {
