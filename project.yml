@@ -75,8 +75,8 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "6N57Z7GY37"
         SWIFT_STRICT_CONCURRENCY: minimal
-        MARKETING_VERSION: "0.4.0"
-        CURRENT_PROJECT_VERSION: "4"
+        MARKETING_VERSION: "0.5.0"
+        CURRENT_PROJECT_VERSION: "5"
         ENABLE_HARDENED_RUNTIME: YES
       configs:
         Debug:
@@ -146,8 +146,8 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "6N57Z7GY37"
         SWIFT_STRICT_CONCURRENCY: minimal
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
         TARGETED_DEVICE_FAMILY: "1"
       configs:
         Debug:
@@ -189,7 +189,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "6N57Z7GY37"
         SWIFT_STRICT_CONCURRENCY: minimal
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
     scheme:
       testTargets: []
