@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Register for silent push notifications (CloudKit subscriptions)
-        NSApp.registerForRemoteNotifications(matching: [.badge, .sound, .alert])
+        NSApp.registerForRemoteNotifications()
 
         UNUserNotificationCenter.current().delegate = self
 
