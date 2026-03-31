@@ -52,8 +52,15 @@ struct MobileMeetingListView: View {
     }
 
     private func loadMeetings() {
-        meetings = (try? MeetingStore.shared.fetchAll()) ?? []
-        log.debug("Loaded \(self.meetings.count) meetings")
+        let all = (try? MeetingStore.shared.fetchAll()) ?? []
+        // Hide meetings with no transcript and no summary — empty recordings
+        // that were never transcribed (matches macOS MeetingListView filter)
+        meetings = all.filter { m in
+            let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
+            let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
+            return hasTranscript || hasSummary || m.status == .recording || m.status == .transcribing
+        }
+        log.debug("Loaded \(self.meetings.count) meetings (filtered from \(all.count) total)")
     }
 
     private func sectionTitle(for date: Date) -> String {
