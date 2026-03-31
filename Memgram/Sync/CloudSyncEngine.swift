@@ -62,6 +62,8 @@ final class CloudSyncEngine: Sendable {
                 logger.info("[CloudSync] Fetching changes...")
                 try await engine.fetchChanges()
                 logger.info("[CloudSync] Fetch complete")
+                // Check for stale placeholders and trigger a recovery fetch if found.
+                auditStalePlaceholders()
             } catch {
                 logger.error("[CloudSync] Fetch failed: \(error)")
             }
@@ -167,6 +169,33 @@ final class CloudSyncEngine: Sendable {
             }
         } catch {
             logger.error("[CloudSync] Failed to re-enqueue orphaned records: \(error)")
+        }
+    }
+
+    // MARK: - Placeholder Watchdog
+
+    /// Trigger a fresh fetch if any placeholder meetings are older than 5 minutes.
+    /// Placeholders are identified by ckSystemFields == nil and title == "Syncing…".
+    /// After 5 minutes without a real parent meeting arriving, the meeting record
+    /// likely failed to upload from the originating device. A fetch may pull it in
+    /// if it arrived in CloudKit after our last fetch token.
+    fileprivate func auditStalePlaceholders() {
+        do {
+            let cutoff = Date().addingTimeInterval(-300) // 5 minutes
+            let stale: [Meeting] = try db.read { db in
+                try Meeting
+                    .filter(Column("ck_system_fields") == nil)
+                    .filter(Column("title") == "Syncing…")
+                    .filter(Column("started_at") < cutoff)
+                    .fetchAll(db)
+            }
+            guard !stale.isEmpty else { return }
+            logger.warning("[CloudSync] Found \(stale.count) stale placeholder(s) — triggering fetch")
+            Task {
+                await self.fetchNow()
+            }
+        } catch {
+            logger.error("[CloudSync] Placeholder audit failed: \(error)")
         }
     }
 
