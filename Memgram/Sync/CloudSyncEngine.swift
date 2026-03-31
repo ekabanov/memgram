@@ -50,6 +50,10 @@ final class CloudSyncEngine: Sendable {
 
         if isFirstLaunch {
             enqueueAllExistingRecords()
+        } else {
+            // Re-enqueue records written locally but never acknowledged by CloudKit.
+            // Safe to call every launch — CKSyncEngine deduplicates pending changes.
+            reEnqueueOrphanedRecords()
         }
 
         // Explicitly trigger fetch — needed on fresh state to pull existing records
@@ -136,6 +140,33 @@ final class CloudSyncEngine: Sendable {
             logger.info("Enqueued all existing records for first-launch sync")
         } catch {
             logger.error("Failed to enqueue existing records: \(error)")
+        }
+    }
+
+    // MARK: - Orphan Re-enqueue
+
+    /// Re-enqueue records that were written to GRDB but never acknowledged by CloudKit.
+    /// This happens when the app is killed between the GRDB write and the CloudKit
+    /// sentRecordZoneChanges callback. Identified by ckSystemFields == nil on
+    /// records that are fully terminal (done/error) and not placeholders.
+    fileprivate func reEnqueueOrphanedRecords() {
+        do {
+            let orphans: [Meeting] = try db.read { db in
+                try Meeting
+                    .filter(Column("ck_system_fields") == nil)
+                    .filter(Column("status") == MeetingStatus.done.rawValue
+                         || Column("status") == MeetingStatus.error.rawValue)
+                    .filter(Column("title") != "Syncing…")
+                    .fetchAll(db)
+            }
+            guard !orphans.isEmpty else { return }
+            logger.info("[CloudSync] Re-enqueuing \(orphans.count) orphaned local records")
+            for meeting in orphans {
+                enqueueSave(table: "meetings", id: meeting.id)
+                enqueueSaveSegments(meetingId: meeting.id)
+            }
+        } catch {
+            logger.error("[CloudSync] Failed to re-enqueue orphaned records: \(error)")
         }
     }
 
