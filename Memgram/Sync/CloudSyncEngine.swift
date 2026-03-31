@@ -499,18 +499,7 @@ final class CloudSyncEngine: Sendable {
                 }
 
             case "audiochunk":
-                // AudioChunk records live in the same zone but are handled by
-                // RemoteMeetingProcessor, not CKSyncEngine. Trigger an immediate
-                // poll so the Mac processes the chunk without waiting for the timer.
-                #if os(macOS)
-                if #available(macOS 14.0, *) {
-                    logger.info("[CloudSync] AudioChunk detected — notifying RemoteMeetingProcessor")
-                    Task { @MainActor in
-                        RemoteMeetingProcessor.shared.handleRemoteNotification()
-                    }
-                }
-                #endif
-                return
+                return  // Handled by RemoteMeetingProcessor polling, not CKSyncEngine
 
             default:
                 logger.warning("Unknown table for remote record: \(table)")

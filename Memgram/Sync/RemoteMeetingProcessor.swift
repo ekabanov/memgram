@@ -26,18 +26,9 @@ final class RemoteMeetingProcessor {
         guard pollTimer == nil else { return }  // prevent double-start
         log.info("RemoteMeetingProcessor started")
         loadModelWithRetry()
-        // Poll timer is a fallback — CKSyncEngine zone change notifications
-        // are the primary trigger (via handleRemoteNotification).
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.pollForChunks() }
         }
-    }
-
-    /// Called by CloudSyncEngine when it detects an AudioChunk record in the zone.
-    /// This piggybacks on CKSyncEngine's existing push notification infrastructure.
-    func handleRemoteNotification() {
-        log.info("AudioChunk detected — polling for chunks")
-        Task { await pollForChunks() }
     }
 
     /// Load WhisperKit model, retrying every 30 seconds on failure.
