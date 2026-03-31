@@ -19,6 +19,8 @@ final class CloudSyncEngine: Sendable {
     fileprivate var zoneID: CKRecordZone.ID { CKRecordZone.ID(zoneName: zoneName) }
 
     nonisolated(unsafe) private var syncEngine: CKSyncEngine?
+    nonisolated(unsafe) private var isResetting = false
+    nonisolated(unsafe) private var fetchedDuringReset: Set<String> = []
     private let delegate: SyncDelegate
 
     private init() {
@@ -62,6 +64,8 @@ final class CloudSyncEngine: Sendable {
                 logger.info("[CloudSync] Fetching changes...")
                 try await engine.fetchChanges()
                 logger.info("[CloudSync] Fetch complete")
+                // After a manual reset, find local records CloudKit didn't return and re-upload them.
+                reconcileAfterReset()
                 // Check for stale placeholders and trigger a recovery fetch if found.
                 auditStalePlaceholders()
             } catch {
@@ -85,6 +89,8 @@ final class CloudSyncEngine: Sendable {
     func resetAndResync() {
         logger.info("[CloudSync] Full reset — clearing sync state and re-downloading")
         syncEngine = nil
+        isResetting = true
+        fetchedDuringReset = []
         UserDefaults.standard.removeObject(forKey: stateKey)
         start()
     }
@@ -196,6 +202,40 @@ final class CloudSyncEngine: Sendable {
             }
         } catch {
             logger.error("[CloudSync] Placeholder audit failed: \(error)")
+        }
+    }
+
+    // MARK: - Post-Reset Reconciliation
+
+    /// After a full reset-and-resync, re-upload local meetings that CloudKit
+    /// didn't return. These are records the originating device failed to push
+    /// (e.g., killed before acknowledgement). Called once after the reset fetch
+    /// completes. Clears the isResetting flag when done.
+    fileprivate func reconcileAfterReset() {
+        guard isResetting else { return }
+        isResetting = false
+        let fetched = fetchedDuringReset
+        fetchedDuringReset = []
+
+        do {
+            let localDone: [Meeting] = try db.read { db in
+                try Meeting
+                    .filter(Column("status") == MeetingStatus.done.rawValue)
+                    .filter(Column("title") != "Syncing…")
+                    .fetchAll(db)
+            }
+            let gap = localDone.filter { !fetched.contains($0.id) }
+            guard !gap.isEmpty else {
+                logger.info("[CloudSync] Post-reset reconciliation: no gaps found")
+                return
+            }
+            logger.info("[CloudSync] Post-reset reconciliation: re-uploading \(gap.count) missing record(s)")
+            for meeting in gap {
+                enqueueSave(table: "meetings", id: meeting.id)
+                enqueueSaveSegments(meetingId: meeting.id)
+            }
+        } catch {
+            logger.error("[CloudSync] Post-reset reconciliation failed: \(error)")
         }
     }
 
@@ -321,6 +361,13 @@ final class CloudSyncEngine: Sendable {
             return
         }
         let (table, id) = parsed
+
+        // Track which records arrived from CloudKit during a reset so we can
+        // identify local records that CloudKit doesn't have.
+        if isResetting && table == "meetings" {
+            fetchedDuringReset.insert(id)
+        }
+
         let systemFieldsData = encodeSystemFields(record)
 
         do {
