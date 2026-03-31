@@ -91,11 +91,20 @@ struct AISettingsTab: View {
 // MARK: - Config sub-views
 
 private struct QwenConfigView: View {
+    #if canImport(MLXLLM)
+    private var modelLabel: String {
+        if #available(macOS 14, *) { return QwenLocalProvider.shared.name }
+        return "Qwen 3.5 (Local)"
+    }
+    #else
+    private var modelLabel: String { "Qwen 3.5 (Local)" }
+    #endif
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Qwen 3.5 9B (Local)", systemImage: "cpu")
+            Label(modelLabel, systemImage: "cpu")
                 .font(.headline)
-            Text("Runs entirely on your Mac using Apple MLX. Downloads ~4.5 GB on first use. Requires Apple Silicon.")
+            Text("Runs entirely on your Mac using Apple MLX. Model size auto-selected based on RAM (2B / 9B / 27B). Requires Apple Silicon.")
                 .font(.body).foregroundColor(.secondary)
             #if canImport(MLXLLM)
             if #available(macOS 14, *) {
