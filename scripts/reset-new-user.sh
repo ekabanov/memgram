@@ -41,10 +41,24 @@ fi
 
 # 5. Remove model caches
 if [ "$KEEP_MODELS" = false ]; then
+  APP_SUPPORT=~/Library/Containers/"$BUNDLE_ID"/Data/Library/Application\ Support
+  APP_CACHES=~/Library/Containers/"$BUNDLE_ID"/Data/Library/Caches
+
   echo "   Removing WhisperKit model cache…"
-  rm -rf ~/Library/Caches/huggingface
+  rm -rf "$APP_CACHES/huggingface/hub/models--argmaxinc--whisperkit-coreml"
+
   echo "   Removing Qwen/MLX model cache…"
-  rm -rf ~/Library/Containers/"$BUNDLE_ID"/Data/Library/Caches/models
+  rm -rf "$APP_CACHES/huggingface/hub/models--mlx-community"
+  rm -rf "$APP_CACHES/models"
+
+  echo "   Removing Parakeet (FluidAudio) model cache…"
+  rm -rf "$APP_SUPPORT/FluidAudio/Models/parakeet-tdt-0.6b-v3"
+
+  echo "   Removing Sortformer diarizer model cache…"
+  rm -rf "$APP_SUPPORT/FluidAudio/Models/sortformer"
+
+  echo "   Removing speaker enrollment voice sample…"
+  rm -f "$APP_SUPPORT/Memgram/enrollment_voice.pcm"
 fi
 
 echo ""
