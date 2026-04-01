@@ -6,6 +6,8 @@ struct SettingsView: View {
         TabView {
             AISettingsTab()
                 .tabItem { Label("AI", systemImage: "sparkles") }
+            RecordingSettingsTab()
+                .tabItem { Label("Recording", systemImage: "waveform") }
             CalendarSettingsView()
                 .tabItem {
                     Label("Calendar", systemImage: "calendar")
@@ -203,6 +205,42 @@ private struct APIKeyConfigView: View {
                     KeychainHelper.save(key: "\(service)APIKey", value: newValue)
                 }
         }
+    }
+}
+
+// MARK: - Recording Settings
+
+struct RecordingSettingsTab: View {
+    @ObservedObject private var backendManager = TranscriptionBackendManager.shared
+    @ObservedObject private var whisperManager = WhisperModelManager.shared
+
+    var body: some View {
+        Form {
+            Section("Transcription Engine") {
+                Picker("Engine", selection: $backendManager.selectedBackend) {
+                    ForEach(TranscriptionBackend.allCases) { backend in
+                        Text(backend.displayName).tag(backend)
+                    }
+                }
+                .pickerStyle(.radioGroup)
+
+                Text(backendManager.selectedBackend.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Whisper Model") {
+                LabeledContent("Selected model") {
+                    Text(whisperManager.selectedModel.shortName)
+                        .foregroundStyle(.secondary)
+                }
+                Text("Model is automatically selected based on available RAM.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .opacity(backendManager.selectedBackend == .whisper ? 1 : 0.4)
+        }
+        .formStyle(.grouped)
     }
 }
 
