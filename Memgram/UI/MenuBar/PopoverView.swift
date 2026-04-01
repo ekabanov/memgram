@@ -89,7 +89,9 @@ struct PopoverView: View {
         HStack {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
-                .frame(width: 20, height: 20)
+                .interpolation(.high)
+                .antialiased(true)
+                .frame(width: 28, height: 28)
             Text("Memgram")
                 .font(.headline)
             Spacer()

@@ -100,7 +100,13 @@ final class SpeakerDiarizer {
             return [:]
         }
 
-        log.info("Running diarization on \(micCopy.count) mic + \(sysCopy.count) sys samples")
+        // Cap audio at 10 minutes for Sortformer — it's designed for meeting segments,
+        // not long recordings. Sample evenly from the full audio to capture speaker variety.
+        let maxSamples = Int(StereoMixer.sampleRate * 600) // 10 min at 16 kHz
+        let micInput = Self.downsample(micCopy, toMaxSamples: maxSamples)
+        let sysInput = Self.downsample(sysCopy, toMaxSamples: maxSamples)
+
+        log.info("Running diarization on \(micInput.count) mic + \(sysInput.count) sys samples (capped from \(micCopy.count))")
 
         guard let loadedModels = models else {
             log.warning("[Diarizer] Models not loaded — skipping")
@@ -119,7 +125,7 @@ final class SpeakerDiarizer {
         let sysTimeline: DiarizerTimeline
         do {
             micTimeline = try await Task.detached(priority: .userInitiated) {
-                try micDiarizer.processComplete(micCopy, sourceSampleRate: StereoMixer.sampleRate)
+                try micDiarizer.processComplete(micInput, sourceSampleRate: StereoMixer.sampleRate)
             }.value
             log.info("Mic diarization complete — \(micTimeline.speakers.count) speakers")
         } catch {
@@ -129,7 +135,7 @@ final class SpeakerDiarizer {
 
         do {
             sysTimeline = try await Task.detached(priority: .userInitiated) {
-                try sysDiarizer.processComplete(sysCopy, sourceSampleRate: StereoMixer.sampleRate)
+                try sysDiarizer.processComplete(sysInput, sourceSampleRate: StereoMixer.sampleRate)
             }.value
             log.info("System diarization complete — \(sysTimeline.speakers.count) speakers")
         } catch {
@@ -226,6 +232,21 @@ final class SpeakerDiarizer {
         var result: Float = 0
         vDSP_rmsqv(samples, 1, &result, vDSP_Length(samples.count))
         return result
+    }
+
+    /// Evenly sample `input` down to at most `maxSamples` by taking uniformly
+    /// spaced windows. If `input.count <= maxSamples`, returns `input` unchanged.
+    private static func downsample(_ input: [Float], toMaxSamples maxSamples: Int) -> [Float] {
+        guard input.count > maxSamples else { return input }
+        let stride = input.count / maxSamples
+        var output = [Float]()
+        output.reserveCapacity(maxSamples)
+        var i = 0
+        while i < input.count && output.count < maxSamples {
+            output.append(input[i])
+            i += stride
+        }
+        return output
     }
 }
 #endif
