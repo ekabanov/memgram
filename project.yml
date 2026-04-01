@@ -98,7 +98,25 @@ targets:
       - package: FluidAudio
         product: FluidAudio
     scheme:
-      testTargets: []
+      testTargets:
+        - MemgramTests
+
+  MemgramTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Tests/MemgramTests
+    dependencies:
+      - target: Memgram
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+    scheme:
+      testTargets:
+        - MemgramTests
 
   MemgramMobile:
     type: application

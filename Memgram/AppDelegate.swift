@@ -56,7 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
 
-        if #available(macOS 14.0, *) {
+        let isTestRun = ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil
+        if #available(macOS 14.0, *), !isTestRun {
             if AppDatabase.shared.needsCloudResync {
                 UserDefaults.standard.removeObject(forKey: "CKSyncEngineState")
                 appLog.info("Cleared CloudKit sync state after v4 schema migration")
