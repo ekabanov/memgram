@@ -17,9 +17,6 @@ final class RecordingSession: ObservableObject {
     @Published private(set) var silentSysAudioSeconds: Double = 0
     @Published private(set) var segments: [TranscriptSegment] = []
     @Published private(set) var interruptedMeetings: [Meeting] = []
-    /// Meeting ID currently being diarized (speaker identification running).
-    @Published private(set) var diarizingMeetingId: String?
-
     private var micCapture: MicrophoneCapture?
     private var sysCapture: SystemAudioCaptureProvider?
     private let mixer = StereoMixer()
@@ -80,8 +77,8 @@ final class RecordingSession: ObservableObject {
     }
 
     func recoverMeeting(_ meeting: Meeting) {
-        do { try MeetingStore.shared.updateStatus(meeting.id, status: .done) }
-        catch { log.error("updateStatus(.done) failed for meeting \(meeting.id, privacy: .public): \(error)") }
+        do { try MeetingStore.shared.updateStatus(meeting.id, status: .interrupted) }
+        catch { log.error("updateStatus(.interrupted) failed for meeting \(meeting.id, privacy: .public): \(error)") }
         interruptedMeetings.removeAll { $0.id == meeting.id }
     }
 
@@ -215,12 +212,11 @@ final class RecordingSession: ObservableObject {
                 guard let self else { return }
 
                 #if os(macOS)
-                // Run diarization and update speaker labels before building rawTranscript
                 if #available(macOS 14.0, *) {
-                    self.diarizingMeetingId = id
+                    try? MeetingStore.shared.updateStatus(id, status: .diarizing)
                     NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                     let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
-                    self.diarizingMeetingId = nil
+                    try? MeetingStore.shared.updateStatus(id, status: .done)
                     if !labelMap.isEmpty {
                         for i in self.segments.indices {
                             if let label = labelMap[self.segments[i].id.uuidString] {

@@ -83,8 +83,10 @@ struct MeetingListView: View {
         meetings = all.filter { m in
             let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
             let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
-            let isInterrupted = m.rawTranscript == nil
-            return hasTranscript || hasSummary || isInterrupted || m.status == .recording || m.status == .transcribing
+            // nil = interrupted (crashed/stopped before finalization)
+            // ""  = finalized but empty — treat the same; may have lost transcript data via sync
+            let hasNoTranscript = m.rawTranscript?.isEmpty != false  // true if nil or ""
+            return hasTranscript || hasSummary || hasNoTranscript || m.status == .recording || m.status == .transcribing
         }
     }
 
@@ -102,15 +104,10 @@ struct MeetingListView: View {
 struct MeetingRowView: View {
     let meeting: Meeting
     @ObservedObject private var summaryEngine = SummaryEngine.shared
-    @ObservedObject private var session = RecordingSession.shared
-
-    private var isDiarizing: Bool {
-        session.diarizingMeetingId == meeting.id
-    }
 
     var body: some View {
         HStack(spacing: 8) {
-            if summaryEngine.activeMeetingIds.contains(meeting.id) || isDiarizing {
+            if summaryEngine.activeMeetingIds.contains(meeting.id) || meeting.status == .diarizing {
                 ProgressView().controlSize(.mini).frame(width: 8, height: 8)
             } else {
                 Circle().fill(statusColor).frame(width: 8, height: 8)
@@ -135,7 +132,7 @@ struct MeetingRowView: View {
     }
 
     private var isInterrupted: Bool {
-        meeting.rawTranscript == nil && meeting.status == .done
+        meeting.rawTranscript?.isEmpty != false && meeting.status == .done && meeting.summary == nil
     }
 
     private var statusColor: Color {
@@ -143,7 +140,9 @@ struct MeetingRowView: View {
         switch meeting.status {
         case .recording:    return .red
         case .transcribing: return .orange
+        case .diarizing:    return .orange
         case .done:         return .green
+        case .interrupted:  return .secondary
         case .error:        return Color.red.opacity(0.5)
         }
     }
@@ -151,7 +150,7 @@ struct MeetingRowView: View {
     private var subtitle: String {
         let time = DateFormatter.localizedString(from: meeting.startedAt,
                                                   dateStyle: .none, timeStyle: .short)
-        if isDiarizing { return "\(time) · Identifying speakers…" }
+        if meeting.status == .diarizing { return "\(time) · Identifying speakers…" }
         if summaryEngine.activeMeetingIds.contains(meeting.id) { return "\(time) · Summarising…" }
         if isInterrupted { return "\(time) · Interrupted" }
         guard let dur = meeting.durationSeconds else { return time }
