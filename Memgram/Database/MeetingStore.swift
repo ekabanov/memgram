@@ -3,13 +3,24 @@ import GRDB
 
 final class MeetingStore {
     static let shared = MeetingStore()
-    private let db = AppDatabase.shared
-    private init() {}
 
-    private var sync: CloudSyncEngine? {
-        if #available(macOS 14.0, iOS 17.0, *) { return CloudSyncEngine.shared }
-        return nil
+    let db: AppDatabase
+    private let syncProvider: (() -> CloudSyncEngine?)?
+
+    private init() {
+        self.db = AppDatabase.shared
+        self.syncProvider = {
+            if #available(macOS 14.0, iOS 17.0, *) { return CloudSyncEngine.shared }
+            return nil
+        }
     }
+
+    init(db: AppDatabase, syncProvider: (() -> CloudSyncEngine?)?) {
+        self.db = db
+        self.syncProvider = syncProvider
+    }
+
+    private var sync: CloudSyncEngine? { syncProvider?() }
 
     // MARK: - Write
 

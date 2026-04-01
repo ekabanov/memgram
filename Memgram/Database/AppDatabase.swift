@@ -18,10 +18,16 @@ final class AppDatabase {
         catch { fatalError("[AppDatabase] Cannot open database even after recovery: \(error)") }
     }()
 
-    private let dbQueue: DatabaseQueue
+    let dbQueue: DatabaseQueue
     private(set) var needsCloudResync = false
 
-    private init() throws {
+    /// Test-only initializer accepting a pre-configured DatabaseQueue (e.g. in-memory).
+    init(queue: DatabaseQueue) throws {
+        self.dbQueue = queue
+        try runMigrations()
+    }
+
+    fileprivate init() throws {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let dir = appSupport.appendingPathComponent("Memgram")
