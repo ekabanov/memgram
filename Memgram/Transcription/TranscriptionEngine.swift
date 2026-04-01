@@ -1,11 +1,10 @@
 import AVFoundation
 import Combine
 import OSLog
-import WhisperKit
 
 enum TranscriptionError: LocalizedError {
     case modelNotLoaded
-    var errorDescription: String? { "Whisper model is not loaded" }
+    var errorDescription: String? { "Transcription model is not loaded" }
 }
 
 struct TranscriptSegment: Identifiable {
@@ -20,12 +19,12 @@ struct TranscriptSegment: Identifiable {
 final class TranscriptionEngine {
 
     private let log = Logger.make("Transcription")
-    private var whisperKit: WhisperKit?
+    private var transcriber: (any TranscriberProtocol)?
     private let subject = PassthroughSubject<TranscriptSegment, Never>()
     private var accumulatedSeconds: Double = 0
 
     private struct PendingChunk {
-        let samples: [Float]
+        let buffer: AVAudioPCMBuffer
         let leftEnergy: Float
         let rightEnergy: Float
         let chunkStart: Double
@@ -45,28 +44,29 @@ final class TranscriptionEngine {
         subject.eraseToAnyPublisher()
     }
 
-    /// Load (and if needed download) the WhisperKit model, then warm up CoreML compilation.
+    /// Load the active backend model. modelName is used only for Whisper;
+    /// Parakeet uses a fixed v3 model internally.
     func prepare(modelName: String) async throws {
-        guard whisperKit == nil else {
-            log.debug("WhisperKit already loaded, skipping prepare")
-            return
+        guard transcriber == nil else { return }
+        #if os(macOS)
+        let backend = await MainActor.run { TranscriptionBackendManager.shared.selectedBackend }
+        switch backend {
+        case .whisper:
+            let t = WhisperTranscriber()
+            try await t.prepare()
+            transcriber = t
+        case .parakeet:
+            let t = ParakeetTranscriber()
+            try await t.prepare()
+            transcriber = t
         }
-        log.info("Loading WhisperKit model: \(modelName, privacy: .public)")
-        await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = true }
-        let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
-        self.whisperKit = wk
-        log.info("WhisperKit loaded — triggering CoreML warm-up")
-
-        // Run a silent 1-second dummy transcription to force CoreML compilation now,
-        // rather than stalling the first real recording chunk.
-        let silence = [Float](repeating: 0, count: 16000)
-        _ = try? await wk.transcribe(audioArray: silence)
-        log.info("WhisperKit ready — model: \(modelName, privacy: .public)")
-        await MainActor.run {
-            WhisperModelManager.shared.isWhisperDownloading = false
-            WhisperModelManager.shared.isWhisperReady = true
-        }
-        drainIfIdle()  // process any chunks that arrived before the model was ready
+        #else
+        // iOS always uses Whisper (FluidAudio/Parakeet is macOS-only)
+        let t = WhisperTranscriber()
+        try await t.prepare()
+        transcriber = t
+        #endif
+        drainIfIdle()
     }
 
     func reset() {
@@ -75,17 +75,26 @@ final class TranscriptionEngine {
         isTranscribing = false
     }
 
-    /// Called with each 30s stereo chunk from StereoMixer (left=mic, right=system).
+    /// Discard the loaded transcriber so the next prepare() call loads the active backend.
+    func resetTranscriber() {
+        transcriber = nil
+        Task { @MainActor in
+            WhisperModelManager.shared.isWhisperReady = false
+            WhisperModelManager.shared.isWhisperDownloading = false
+            TranscriptionBackendManager.shared.isReady = false
+            TranscriptionBackendManager.shared.isLoading = false
+        }
+    }
+
+    /// Called with each stereo chunk from StereoMixer (left=mic, right=system).
     func transcribe(_ buffer: AVAudioPCMBuffer) {
         let leftEnergy  = channelRMS(buffer, channel: 0)
         let rightEnergy = channelRMS(buffer, channel: 1)
-        guard let samples = toMonoFloats(buffer) else { return }
-
         let chunkStart = accumulatedSeconds
         accumulatedSeconds += Double(buffer.frameLength) / buffer.format.sampleRate
 
         pendingChunks.append(PendingChunk(
-            samples: samples, leftEnergy: leftEnergy,
+            buffer: buffer, leftEnergy: leftEnergy,
             rightEnergy: rightEnergy, chunkStart: chunkStart
         ))
         drainIfIdle()
@@ -93,59 +102,21 @@ final class TranscriptionEngine {
 
     private func drainIfIdle() {
         guard !isTranscribing, !pendingChunks.isEmpty else { return }
-        guard let whisperKit else {
-            // Model not loaded yet — chunks are buffered, will drain when prepare() completes
-            return
-        }
+        guard let transcriber, transcriber.isReady else { return }
         let chunk = pendingChunks.removeFirst()
         isTranscribing = true
         Task { [weak self] in
             guard let self else { return }
             do {
-                let options = DecodingOptions(
-                    task: .transcribe,
-                    language: nil,
-                    temperature: 0.0,
-                    skipSpecialTokens: true
+                let segments = try await transcriber.transcribeStereoBuffer(
+                    chunk.buffer,
+                    leftEnergy: chunk.leftEnergy,
+                    rightEnergy: chunk.rightEnergy,
+                    chunkStart: chunk.chunkStart
                 )
-                let rms = chunk.samples.reduce(0.0) { $0 + $1 * $1 }
-                let energy = sqrt(rms / Float(max(1, chunk.samples.count)))
-                log.debug("Transcribing chunk — \(chunk.samples.count) samples (\(Int(Double(chunk.samples.count)/16000))s)")
-                let results: [TranscriptionResult] = try await whisperKit.transcribe(
-                    audioArray: chunk.samples,
-                    decodeOptions: options
-                )
-                let allSegments = results.flatMap(\.segments)
-                log.debug("Got \(results.count) result(s), \(allSegments.count) segment(s)")
-
-                for result in results {
-                    for seg in result.segments {
-                        let text = seg.text.trimmingCharacters(in: .whitespaces)
-                        guard !text.isEmpty else { continue }
-
-                        let startSec = chunk.chunkStart + Double(seg.start)
-                        let endSec   = chunk.chunkStart + Double(seg.end)
-
-                        let (speaker, channel) = self.determineSpeaker(
-                            text: text,
-                            leftEnergy: chunk.leftEnergy,
-                            rightEnergy: chunk.rightEnergy
-                        )
-                        let cleanText = Self.stripDiarizationTags(text)
-                        guard !cleanText.isEmpty else { continue }
-
-                        self.subject.send(TranscriptSegment(
-                            id: UUID(),
-                            startSeconds: startSec,
-                            endSeconds: endSec,
-                            text: cleanText,
-                            speaker: speaker,
-                            channel: channel
-                        ))
-                    }
-                }
+                for segment in segments { self.subject.send(segment) }
             } catch {
-                log.error("Chunk transcription failed: \(error)")
+                self.log.error("Chunk transcription failed: \(error)")
             }
             self.isTranscribing = false
             if self.pendingChunks.isEmpty {
@@ -156,80 +127,15 @@ final class TranscriptionEngine {
         }
     }
 
-    // MARK: - Raw Audio Transcription
+    // MARK: - Raw Audio Transcription (iPhone remote chunks via RemoteMeetingProcessor)
 
-    /// Transcribe a raw Float32 audio array and return segments.
-    /// Used by RemoteMeetingProcessor for remote audio chunks.
     func transcribeRawAudio(samples: [Float], meetingId: String, offsetSeconds: Double) async throws -> [MeetingSegment] {
-        guard let whisperKit else {
-            throw TranscriptionError.modelNotLoaded
-        }
-
-        let options = DecodingOptions(
-            task: .transcribe,
-            temperature: 0.0,
-            skipSpecialTokens: true
-        )
-        let results: [TranscriptionResult] = try await whisperKit.transcribe(
-            audioArray: samples,
-            decodeOptions: options
-        )
-
-        var segments: [MeetingSegment] = []
-        for result in results {
-            for segment in result.segments {
-                let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !text.isEmpty else { continue }
-                segments.append(MeetingSegment(
-                    id: UUID().uuidString,
-                    meetingId: meetingId,
-                    speaker: "Remote",
-                    channel: "microphone",
-                    startSeconds: offsetSeconds + Double(segment.start),
-                    endSeconds: offsetSeconds + Double(segment.end),
-                    text: text,
-                    ckSystemFields: nil
-                ))
-            }
-        }
-        log.info("Transcribed \(segments.count) segments from \(samples.count) samples at offset \(offsetSeconds)s")
-        return segments
-    }
-
-    // MARK: - Diarization
-
-    private func determineSpeaker(text: String, leftEnergy: Float, rightEnergy: Float) -> (String, AudioChannel) {
-        if text.contains("[SPEAKER_00]") { return ("You", .microphone) }
-        if text.contains("[SPEAKER_01]") { return ("Remote", .system) }
-        let threshold: Float = 1.2
-        if leftEnergy > rightEnergy * threshold  { return ("You", .microphone) }
-        if rightEnergy > leftEnergy * threshold  { return ("Remote", .system) }
-        return leftEnergy >= rightEnergy ? ("You", .microphone) : ("Remote", .system)
-    }
-
-    private static func stripDiarizationTags(_ text: String) -> String {
-        var result = text
-        for tag in ["[SPEAKER_00]", "[SPEAKER_01]", "[SPEAKER_02]", "[SPEAKER_03]"] {
-            result = result.replacingOccurrences(of: tag, with: "")
-        }
-        return result.trimmingCharacters(in: .whitespaces)
+        guard let transcriber else { throw TranscriptionError.modelNotLoaded }
+        return try await transcriber.transcribeRawAudio(
+            samples: samples, meetingId: meetingId, offsetSeconds: offsetSeconds)
     }
 
     // MARK: - Audio helpers
-
-    private func toMonoFloats(_ buffer: AVAudioPCMBuffer) -> [Float]? {
-        guard let channels = buffer.floatChannelData else { return nil }
-        let frames = Int(buffer.frameLength)
-        let channelCount = Int(buffer.format.channelCount)
-        guard channelCount > 0, frames > 0 else { return nil }
-        var mono = [Float](repeating: 0, count: frames)
-        for ch in 0..<channelCount {
-            for i in 0..<frames { mono[i] += channels[ch][i] }
-        }
-        let scale = 1.0 / Float(channelCount)
-        for i in 0..<frames { mono[i] *= scale }
-        return mono
-    }
 
     private func channelRMS(_ buffer: AVAudioPCMBuffer, channel: Int) -> Float {
         guard let channels = buffer.floatChannelData,
