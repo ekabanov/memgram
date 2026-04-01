@@ -102,12 +102,17 @@ final class SpeakerDiarizer {
 
         log.info("Running diarization on \(micCopy.count) mic + \(sysCopy.count) sys samples")
 
+        guard let loadedModels = models else {
+            log.warning("[Diarizer] Models not loaded — skipping")
+            return [:]
+        }
+
         // Create two separate diarizer instances for mic and system channels
         let micDiarizer = SortformerDiarizer(config: .balancedV2_1)
         let sysDiarizer = SortformerDiarizer(config: .balancedV2_1)
 
-        micDiarizer.initialize(models: models!)
-        sysDiarizer.initialize(models: models!)
+        micDiarizer.initialize(models: loadedModels)
+        sysDiarizer.initialize(models: loadedModels)
 
         // Run diarization on both channels (processComplete is CPU-intensive — run off cooperative pool)
         let micTimeline: DiarizerTimeline

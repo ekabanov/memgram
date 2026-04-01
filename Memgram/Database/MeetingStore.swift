@@ -155,6 +155,7 @@ final class MeetingStore {
                 arguments: [speaker, id]
             )
         }
+        sync?.enqueueSave(table: "segments", id: id)
     }
 
     /// Discards a meeting that is currently recording (e.g. on crash recovery).

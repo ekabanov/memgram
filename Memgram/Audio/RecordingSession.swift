@@ -239,6 +239,7 @@ final class RecordingSession: ObservableObject {
                             }
                         }
                         self.log.info("Diarization complete — updated \(labelMap.count) segment labels")
+                        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                     }
                 }
                 #endif
