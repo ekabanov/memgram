@@ -117,7 +117,7 @@ final class SpeakerDiarizer {
 
         // Cap audio at 10 minutes for Sortformer — it's designed for meeting segments,
         // not long recordings. Sample evenly from the full audio to capture speaker variety.
-        let maxSamples = Int(StereoMixer.sampleRate * 600) // 10 min at 16 kHz
+        let maxSamples = Int(StereoMixer.sampleRate * 300) // 5 min at 16 kHz
         let micInput = Self.downsample(micCopy, toMaxSamples: maxSamples)
         let sysInput = Self.downsample(sysCopy, toMaxSamples: maxSamples)
 
