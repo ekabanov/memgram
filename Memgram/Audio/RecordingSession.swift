@@ -102,16 +102,6 @@ final class RecordingSession: ObservableObject {
         )
         currentMeetingId = meeting.id
 
-        // Auto-attach calendar context for prompt enrichment if recording started generically.
-        // We deliberately do NOT rename the meeting — if the user didn't start from the
-        // calendar event, the title stays "Untitled Meeting" (editable after the fact).
-        if calendarContext == nil, CalendarManager.shared.isEnabled {
-            if let event = CalendarManager.shared.findEvent(around: Date()) {
-                let ctx = CalendarManager.shared.context(for: event)
-                do { try MeetingStore.shared.updateCalendarContext(meeting.id, eventId: event.eventIdentifier, context: ctx) }
-                catch { log.error("updateCalendarContext failed for meeting \(meeting.id, privacy: .public): \(error)") }
-            }
-        }
 
         // Notify the list immediately so the new meeting appears while recording
         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
