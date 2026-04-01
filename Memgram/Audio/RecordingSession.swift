@@ -28,6 +28,11 @@ final class RecordingSession: ObservableObject {
     private var finalizationCancellable: AnyCancellable?
     private var backendCancellable: AnyCancellable?
 
+    #if os(macOS)
+    @available(macOS 14.0, *)
+    private lazy var speakerDiarizer = SpeakerDiarizer()
+    #endif
+
     private var currentMeetingId: String?
 
     private init() {
@@ -56,6 +61,14 @@ final class RecordingSession: ObservableObject {
                 log.error("Transcription model preload failed: \(error.localizedDescription, privacy: .public)")
             }
         }
+        #if os(macOS)
+        if #available(macOS 14.0, *) {
+            Task {
+                do { try await speakerDiarizer.prepare() }
+                catch { log.error("Diarizer preload failed: \(error.localizedDescription, privacy: .public)") }
+            }
+        }
+        #endif
     }
 
     // MARK: - Recovery
@@ -105,6 +118,9 @@ final class RecordingSession: ObservableObject {
 
         transcriptionEngine.reset()
         segments = []
+        #if os(macOS)
+        if #available(macOS 14.0, *) { speakerDiarizer.reset() }
+        #endif
 
         let mic = MicrophoneCapture()
         let sys = makeSystemAudioCapture()
@@ -153,6 +169,9 @@ final class RecordingSession: ObservableObject {
         chunkCancellable = mixer.chunkPublisher
             .sink { [weak self] chunk in
                 self?.transcriptionEngine.transcribe(chunk)
+                #if os(macOS)
+                if #available(macOS 14.0, *) { self?.speakerDiarizer.append(chunk) }
+                #endif
             }
 
         let meetingId = meeting.id
@@ -200,19 +219,44 @@ final class RecordingSession: ObservableObject {
 
         let finalize = { [weak self] in
             guard let self else { return }
-            let rawTranscript = self.segments
-                .map { "\($0.speaker): \($0.text)" }
-                .joined(separator: "\n")
-            self.log.info("Finalising meeting \(id, privacy: .public) — \(self.segments.count) segments, \(rawTranscript.count) chars")
-            do { try MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript) }
-            catch { log.error("finalizeMeeting failed for meeting \(id, privacy: .public): \(error)") }
-            self.currentMeetingId = nil
-            self.segmentCancellable = nil
-            self.finalizationCancellable = nil
+            Task { @MainActor [weak self] in
+                guard let self else { return }
 
-            Task {
-                await SummaryEngine.shared.summarize(meetingId: id)  // title generated inside
-                await EmbeddingEngine.shared.embed(meetingId: id)
+                #if os(macOS)
+                // Run diarization and update speaker labels before building rawTranscript
+                if #available(macOS 14.0, *) {
+                    let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
+                    if !labelMap.isEmpty {
+                        for i in self.segments.indices {
+                            if let label = labelMap[self.segments[i].id.uuidString] {
+                                self.segments[i].speaker = label
+                            }
+                        }
+                        for segment in self.segments {
+                            if let label = labelMap[segment.id.uuidString] {
+                                try? MeetingStore.shared.updateSegmentSpeaker(
+                                    id: segment.id.uuidString, speaker: label)
+                            }
+                        }
+                        self.log.info("Diarization complete — updated \(labelMap.count) segment labels")
+                    }
+                }
+                #endif
+
+                let rawTranscript = self.segments
+                    .map { "\($0.speaker): \($0.text)" }
+                    .joined(separator: "\n")
+                self.log.info("Finalising meeting \(id, privacy: .public) — \(self.segments.count) segments, \(rawTranscript.count) chars")
+                do { try MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript) }
+                catch { self.log.error("finalizeMeeting failed for meeting \(id, privacy: .public): \(error)") }
+                self.currentMeetingId = nil
+                self.segmentCancellable = nil
+                self.finalizationCancellable = nil
+
+                Task {
+                    await SummaryEngine.shared.summarize(meetingId: id)  // title generated inside
+                    await EmbeddingEngine.shared.embed(meetingId: id)
+                }
             }
         }
 
