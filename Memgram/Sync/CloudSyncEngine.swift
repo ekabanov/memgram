@@ -125,21 +125,24 @@ final class CloudSyncEngine: ObservableObject {
     // MARK: - Enqueue Helpers
 
     func enqueueSave(table: String, id: String) {
+        // Always persist pendingUpload to DB for meetings — even if the sync engine
+        // isn't running yet. reEnqueueOrphanedRecords picks this up on next launch.
+        if table == "meetings" {
+            do {
+                try db.write { db in
+                    try db.execute(
+                        sql: "UPDATE meetings SET sync_status = ? WHERE id = ?",
+                        arguments: [SyncStatus.pendingUpload.rawValue, id]
+                    )
+                }
+                refreshSyncCounts()
+            } catch {
+                logger.error("[CloudSync] Failed to set pendingUpload for meeting \(id): \(error)")
+            }
+        }
         guard let engine = syncEngine else { return }
         let recordID = makeRecordID(table: table, id: id)
         engine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
-        guard table == "meetings" else { return }
-        do {
-            try db.write { db in
-                try db.execute(
-                    sql: "UPDATE meetings SET sync_status = ? WHERE id = ?",
-                    arguments: [SyncStatus.pendingUpload.rawValue, id]
-                )
-            }
-            refreshSyncCounts()
-        } catch {
-            logger.error("[CloudSync] Failed to set pendingUpload for meeting \(id): \(error)")
-        }
     }
 
     func enqueueDelete(table: String, id: String) {
@@ -640,7 +643,8 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
                         }
                         // Only re-enqueue if local had different content
                         if localRecord != nil {
-                            syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+                            engine.enqueueSave(table: engine.parseRecordID(recordID)?.table ?? "",
+                                               id: engine.parseRecordID(recordID)?.id ?? "")
                         }
                     }
                     // Remove from uploadingIds — the record will re-enter when the retry batch fires
