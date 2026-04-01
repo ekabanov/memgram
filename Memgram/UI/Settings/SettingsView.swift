@@ -244,6 +244,8 @@ struct RecordingSettingsTab: View {
             .opacity(backendManager.selectedBackend == .whisper ? 1 : 0.4)
 
             Section("Your Voice") {
+                // enrollmentVersion read here so SwiftUI re-renders when it changes
+                let _ = enrollmentVersion
                 if SpeakerEnrollmentStore.shared.hasEnrollment {
                     LabeledContent("Enrolled as") {
                         Text(SpeakerEnrollmentStore.shared.enrolledName ?? "Unknown")
