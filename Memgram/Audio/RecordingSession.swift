@@ -215,8 +215,8 @@ final class RecordingSession: ObservableObject {
                 if #available(macOS 14.0, *) {
                     try? MeetingStore.shared.updateStatus(id, status: .diarizing)
                     NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                    defer { try? MeetingStore.shared.updateStatus(id, status: .done) }
                     let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
-                    try? MeetingStore.shared.updateStatus(id, status: .done)
                     if !labelMap.isEmpty {
                         for i in self.segments.indices {
                             if let label = labelMap[self.segments[i].id.uuidString] {

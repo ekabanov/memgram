@@ -152,7 +152,7 @@ struct MeetingRowView: View {
                                                   dateStyle: .none, timeStyle: .short)
         if meeting.status == .diarizing { return "\(time) · Identifying speakers…" }
         if summaryEngine.activeMeetingIds.contains(meeting.id) { return "\(time) · Summarising…" }
-        if isInterrupted { return "\(time) · Interrupted" }
+        if meeting.status == .interrupted || isInterrupted { return "\(time) · Interrupted" }
         guard let dur = meeting.durationSeconds else { return time }
         let mins = Int(dur / 60)
         return mins > 0 ? "\(time) · \(mins)m" : time
