@@ -19,6 +19,7 @@ final class SpeakerDiarizer {
     private(set) var energyLog: [(startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)] = []
 
     private let sampleRate: Double
+    private let lock = NSLock()
 
     // MARK: - Init
 
@@ -38,9 +39,11 @@ final class SpeakerDiarizer {
 
     /// Clears accumulated audio and energy log, keeping models loaded.
     func reset() {
-        micSamples.removeAll(keepingCapacity: true)
-        sysSamples.removeAll(keepingCapacity: true)
-        energyLog.removeAll(keepingCapacity: true)
+        lock.lock()
+        defer { lock.unlock() }
+        micSamples.removeAll(keepingCapacity: false)
+        sysSamples.removeAll(keepingCapacity: false)
+        energyLog.removeAll(keepingCapacity: false)
     }
 
     // MARK: - Audio Accumulation
@@ -56,17 +59,19 @@ final class SpeakerDiarizer {
         let leftPtr = floatData[0]
         let rightPtr = floatData[1]
 
+        let left = Array(UnsafeBufferPointer(start: leftPtr, count: frameCount))
+        let right = Array(UnsafeBufferPointer(start: rightPtr, count: frameCount))
+
+        let micE = rms(left)
+        let sysE = rms(right)
+
+        lock.lock()
+        defer { lock.unlock() }
+
         let startSec = Double(micSamples.count) / sampleRate
-
-        // Append left (mic) channel
-        micSamples.append(contentsOf: UnsafeBufferPointer(start: leftPtr, count: frameCount))
-        // Append right (system) channel
-        sysSamples.append(contentsOf: UnsafeBufferPointer(start: rightPtr, count: frameCount))
-
+        micSamples.append(contentsOf: left)
+        sysSamples.append(contentsOf: right)
         let endSec = Double(micSamples.count) / sampleRate
-
-        let micE = rms(Array(UnsafeBufferPointer(start: leftPtr, count: frameCount)))
-        let sysE = rms(Array(UnsafeBufferPointer(start: rightPtr, count: frameCount)))
 
         energyLog.append((startSec: startSec, endSec: endSec, micEnergy: micE, sysEnergy: sysE))
     }
@@ -79,17 +84,23 @@ final class SpeakerDiarizer {
     /// - Parameter segments: Transcript segments from WhisperKit/Parakeet.
     /// - Returns: A map of segment UUID string to resolved speaker label.
     func runAndResolve(segments: [TranscriptSegment]) async -> [String: String] {
+        lock.lock()
+        let micCopy = micSamples
+        let sysCopy = sysSamples
+        let energyCopy = energyLog
+        lock.unlock()
+
         guard models != nil else {
             log.warning("Sortformer models not loaded — skipping diarization")
             return [:]
         }
 
-        guard !micSamples.isEmpty else {
+        guard !micCopy.isEmpty else {
             log.warning("No audio accumulated — skipping diarization")
             return [:]
         }
 
-        log.info("Running diarization on \(self.micSamples.count) mic + \(self.sysSamples.count) sys samples")
+        log.info("Running diarization on \(micCopy.count) mic + \(sysCopy.count) sys samples")
 
         // Create two separate diarizer instances for mic and system channels
         let micDiarizer = SortformerDiarizer(config: .balancedV2_1)
@@ -98,11 +109,13 @@ final class SpeakerDiarizer {
         micDiarizer.initialize(models: models!)
         sysDiarizer.initialize(models: models!)
 
-        // Run diarization on both channels (processComplete is synchronous/throwing)
+        // Run diarization on both channels (processComplete is CPU-intensive — run off cooperative pool)
         let micTimeline: DiarizerTimeline
         let sysTimeline: DiarizerTimeline
         do {
-            micTimeline = try micDiarizer.processComplete(micSamples)
+            micTimeline = try await Task.detached(priority: .userInitiated) {
+                try micDiarizer.processComplete(micCopy, sourceSampleRate: StereoMixer.sampleRate)
+            }.value
             log.info("Mic diarization complete — \(micTimeline.speakers.count) speakers")
         } catch {
             log.error("Mic diarization failed: \(error.localizedDescription)")
@@ -110,7 +123,9 @@ final class SpeakerDiarizer {
         }
 
         do {
-            sysTimeline = try sysDiarizer.processComplete(sysSamples)
+            sysTimeline = try await Task.detached(priority: .userInitiated) {
+                try sysDiarizer.processComplete(sysCopy, sourceSampleRate: StereoMixer.sampleRate)
+            }.value
             log.info("System diarization complete — \(sysTimeline.speakers.count) speakers")
         } catch {
             log.error("System diarization failed: \(error.localizedDescription)")
@@ -123,7 +138,8 @@ final class SpeakerDiarizer {
             let label = resolve(
                 segment: segment,
                 micTimeline: micTimeline,
-                sysTimeline: sysTimeline
+                sysTimeline: sysTimeline,
+                energyLog: energyCopy
             )
             result[segment.id.uuidString] = label
         }
@@ -142,13 +158,14 @@ final class SpeakerDiarizer {
     private func resolve(
         segment: TranscriptSegment,
         micTimeline: DiarizerTimeline,
-        sysTimeline: DiarizerTimeline
+        sysTimeline: DiarizerTimeline,
+        energyLog: [(startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)]
     ) -> String {
         let midpoint = (segment.startSeconds + segment.endSeconds) / 2.0
 
         // Check energy ratio at the midpoint for echo suppression
         let echoThreshold: Float = 1.2
-        let isSystemDominant = energyEntry(atSec: midpoint).map { entry in
+        let isSystemDominant = energyEntry(atSec: midpoint, in: energyLog).map { entry in
             entry.sysEnergy > entry.micEnergy * echoThreshold
         } ?? false
 
@@ -187,8 +204,11 @@ final class SpeakerDiarizer {
     }
 
     /// Finds the energy log entry covering the given time.
-    private func energyEntry(atSec sec: Double) -> (startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)? {
-        energyLog.first { entry in
+    private func energyEntry(
+        atSec sec: Double,
+        in log: [(startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)]
+    ) -> (startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)? {
+        log.first { entry in
             entry.startSec <= sec && sec < entry.endSec
         }
     }
