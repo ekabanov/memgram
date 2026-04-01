@@ -23,6 +23,9 @@ packages:
   MarkdownUI:
     url: https://github.com/gonzalezreal/swift-markdown-ui
     from: "2.0.0"
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio
+    from: "0.12.4"
 
 targets:
   Memgram:
@@ -92,6 +95,8 @@ targets:
         product: MLXLLM
       - package: MarkdownUI
         product: MarkdownUI
+      - package: FluidAudio
+        product: FluidAudio
     scheme:
       testTargets: []
 

@@ -30,6 +30,7 @@
 		2DEFA9ECB0A66429A958E4B8 /* MeetingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7CADF3A54BCED319651C9AC /* MeetingStore.swift */; };
 		3055A0EA01B2ADE26050B931 /* CustomServerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEA5202FDCD57CE411C83DC /* CustomServerProvider.swift */; };
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
+		3DBE0723D4971C9A81420E99 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FF60CC32B317AA11D7A6DE75 /* FluidAudio */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		476B60BFCCD286137DC7646F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39857EC942E8388EC18A787D /* Assets.xcassets */; };
 		488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
@@ -222,6 +223,7 @@
 				7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */,
 				BE8B254989015D617A0BA897 /* MLXLLM in Frameworks */,
 				C1868B2895C1401C2E77FAA5 /* MarkdownUI in Frameworks */,
+				3DBE0723D4971C9A81420E99 /* FluidAudio in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -559,6 +561,7 @@
 				F979AADA93C8B3A477894A87 /* WhisperKit */,
 				53BD9539689CB76F94BBDACC /* MLXLLM */,
 				AE534A3FFDD02E4A672EDB9C /* MarkdownUI */,
+				FF60CC32B317AA11D7A6DE75 /* FluidAudio */,
 			);
 			productName = Memgram;
 			productReference = 9B83A48D9B5013FC9151290B /* Memgram.app */;
@@ -615,6 +618,7 @@
 			mainGroup = 27F4083348C98CA9479E0E58;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				79520BBB3DE240FFF8C81B6C /* XCRemoteSwiftPackageReference "FluidAudio" */,
 				94EDC4F51163277879D632D9 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				C9251B3719E5DBC75CF79002 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				968C53C4C799846CCB446EFB /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
@@ -1078,6 +1082,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		79520BBB3DE240FFF8C81B6C /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.4;
+			};
+		};
 		8209D07005DC688B7B1D68E1 /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ekabanov/WhisperKit";
@@ -1142,6 +1154,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8209D07005DC688B7B1D68E1 /* XCRemoteSwiftPackageReference "WhisperKit" */;
 			productName = WhisperKit;
+		};
+		FF60CC32B317AA11D7A6DE75 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 79520BBB3DE240FFF8C81B6C /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
