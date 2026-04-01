@@ -10,7 +10,7 @@ final class CloudSyncEngine: ObservableObject {
 
     static let shared = CloudSyncEngine()
 
-    fileprivate let container = CKContainer(identifier: "iCloud.com.memgram.app")
+    fileprivate lazy var container: CKContainer = CKContainer(identifier: "iCloud.com.memgram.app")
     fileprivate let zoneName = "MemgramZone"
     fileprivate let stateKey = "CKSyncEngineState"
     fileprivate let logger = Logger(subsystem: "com.memgram.app", category: "CloudSync")
