@@ -206,8 +206,12 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     func preload() {
         log.info("preload() called")
         Task {
-            do { try await loadModel() }
-            catch {
+            do {
+                try await loadModel()
+                // Unload immediately after startup — model files are now cached on disk.
+                // Memory is only consumed when a summary is actually requested.
+                unload()
+            } catch {
                 self.log.error("preload() failed: \(error)")
                 self.loadError = error.localizedDescription
             }
