@@ -1,8 +1,15 @@
 import Foundation
 import GRDB
 
+enum SyncStatus: String, Codable, DatabaseValueConvertible {
+    case pendingUpload = "pending_upload"
+    case placeholder
+    case synced
+    case failed
+}
+
 enum MeetingStatus: String, Codable, DatabaseValueConvertible {
-    case recording, transcribing, done, error
+    case recording, transcribing, diarizing, done, interrupted, error
 }
 
 struct Meeting: Codable, FetchableRecord, PersistableRecord {
@@ -14,12 +21,13 @@ struct Meeting: Codable, FetchableRecord, PersistableRecord {
     var endedAt: Date?
     var durationSeconds: Double?
     var status: MeetingStatus
+    var syncStatus: SyncStatus = .pendingUpload
     var summary: String?
     var actionItems: String?
     var rawTranscript: String?
     var ckSystemFields: Data?
-    var calendarEventId: String?        // EventKit event identifier
-    var calendarContext: String?         // JSON-encoded CalendarContext
+    var calendarEventId: String?
+    var calendarContext: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -28,6 +36,7 @@ struct Meeting: Codable, FetchableRecord, PersistableRecord {
         case endedAt         = "ended_at"
         case durationSeconds = "duration_seconds"
         case status
+        case syncStatus      = "sync_status"
         case summary
         case actionItems     = "action_items"
         case rawTranscript   = "raw_transcript"
