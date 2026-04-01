@@ -14,20 +14,25 @@ final class CloudSyncEngine: ObservableObject {
     fileprivate let zoneName = "MemgramZone"
     fileprivate let stateKey = "CKSyncEngineState"
     fileprivate let logger = Logger(subsystem: "com.memgram.app", category: "CloudSync")
-    fileprivate let db = AppDatabase.shared
+    let db: AppDatabase
 
     fileprivate var zoneID: CKRecordZone.ID { CKRecordZone.ID(zoneName: zoneName) }
 
-    nonisolated(unsafe) private var syncEngine: CKSyncEngine?
-    private let delegate: SyncDelegate
+    nonisolated(unsafe) var transport: (any SyncTransport)?
 
     @Published var uploadingIds: Set<String> = []
     @Published var pendingCount: Int = 0
     @Published var failedCount: Int = 0
 
     private init() {
-        delegate = SyncDelegate()
-        delegate.engine = self
+        self.db = AppDatabase.shared
+        self.transport = nil  // created in start()
+    }
+
+    init(db: AppDatabase, transport: any SyncTransport) {
+        self.db = db
+        self.transport = transport
+        transport.delegate = self
     }
 
     // MARK: - Lifecycle
@@ -36,21 +41,19 @@ final class CloudSyncEngine: ObservableObject {
         let isFirstLaunch = UserDefaults.standard.data(forKey: stateKey) == nil
         logger.info("[CloudSync] Starting. isFirstLaunch=\(isFirstLaunch)")
 
-        var config = CKSyncEngine.Configuration(
-            database: container.privateCloudDatabase,
-            stateSerialization: restoredState(),
-            delegate: delegate
+        let ckTransport = CKSyncTransport(
+            container: container,
+            zoneID: zoneID,
+            stateKey: stateKey
         )
-        config.automaticallySync = true
+        ckTransport.delegate = self
+        ckTransport.start()
+        self.transport = ckTransport
 
-        let engine = CKSyncEngine(config)
-        self.syncEngine = engine
         logger.info("[CloudSync] Engine created")
 
         // Ensure zone exists via CKSyncEngine (not direct API)
-        engine.state.add(pendingDatabaseChanges: [
-            .saveZone(CKRecordZone(zoneName: zoneName))
-        ])
+        ckTransport.ensureZone(zoneID)
 
         if isFirstLaunch {
             enqueueAllExistingRecords()
@@ -64,7 +67,7 @@ final class CloudSyncEngine: ObservableObject {
         Task {
             do {
                 logger.info("[CloudSync] Fetching changes...")
-                try await engine.fetchChanges()
+                try await ckTransport.fetchChanges()
                 logger.info("[CloudSync] Fetch complete")
                 auditStalePlaceholders()
             } catch {
@@ -78,7 +81,7 @@ final class CloudSyncEngine: ObservableObject {
     /// (when two devices write to the same zone concurrently).
     func forceResync() {
         logger.info("[CloudSync] Force resync — restarting engine")
-        syncEngine = nil
+        transport = nil
         start()
     }
 
@@ -87,7 +90,7 @@ final class CloudSyncEngine: ObservableObject {
     /// (e.g., stuck "Syncing…" placeholder meetings).
     func resetAndResync() {
         logger.info("[CloudSync] Full reset — wiping local data and re-downloading from CloudKit")
-        syncEngine = nil
+        transport = nil
 
         // Wipe local meetings, segments, and speakers so CloudKit becomes the
         // sole source of truth. Embeddings and FTS are rebuilt by triggers.
@@ -112,10 +115,10 @@ final class CloudSyncEngine: ObservableObject {
 
     /// Trigger an immediate fetch from CloudKit — use for pull-to-refresh.
     func fetchNow() async {
-        guard let engine = syncEngine else { return }
+        guard let transport else { return }
         do {
             logger.info("[CloudSync] Manual fetch triggered")
-            try await engine.fetchChanges()
+            try await transport.fetchChanges()
             logger.info("[CloudSync] Manual fetch complete")
         } catch {
             logger.error("[CloudSync] Manual fetch failed: \(error)")
@@ -139,16 +142,17 @@ final class CloudSyncEngine: ObservableObject {
             } catch {
                 logger.error("[CloudSync] Failed to set pendingUpload for meeting \(id): \(error)")
             }
+            DispatchQueue.main.async { self.uploadingIds.insert(id) }
         }
-        guard let engine = syncEngine else { return }
+        guard let transport else { return }
         let recordID = makeRecordID(table: table, id: id)
-        engine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+        transport.enqueueSave(recordID)
     }
 
     func enqueueDelete(table: String, id: String) {
-        guard let engine = syncEngine else { return }
+        guard let transport else { return }
         let recordID = makeRecordID(table: table, id: id)
-        engine.state.add(pendingRecordZoneChanges: [.deleteRecord(recordID)])
+        transport.enqueueDelete(recordID)
     }
 
     fileprivate func refreshSyncCounts() {
@@ -241,27 +245,6 @@ final class CloudSyncEngine: ObservableObject {
         }
     }
 
-    // MARK: - State Persistence
-
-    fileprivate func saveState(_ stateSerialization: CKSyncEngine.State.Serialization) {
-        do {
-            let data = try JSONEncoder().encode(stateSerialization)
-            UserDefaults.standard.set(data, forKey: stateKey)
-        } catch {
-            logger.error("Failed to save sync engine state: \(error)")
-        }
-    }
-
-    private func restoredState() -> CKSyncEngine.State.Serialization? {
-        guard let data = UserDefaults.standard.data(forKey: stateKey) else { return nil }
-        do {
-            return try JSONDecoder().decode(CKSyncEngine.State.Serialization.self, from: data)
-        } catch {
-            logger.error("Failed to decode sync engine state: \(error)")
-            return nil
-        }
-    }
-
     // MARK: - Record ID Helpers
 
     fileprivate func makeRecordID(table: String, id: String) -> CKRecord.ID {
@@ -301,7 +284,7 @@ final class CloudSyncEngine: ObservableObject {
 
     // MARK: - Record Conversion
 
-    fileprivate func buildRecord(table: String, id: String) -> CKRecord? {
+    fileprivate func buildCKRecord(table: String, id: String) -> CKRecord? {
         do {
             switch table {
             case "meetings":
@@ -478,7 +461,7 @@ final class CloudSyncEngine: ObservableObject {
                 return
             }
 
-            // Notification batched — posted by fetchedRecordZoneChanges handler
+            // Notification batched — posted by didReceive handler
         } catch {
             logger.error("Failed to apply remote record \(table)/\(id): \(error)")
         }
@@ -515,7 +498,7 @@ final class CloudSyncEngine: ObservableObject {
                 return
             }
 
-            // Notification batched — posted by fetchedRecordZoneChanges handler
+            // Notification batched — posted by didReceive handler
         } catch {
             logger.error("Failed to apply remote deletion \(table)/\(id): \(error)")
         }
@@ -564,175 +547,104 @@ final class CloudSyncEngine: ObservableObject {
     }
 }
 
-// MARK: - SyncDelegate
+// MARK: - SyncTransportDelegate
 
 @available(macOS 14.0, iOS 17.0, *)
-private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
+extension CloudSyncEngine: SyncTransportDelegate {
 
-    var engine: CloudSyncEngine!
+    func buildRecord(table: String, id: String) -> CKRecord? {
+        buildCKRecord(table: table, id: id)
+    }
 
-    func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) {
-        engine.logger.info("[CloudSync] Event: \(String(describing: event))")
-        switch event {
-        case .stateUpdate(let stateUpdate):
-            engine.saveState(stateUpdate.stateSerialization)
+    func didSend(saved: [CKRecord], failed: [(record: CKRecord, error: CKError)]) {
+        for savedRecord in saved {
+            updateSystemFields(for: savedRecord)
+        }
 
-        case .accountChange(let accountChange):
-            engine.logger.info("Account change: \(String(describing: accountChange.changeType))")
-            switch accountChange.changeType {
-            case .signOut, .switchAccounts:
-                // Clear sync state — stale tokens from old account would cause errors
-                UserDefaults.standard.removeObject(forKey: engine.stateKey)
-                engine.logger.warning("Cleared sync state due to account change")
-            default:
-                break
-            }
+        for failedSave in failed {
+            let recordID = failedSave.record.recordID
+            let ckError = failedSave.error
 
-        case .fetchedDatabaseChanges(let fetchedChanges):
-            for deletion in fetchedChanges.deletions {
-                if deletion.zoneID == engine.zoneID {
-                    engine.logger.warning("Zone deleted remotely, recreating...")
-                    syncEngine.state.add(pendingDatabaseChanges: [
-                        .saveZone(CKRecordZone(zoneName: engine.zoneName))
-                    ])
-                }
-            }
-
-        case .fetchedRecordZoneChanges(let fetchedChanges):
-            let totalChanges = fetchedChanges.modifications.count + fetchedChanges.deletions.count
-            engine.logger.info("[CloudSync] Fetched \(fetchedChanges.modifications.count) modifications, \(fetchedChanges.deletions.count) deletions")
-            // Process meetings first so parent rows exist before segments/speakers arrive.
-            // This eliminates placeholder creation for intra-batch ordering issues.
-            let sortedMods = fetchedChanges.modifications.sorted { a, _ in
-                a.record.recordType == "Meeting"
-            }
-            for modification in sortedMods {
-                engine.applyRemoteRecord(modification.record)
-            }
-            for deletion in fetchedChanges.deletions {
-                engine.applyRemoteDeletion(deletion.recordID)
-            }
-            // Batch notification — one UI refresh for all changes instead of N
-            if totalChanges > 0 {
-                engine.refreshSyncCounts()
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                }
-            }
-
-        case .sentRecordZoneChanges(let sentChanges):
-            for savedRecord in sentChanges.savedRecords {
-                engine.updateSystemFields(for: savedRecord)
-            }
-            for failedSave in sentChanges.failedRecordSaves {
-                let recordID = failedSave.record.recordID
-                let ckError = failedSave.error
-
-                switch ckError.code {
-                case .serverRecordChanged:
-                    // Apply server version, then only re-enqueue if local data
-                    // actually differs (prevents infinite sync loops)
-                    if let serverRecord = ckError.serverRecord {
-                        let localRecord = engine.buildRecord(
-                            table: engine.parseRecordID(recordID)?.table ?? "",
-                            id: engine.parseRecordID(recordID)?.id ?? ""
-                        )
-                        engine.applyRemoteRecord(serverRecord)
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                        }
-                        // Only re-enqueue if local had different content
-                        if localRecord != nil {
-                            engine.enqueueSave(table: engine.parseRecordID(recordID)?.table ?? "",
-                                               id: engine.parseRecordID(recordID)?.id ?? "")
-                        }
-                    }
-                    // Remove from uploadingIds — the record will re-enter when the retry batch fires
-                    if let parsed = engine.parseRecordID(recordID), parsed.table == "meetings" {
-                        DispatchQueue.main.async { [engine] in engine.uploadingIds.remove(parsed.id) }
-                    }
-
-                case .zoneNotFound:
-                    engine.logger.warning("Zone not found during save, recreating...")
-                    syncEngine.state.add(pendingDatabaseChanges: [
-                        .saveZone(CKRecordZone(zoneName: engine.zoneName))
-                    ])
-                    syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
-
-                case .unknownItem:
-                    // The record was sent as a modify (has a changeTag) but CloudKit
-                    // says it doesn't exist. This is authoritative: the record does not
-                    // exist on the server. The most likely cause is that it was deleted
-                    // on another device and we missed the deletion event. Treat it the
-                    // same as a received deletion — remove the local row. If another
-                    // device still has the record and it should exist, it will re-upload it.
-                    engine.logger.warning("[CloudSync] Unknown item — treating as remote deletion: \(recordID.recordName)")
-                    engine.applyRemoteDeletion(recordID)
+            switch ckError.code {
+            case .serverRecordChanged:
+                // Apply server version, then only re-enqueue if local data
+                // actually differs (prevents infinite sync loops)
+                if let serverRecord = ckError.serverRecord {
+                    let localRecord = buildCKRecord(
+                        table: parseRecordID(recordID)?.table ?? "",
+                        id: parseRecordID(recordID)?.id ?? ""
+                    )
+                    applyRemoteRecord(serverRecord)
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                     }
+                    // Only re-enqueue if local had different content
+                    if localRecord != nil {
+                        enqueueSave(table: parseRecordID(recordID)?.table ?? "",
+                                    id: parseRecordID(recordID)?.id ?? "")
+                    }
+                }
+                // Remove from uploadingIds — the record will re-enter when the retry batch fires
+                if let parsed = parseRecordID(recordID), parsed.table == "meetings" {
+                    DispatchQueue.main.async { [weak self] in self?.uploadingIds.remove(parsed.id) }
+                }
 
-                default:
-                    engine.logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
-                    if let parsed = engine.parseRecordID(recordID), parsed.table == "meetings" {
-                        do {
-                            try engine.db.write { db in
-                                try db.execute(
-                                    sql: "UPDATE meetings SET sync_status = ? WHERE id = ?",
-                                    arguments: [SyncStatus.failed.rawValue, parsed.id]
-                                )
-                            }
-                            DispatchQueue.main.async { [engine] in engine.uploadingIds.remove(parsed.id) }
-                            engine.refreshSyncCounts()
-                        } catch {
-                            engine.logger.error("Failed to set .failed for meeting \(parsed.id): \(error)")
+            case .zoneNotFound:
+                logger.warning("Zone not found during save, recreating...")
+                transport?.ensureZone(zoneID)
+                transport?.enqueueSave(recordID)
+
+            case .unknownItem:
+                // The record was sent as a modify (has a changeTag) but CloudKit
+                // says it doesn't exist. Treat as remote deletion.
+                logger.warning("[CloudSync] Unknown item — treating as remote deletion: \(recordID.recordName)")
+                applyRemoteDeletion(recordID)
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                }
+
+            default:
+                logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
+                if let parsed = parseRecordID(recordID), parsed.table == "meetings" {
+                    do {
+                        try db.write { db in
+                            try db.execute(
+                                sql: "UPDATE meetings SET sync_status = ? WHERE id = ?",
+                                arguments: [SyncStatus.failed.rawValue, parsed.id]
+                            )
                         }
+                        DispatchQueue.main.async { [weak self] in self?.uploadingIds.remove(parsed.id) }
+                        refreshSyncCounts()
+                    } catch {
+                        logger.error("Failed to set .failed for meeting \(parsed.id): \(error)")
                     }
                 }
             }
-
-        case .sentDatabaseChanges(let sentChanges):
-            for failedSave in sentChanges.failedZoneSaves {
-                engine.logger.error("Zone save failed: \(failedSave.error.localizedDescription)")
-            }
-
-        case .willFetchChanges, .willFetchRecordZoneChanges, .didFetchRecordZoneChanges,
-             .didFetchChanges, .willSendChanges, .didSendChanges:
-            break
-
-        @unknown default:
-            engine.logger.info("Unknown sync engine event")
         }
     }
 
-    func nextRecordZoneChangeBatch(
-        _ context: CKSyncEngine.SendChangesContext,
-        syncEngine: CKSyncEngine
-    ) async -> CKSyncEngine.RecordZoneChangeBatch? {
-        let scope = context.options.scope
-        let pendingChanges = syncEngine.state.pendingRecordZoneChanges.filter { scope.contains($0) }
-        guard !pendingChanges.isEmpty else { return nil }
+    func didReceive(modifications: [CKRecord], deletions: [CKRecord.ID]) {
+        let totalChanges = modifications.count + deletions.count
+        logger.info("[CloudSync] Fetched \(modifications.count) modifications, \(deletions.count) deletions")
 
-        // Collect IDs of meetings that actually make it into the batch
-        var acceptedMeetingIds: [String] = []
-
-        let batch = await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
-            guard let parsed = self.engine.parseRecordID(recordID) else { return nil }
-            let record = self.engine.buildRecord(table: parsed.table, id: parsed.id)
-            if record != nil && parsed.table == "meetings" {
-                acceptedMeetingIds.append(parsed.id)
-            }
-            return record
+        for record in modifications {
+            applyRemoteRecord(record)
+        }
+        for recordID in deletions {
+            applyRemoteDeletion(recordID)
         }
 
-        // Only mark as uploading the meetings whose records were accepted
-        if !acceptedMeetingIds.isEmpty {
-            let ids = acceptedMeetingIds
+        // Batch notification — one UI refresh for all changes instead of N
+        if totalChanges > 0 {
+            refreshSyncCounts()
             DispatchQueue.main.async {
-                ids.forEach { self.engine.uploadingIds.insert($0) }
+                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             }
         }
+    }
 
-        return batch
+    func didSaveState(_ data: Data) {
+        // State persistence is handled by CKSyncTransport directly.
+        // This callback is available for tests or additional state tracking.
     }
 }
