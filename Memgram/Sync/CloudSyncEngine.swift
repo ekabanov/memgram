@@ -19,8 +19,6 @@ final class CloudSyncEngine: ObservableObject {
     fileprivate var zoneID: CKRecordZone.ID { CKRecordZone.ID(zoneName: zoneName) }
 
     nonisolated(unsafe) private var syncEngine: CKSyncEngine?
-    nonisolated(unsafe) private var isResetting = false
-    nonisolated(unsafe) private var fetchedDuringReset: Set<String> = []
     private let delegate: SyncDelegate
 
     @Published var uploadingIds: Set<String> = []
@@ -68,9 +66,6 @@ final class CloudSyncEngine: ObservableObject {
                 logger.info("[CloudSync] Fetching changes...")
                 try await engine.fetchChanges()
                 logger.info("[CloudSync] Fetch complete")
-                // After a manual reset, find local records CloudKit didn't return and re-upload them.
-                reconcileAfterReset()
-                // Check for stale placeholders and trigger a recovery fetch if found.
                 auditStalePlaceholders()
             } catch {
                 logger.error("[CloudSync] Fetch failed: \(error)")
@@ -93,8 +88,6 @@ final class CloudSyncEngine: ObservableObject {
     func resetAndResync() {
         logger.info("[CloudSync] Full reset — wiping local data and re-downloading from CloudKit")
         syncEngine = nil
-        isResetting = true
-        fetchedDuringReset = []
 
         // Wipe local meetings, segments, and speakers so CloudKit becomes the
         // sole source of truth. Embeddings and FTS are rebuilt by triggers.
@@ -208,18 +201,11 @@ final class CloudSyncEngine: ObservableObject {
 
     // MARK: - Orphan Re-enqueue
 
-    /// Re-enqueue records that were written to GRDB but never acknowledged by CloudKit.
-    /// This happens when the app is killed between the GRDB write and the CloudKit
-    /// sentRecordZoneChanges callback. Identified by ckSystemFields == nil on
-    /// records that are fully terminal (done/error) and not placeholders.
     fileprivate func reEnqueueOrphanedRecords() {
         do {
             let orphans: [Meeting] = try db.read { db in
                 try Meeting
-                    .filter(Column("ck_system_fields") == nil)
-                    .filter(Column("status") == MeetingStatus.done.rawValue
-                         || Column("status") == MeetingStatus.error.rawValue)
-                    .filter(Column("title") != "Syncing…")
+                    .filter(Column("sync_status") == SyncStatus.pendingUpload.rawValue)
                     .fetchAll(db)
             }
             guard !orphans.isEmpty else { return }
@@ -235,62 +221,20 @@ final class CloudSyncEngine: ObservableObject {
 
     // MARK: - Placeholder Watchdog
 
-    /// Trigger a fresh fetch if any placeholder meetings are older than 5 minutes.
-    /// Placeholders are identified by ckSystemFields == nil and title == "Syncing…".
-    /// After 5 minutes without a real parent meeting arriving, the meeting record
-    /// likely failed to upload from the originating device. A fetch may pull it in
-    /// if it arrived in CloudKit after our last fetch token.
     fileprivate func auditStalePlaceholders() {
         do {
-            let cutoff = Date().addingTimeInterval(-300) // 5 minutes
+            let cutoff = Date().addingTimeInterval(-300)
             let stale: [Meeting] = try db.read { db in
                 try Meeting
-                    .filter(Column("ck_system_fields") == nil)
-                    .filter(Column("title") == "Syncing…")
+                    .filter(Column("sync_status") == SyncStatus.placeholder.rawValue)
                     .filter(Column("started_at") < cutoff)
                     .fetchAll(db)
             }
             guard !stale.isEmpty else { return }
             logger.warning("[CloudSync] Found \(stale.count) stale placeholder(s) — triggering fetch")
-            Task {
-                await self.fetchNow()
-            }
+            Task { await self.fetchNow() }
         } catch {
             logger.error("[CloudSync] Placeholder audit failed: \(error)")
-        }
-    }
-
-    // MARK: - Post-Reset Reconciliation
-
-    /// After a full reset-and-resync, re-upload local meetings that CloudKit
-    /// didn't return. These are records the originating device failed to push
-    /// (e.g., killed before acknowledgement). Called once after the reset fetch
-    /// completes. Clears the isResetting flag when done.
-    fileprivate func reconcileAfterReset() {
-        guard isResetting else { return }
-        isResetting = false
-        let fetched = fetchedDuringReset
-        fetchedDuringReset = []
-
-        do {
-            let localDone: [Meeting] = try db.read { db in
-                try Meeting
-                    .filter(Column("status") == MeetingStatus.done.rawValue)
-                    .filter(Column("title") != "Syncing…")
-                    .fetchAll(db)
-            }
-            let gap = localDone.filter { !fetched.contains($0.id) }
-            guard !gap.isEmpty else {
-                logger.info("[CloudSync] Post-reset reconciliation: no gaps found")
-                return
-            }
-            logger.info("[CloudSync] Post-reset reconciliation: re-uploading \(gap.count) missing record(s)")
-            for meeting in gap {
-                enqueueSave(table: "meetings", id: meeting.id)
-                enqueueSaveSegments(meetingId: meeting.id)
-            }
-        } catch {
-            logger.error("[CloudSync] Post-reset reconciliation failed: \(error)")
         }
     }
 
@@ -416,12 +360,6 @@ final class CloudSyncEngine: ObservableObject {
             return
         }
         let (table, id) = parsed
-
-        // Track which records arrived from CloudKit during a reset so we can
-        // identify local records that CloudKit doesn't have.
-        if isResetting && table == "meetings" {
-            fetchedDuringReset.insert(id)
-        }
 
         let systemFieldsData = encodeSystemFields(record)
 
@@ -736,7 +674,7 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
                                     arguments: [SyncStatus.failed.rawValue, parsed.id]
                                 )
                             }
-                            DispatchQueue.main.async { engine.uploadingIds.remove(parsed.id) }
+                            DispatchQueue.main.async { [engine] in engine.uploadingIds.remove(parsed.id) }
                             engine.refreshSyncCounts()
                         } catch {
                             engine.logger.error("Failed to set .failed for meeting \(parsed.id): \(error)")
