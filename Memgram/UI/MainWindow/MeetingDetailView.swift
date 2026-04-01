@@ -17,6 +17,7 @@ struct MeetingDetailView: View {
     @State private var isEditingTitle = false
     @State private var selectedTab: DetailTab = .summary
     @ObservedObject private var summaryEngine = SummaryEngine.shared
+    @ObservedObject private var session = RecordingSession.shared
     @State private var selectedSummaryBackend: LLMBackend = .qwen  // always default to local Qwen
     @State private var showDeleteConfirm = false
     @State private var deleteError: String?
@@ -454,10 +455,30 @@ struct MeetingDetailView: View {
 
     // MARK: - Helpers
 
+    /// When this meeting is actively recording, use the live in-memory segments
+    /// from RecordingSession so the transcript updates in real time without
+    /// waiting for DB round-trips and meetingDidUpdate notifications.
+    private var displaySegments: [MeetingSegment] {
+        guard session.isRecording,
+              session.currentMeetingId == meetingId else { return segments }
+        return session.segments.map { seg in
+            MeetingSegment(
+                id: seg.id.uuidString,
+                meetingId: meetingId,
+                speaker: seg.speaker,
+                channel: seg.channel.rawValue,
+                startSeconds: seg.startSeconds,
+                endSeconds: seg.endSeconds,
+                text: seg.text,
+                ckSystemFields: nil
+            )
+        }
+    }
+
     private var filteredSegments: [MeetingSegment] {
         let q = localQuery.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return segments }
-        return segments.filter {
+        guard !q.isEmpty else { return displaySegments }
+        return displaySegments.filter {
             $0.text.localizedCaseInsensitiveContains(q) ||
             $0.speaker.localizedCaseInsensitiveContains(q)
         }
