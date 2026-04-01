@@ -30,12 +30,6 @@ final class SummaryEngine: ObservableObject {
         - Correct obvious transcription errors in proper nouns based on context — do not \
         annotate the corrections. When calendar event metadata is provided, use it to \
         identify speakers and correct proper nouns.
-        - Speaker labels in the transcript (Room 1, Room 2, Remote 1, Remote 2, You, \
-        Remote) are from automated diarization. Resolve them to real names wherever \
-        possible: use introductions ("I'm Alice"), direct address ("Bob, what do you \
-        think?"), or calendar attendee names. Use resolved names throughout the summary. \
-        If a speaker cannot be identified, use a descriptive label like "in-room \
-        participant" or "remote participant" — never the raw Room/Remote numbers.
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
@@ -211,20 +205,64 @@ final class SummaryEngine: ObservableObject {
         }
     }
 
+    /// Replace diarizer-generated speaker labels (Room 1, Remote 1, You, Remote, …)
+    /// with anonymous letters (Speaker A, Speaker B, …) and return the normalised
+    /// transcript plus a header describing the mapping.
+    /// The LLM never sees the raw diarizer labels, avoiding the conflict between
+    /// "only use what's in the transcript" and "resolve labels to real names".
+    private static func normaliseSpeakerLabels(_ transcript: String) -> (text: String, header: String) {
+        // Match labels like "Room 1", "Remote 2", "You", "Remote" at line start
+        let pattern = try? NSRegularExpression(pattern: #"^(Room \d+|Remote \d+|You|Remote)(?=:)"#,
+                                               options: .anchorsMatchLines)
+        var mapping: [String: String] = [:]
+        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        var index = 0
+
+        // First pass: collect unique labels in order of first appearance
+        let range = NSRange(transcript.startIndex..., in: transcript)
+        pattern?.enumerateMatches(in: transcript, range: range) { match, _, _ in
+            guard let match, let r = Range(match.range, in: transcript) else { return }
+            let label = String(transcript[r])
+            if mapping[label] == nil, index < letters.count {
+                mapping[label] = "Speaker \(letters[letters.index(letters.startIndex, offsetBy: index)])"
+                index += 1
+            }
+        }
+        guard !mapping.isEmpty else { return (transcript, "") }
+
+        // Second pass: replace
+        var result = transcript
+        for (label, anon) in mapping {
+            result = result.replacingOccurrences(of: "\(label):", with: "\(anon):")
+        }
+
+        // Build header for the prompt
+        let mapLines = mapping.sorted { $0.value < $1.value }
+            .map { "  \($0.value): originally labelled '\($0.key)' by the diarizer" }
+            .joined(separator: "\n")
+        let header = """
+        Speaker key (resolve to real names using context — introductions, how people \
+        address each other, or the attendee list above):
+        \(mapLines)
+
+        """
+        return (result, header)
+    }
+
     private func summarizeShort(transcript: String, calendarContext: CalendarContext?,
                                  provider: any LLMProvider,
                                  onChunk: ((String) -> Void)? = nil) async throws -> String {
+        let (normTranscript, speakerHeader) = Self.normaliseSpeakerLabels(transcript)
         var contextBlock = ""
         if let ctx = calendarContext {
             contextBlock = """
-            Calendar event metadata — use attendee names to resolve speaker labels \
-            (Room 1, Remote 1, etc.) to real names:
+            Calendar event metadata — use attendee names to help identify speakers:
             \(ctx.promptBlock())
 
             """
         }
         let user = """
-        \(contextBlock)Analyze the meeting transcript below and produce a structured summary in \
+        \(contextBlock)\(speakerHeader)Analyze the meeting transcript below and produce a structured summary in \
         Markdown format. Follow these steps internally before writing:
 
         1. Identify all distinct topics/agenda items discussed.
@@ -258,7 +296,7 @@ final class SummaryEngine: ObservableObject {
 
         Transcript:
 
-        \(transcript)
+        \(normTranscript)
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
