@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "87FC04F2AE7E4EA4D3D13462"
-               BuildableName = "Memgram.app"
-               BlueprintName = "Memgram"
+               BlueprintIdentifier = "E038CBA636FB6F2212C5F283"
+               BuildableName = "MemgramTests.xctest"
+               BlueprintName = "MemgramTests"
                ReferencedContainer = "container:Memgram.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -32,9 +32,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "87FC04F2AE7E4EA4D3D13462"
-            BuildableName = "Memgram.app"
-            BlueprintName = "Memgram"
+            BlueprintIdentifier = "E038CBA636FB6F2212C5F283"
+            BuildableName = "MemgramTests.xctest"
+            BlueprintName = "MemgramTests"
             ReferencedContainer = "container:Memgram.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -64,16 +64,15 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "87FC04F2AE7E4EA4D3D13462"
-            BuildableName = "Memgram.app"
-            BlueprintName = "Memgram"
+            BlueprintIdentifier = "E038CBA636FB6F2212C5F283"
+            BuildableName = "MemgramTests.xctest"
+            BlueprintName = "MemgramTests"
             ReferencedContainer = "container:Memgram.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
       <CommandLineArguments>
       </CommandLineArguments>
    </LaunchAction>
@@ -83,18 +82,17 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "87FC04F2AE7E4EA4D3D13462"
-            BuildableName = "Memgram.app"
-            BlueprintName = "Memgram"
-            ReferencedContainer = "container:Memgram.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
       <CommandLineArguments>
       </CommandLineArguments>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "E038CBA636FB6F2212C5F283"
+            BuildableName = "MemgramTests.xctest"
+            BlueprintName = "MemgramTests"
+            ReferencedContainer = "container:Memgram.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
