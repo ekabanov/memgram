@@ -26,10 +26,22 @@ final class RecordingSession: ObservableObject {
     private var chunkCancellable: AnyCancellable?
     private var segmentCancellable: AnyCancellable?
     private var finalizationCancellable: AnyCancellable?
+    private var backendCancellable: AnyCancellable?
 
     private var currentMeetingId: String?
 
-    private init() {}
+    private init() {
+        #if os(macOS)
+        backendCancellable = TranscriptionBackendManager.shared.$selectedBackend
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, !self.isRecording else { return }
+                self.transcriptionEngine.resetTranscriber()
+                self.preloadTranscriptionModel()
+            }
+        #endif
+    }
 
     // MARK: - Startup Preload
 
