@@ -150,19 +150,19 @@ final class CloudSyncEngine: ObservableObject {
 
     fileprivate func refreshSyncCounts() {
         do {
-            let pending = try db.read { db in
-                try Meeting
+            var pending = 0
+            var failed  = 0
+            try db.read { db in
+                pending = try Meeting
                     .filter(Column("sync_status") == SyncStatus.pendingUpload.rawValue)
                     .fetchCount(db)
-            }
-            let failed = try db.read { db in
-                try Meeting
+                failed = try Meeting
                     .filter(Column("sync_status") == SyncStatus.failed.rawValue)
                     .fetchCount(db)
             }
             DispatchQueue.main.async { [weak self] in
                 self?.pendingCount = pending
-                self?.failedCount = failed
+                self?.failedCount  = failed
             }
         } catch {
             logger.error("[CloudSync] Failed to refresh sync counts: \(error)")
@@ -643,6 +643,10 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
                             syncEngine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
                         }
                     }
+                    // Remove from uploadingIds — the record will re-enter when the retry batch fires
+                    if let parsed = engine.parseRecordID(recordID), parsed.table == "meetings" {
+                        DispatchQueue.main.async { [engine] in engine.uploadingIds.remove(parsed.id) }
+                    }
 
                 case .zoneNotFound:
                     engine.logger.warning("Zone not found during save, recreating...")
@@ -705,22 +709,26 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
         let pendingChanges = syncEngine.state.pendingRecordZoneChanges.filter { scope.contains($0) }
         guard !pendingChanges.isEmpty else { return nil }
 
-        // Mark meetings as in-flight before the batch is sent
-        let meetingIds = pendingChanges.compactMap { change -> String? in
-            guard case .saveRecord(let recordID) = change,
-                  let parsed = self.engine.parseRecordID(recordID),
-                  parsed.table == "meetings" else { return nil }
-            return parsed.id
+        // Collect IDs of meetings that actually make it into the batch
+        var acceptedMeetingIds: [String] = []
+
+        let batch = await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
+            guard let parsed = self.engine.parseRecordID(recordID) else { return nil }
+            let record = self.engine.buildRecord(table: parsed.table, id: parsed.id)
+            if record != nil && parsed.table == "meetings" {
+                acceptedMeetingIds.append(parsed.id)
+            }
+            return record
         }
-        if !meetingIds.isEmpty {
+
+        // Only mark as uploading the meetings whose records were accepted
+        if !acceptedMeetingIds.isEmpty {
+            let ids = acceptedMeetingIds
             DispatchQueue.main.async {
-                meetingIds.forEach { self.engine.uploadingIds.insert($0) }
+                ids.forEach { self.engine.uploadingIds.insert($0) }
             }
         }
 
-        return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
-            guard let parsed = self.engine.parseRecordID(recordID) else { return nil }
-            return self.engine.buildRecord(table: parsed.table, id: parsed.id)
-        }
+        return batch
     }
 }
