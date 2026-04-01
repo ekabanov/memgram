@@ -10,23 +10,26 @@ struct MeetingListView: View {
     @State private var deleteError: String?
 
     var body: some View {
-        List(selection: $selectedMeetingId) {
-            if meetings.isEmpty {
-                Text("No recordings yet")
-                    .foregroundColor(.secondary)
-                    .padding()
-            } else {
-                ForEach(groupedSections, id: \.title) { section in
-                    Section(section.title) {
-                        ForEach(section.meetings) { meeting in
-                            MeetingRowView(meeting: meeting)
-                                .tag(meeting.id)
-                                .contextMenu {
-                                    Button("Delete Recording…", role: .destructive) {
-                                        meetingToDelete = meeting
-                                        showDeleteAlert = true
+        VStack(spacing: 0) {
+            SyncStatusHeader()
+            List(selection: $selectedMeetingId) {
+                if meetings.isEmpty {
+                    Text("No recordings yet")
+                        .foregroundColor(.secondary)
+                        .padding()
+                } else {
+                    ForEach(groupedSections, id: \.title) { section in
+                        Section(section.title) {
+                            ForEach(section.meetings) { meeting in
+                                MeetingRowView(meeting: meeting)
+                                    .tag(meeting.id)
+                                    .contextMenu {
+                                        Button("Delete Recording…", role: .destructive) {
+                                            meetingToDelete = meeting
+                                            showDeleteAlert = true
+                                        }
                                     }
-                                }
+                            }
                         }
                     }
                 }
@@ -78,16 +81,7 @@ struct MeetingListView: View {
 
     private func load() {
         let all = (try? MeetingStore.shared.fetchAll()) ?? []
-        // Hide meetings with no transcript and no summary — empty recordings.
-        // Keep meetings whose rawTranscript is nil (interrupted/recovered — may have segments).
-        meetings = all.filter { m in
-            let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
-            let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
-            // nil = interrupted (crashed/stopped before finalization)
-            // ""  = finalized but empty — treat the same; may have lost transcript data via sync
-            let hasNoTranscript = m.rawTranscript?.isEmpty != false  // true if nil or ""
-            return hasTranscript || hasSummary || hasNoTranscript || m.status == .recording || m.status == .transcribing
-        }
+        meetings = all.filter { $0.syncStatus != .placeholder }
     }
 
     private func delete(_ meeting: Meeting) {
@@ -101,17 +95,82 @@ struct MeetingListView: View {
     }
 }
 
+private struct CloudSyncIcon: View {
+    let meeting: Meeting
+    @ObservedObject private var syncEngine = CloudSyncEngine.shared
+    @State private var pulse = false
+
+    var body: some View {
+        Group {
+            switch meeting.syncStatus {
+            case .synced:
+                Image(systemName: "icloud.fill")
+                    .foregroundStyle(.secondary)
+            case .failed:
+                Image(systemName: "exclamationmark.icloud.fill")
+                    .foregroundStyle(.red)
+            case .pendingUpload:
+                if syncEngine.uploadingIds.contains(meeting.id) {
+                    Image(systemName: "icloud.and.arrow.up.fill")
+                        .foregroundStyle(.secondary)
+                        .opacity(pulse ? 0.4 : 1.0)
+                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                                   value: pulse)
+                        .onAppear { pulse = true }
+                        .onDisappear { pulse = false }
+                } else {
+                    Image(systemName: "icloud.and.arrow.up")
+                        .foregroundStyle(.secondary)
+                }
+            case .placeholder:
+                EmptyView()
+            }
+        }
+        .font(.caption)
+    }
+}
+
+private struct SyncStatusHeader: View {
+    @ObservedObject private var syncEngine = CloudSyncEngine.shared
+
+    var body: some View {
+        if syncEngine.pendingCount > 0 || syncEngine.failedCount > 0 {
+            VStack(alignment: .leading, spacing: 4) {
+                if syncEngine.failedCount > 0 {
+                    Label(
+                        "\(syncEngine.failedCount) meeting\(syncEngine.failedCount == 1 ? "" : "s") failed to sync",
+                        systemImage: "exclamationmark.icloud"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                }
+                if syncEngine.pendingCount > 0 {
+                    Label(
+                        "Syncing \(syncEngine.pendingCount) meeting\(syncEngine.pendingCount == 1 ? "" : "s")…",
+                        systemImage: "icloud.and.arrow.up"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(NSColor.controlBackgroundColor))
+        }
+    }
+}
+
 struct MeetingRowView: View {
     let meeting: Meeting
     @ObservedObject private var summaryEngine = SummaryEngine.shared
+    @ObservedObject private var syncEngine    = CloudSyncEngine.shared
 
     var body: some View {
         HStack(spacing: 8) {
-            if summaryEngine.activeMeetingIds.contains(meeting.id) || meeting.status == .diarizing {
-                ProgressView().controlSize(.mini).frame(width: 8, height: 8)
-            } else {
-                Circle().fill(statusColor).frame(width: 8, height: 8)
-            }
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
                 Text(meeting.title)
                     .font(.body)
@@ -124,37 +183,37 @@ struct MeetingRowView: View {
             if let summary = meeting.summary, !summary.isEmpty {
                 Image(systemName: "sparkles")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .help("Summary available")
+                    .foregroundStyle(.secondary)
             }
+            CloudSyncIcon(meeting: meeting)
         }
         .padding(.vertical, 2)
     }
 
-    private var isInterrupted: Bool {
-        meeting.rawTranscript?.isEmpty != false && meeting.status == .done && meeting.summary == nil
-    }
-
     private var statusColor: Color {
-        if isInterrupted { return .secondary }
         switch meeting.status {
-        case .recording:    return .red
-        case .transcribing: return .orange
-        case .diarizing:    return .orange
-        case .done:         return .green
-        case .interrupted:  return .secondary
-        case .error:        return Color.red.opacity(0.5)
+        case .recording:                return .red
+        case .transcribing, .diarizing: return .orange
+        case .done:                     return .green
+        case .interrupted:              return .secondary
+        case .error:                    return Color.red.opacity(0.5)
         }
     }
 
     private var subtitle: String {
         let time = DateFormatter.localizedString(from: meeting.startedAt,
                                                   dateStyle: .none, timeStyle: .short)
-        if meeting.status == .diarizing { return "\(time) · Identifying speakers…" }
-        if summaryEngine.activeMeetingIds.contains(meeting.id) { return "\(time) · Summarising…" }
-        if meeting.status == .interrupted || isInterrupted { return "\(time) · Interrupted" }
-        guard let dur = meeting.durationSeconds else { return time }
-        let mins = Int(dur / 60)
-        return mins > 0 ? "\(time) · \(mins)m" : time
+        switch meeting.status {
+        case .recording:    return "\(time) · Recording…"
+        case .transcribing: return "\(time) · Transcribing…"
+        case .diarizing:    return "\(time) · Identifying speakers…"
+        case .interrupted:  return "\(time) · Interrupted"
+        case .error:        return "\(time) · Error"
+        case .done:
+            if summaryEngine.activeMeetingIds.contains(meeting.id) { return "\(time) · Summarising…" }
+            guard let dur = meeting.durationSeconds else { return time }
+            let mins = Int(dur / 60)
+            return mins > 0 ? "\(time) · \(mins)m" : time
+        }
     }
 }
