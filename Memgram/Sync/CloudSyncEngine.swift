@@ -428,13 +428,14 @@ final class CloudSyncEngine: ObservableObject {
         do {
             switch table {
             case "meetings":
-                let meeting = Meeting(
+                var meeting = Meeting(
                     id: id,
                     title: record["title"] as? String ?? "Untitled",
                     startedAt: record["startedAt"] as? Date ?? Date(),
                     endedAt: record["endedAt"] as? Date,
                     durationSeconds: record["durationSeconds"] as? Double,
                     status: MeetingStatus(rawValue: record["status"] as? String ?? "done") ?? .done,
+                    syncStatus: .synced,
                     summary: record["summary"] as? String,
                     actionItems: record["actionItems"] as? String,
                     rawTranscript: record["rawTranscript"] as? String,
@@ -442,33 +443,24 @@ final class CloudSyncEngine: ObservableObject {
                     calendarEventId: record["calendarEventId"] as? String,
                     calendarContext: record["calendarContext"] as? String
                 )
+                // Normalize: CloudKit stores .done for meetings that ended without a transcript
+                if meeting.status == .done && meeting.rawTranscript == nil {
+                    meeting.status = .interrupted
+                }
                 try db.write { db in
                     if let existing = try Meeting.fetchOne(db, key: id) {
                         var merged = meeting
-                        // ckSystemFields: always use remote — it's authoritative CloudKit metadata.
-                        // Using stale local system fields causes recordChangeTag conflicts on next upload.
                         merged.ckSystemFields = systemFieldsData
-
-                        // Locally-computed content: keep local if it has a value and remote doesn't.
-                        // These fields are written by the transcription/summary pipeline, not by the
-                        // recording device at upload time, so they may legitimately be nil on the remote
-                        // when a newer local version already has them.
+                        merged.syncStatus = .synced
                         merged.summary = existing.summary ?? merged.summary
                         merged.rawTranscript = existing.rawTranscript ?? merged.rawTranscript
                         merged.actionItems = existing.actionItems ?? merged.actionItems
-
-                        // Status: keep local only if it represents more progress than the remote.
-                        // This prevents a late-arriving .recording or .transcribing from rolling
-                        // back a .done meeting. Skip for placeholders (nil ckSystemFields on existing).
                         if existing.ckSystemFields != nil {
-                            let statusOrder: [MeetingStatus] = [.recording, .transcribing, .done, .error]
+                            let statusOrder: [MeetingStatus] = [.recording, .transcribing, .diarizing, .done, .interrupted, .error]
                             let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
                             let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
-                            if existingRank > remoteRank {
-                                merged.status = existing.status
-                            }
+                            if existingRank > remoteRank { merged.status = existing.status }
                         }
-
                         try merged.update(db)
                     } else {
                         try meeting.insert(db)
@@ -494,6 +486,7 @@ final class CloudSyncEngine: ObservableObject {
                         let placeholder = Meeting(
                             id: meetingId, title: "Syncing…", startedAt: Date(),
                             endedAt: nil, durationSeconds: nil, status: .done,
+                            syncStatus: .placeholder,
                             summary: nil, actionItems: nil, rawTranscript: nil,
                             ckSystemFields: nil
                         )
@@ -523,6 +516,7 @@ final class CloudSyncEngine: ObservableObject {
                         let placeholder = Meeting(
                             id: meetingId, title: "Syncing…", startedAt: Date(),
                             endedAt: nil, durationSeconds: nil, status: .done,
+                            syncStatus: .placeholder,
                             summary: nil, actionItems: nil, rawTranscript: nil,
                             ckSystemFields: nil
                         )
@@ -666,6 +660,7 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
             }
             // Batch notification — one UI refresh for all changes instead of N
             if totalChanges > 0 {
+                engine.refreshSyncCounts()
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                 }
