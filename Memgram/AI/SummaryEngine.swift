@@ -264,8 +264,16 @@ final class SummaryEngine: ObservableObject {
         var contextBlock = ""
         if let ctx = calendarContext {
             contextBlock = """
-            Calendar event metadata — use attendee names to help identify speakers:
+            Calendar event metadata:
             \(ctx.promptBlock())
+
+            Speaker resolution rules (apply in order):
+            1. Any speaker who says their own name or is addressed by name → use that name.
+            2. If the speaker key below maps a speaker to a name (via voice enrollment) → use that name.
+            3. If the number of distinct speakers equals the number of scheduled attendees, \
+            assign the remaining unidentified speakers to the remaining attendee names by \
+            elimination — there is exactly one valid assignment.
+            4. If none of the above apply, use the Speaker A/B/C label from the key.
 
             """
         }
