@@ -14,7 +14,12 @@ Build from the command line:
 xcodebuild -project Memgram.xcodeproj -scheme Memgram -configuration Debug build
 ```
 
-No test targets. No linter. **Deployment target: macOS 14.0.**
+**Test target: MemgramTests** (macOS 14.0). Run with:
+```bash
+xcodebuild test -project Memgram.xcodeproj -scheme Memgram -configuration Debug \
+  CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+```
+No linter. **Deployment target: macOS 14.0.**
 
 ## Architecture
 
@@ -45,6 +50,8 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **LLM backends:** Qwen (local MLX via `mlx-swift-lm`), Custom Server (OpenAI-compatible — covers Ollama/LM Studio/vLLM), Claude, OpenAI, Gemini. `LLMProviderStore.currentProvider` delegates to `providerFor(selectedBackend)`. API keys in Keychain only. All backends stream tokens via `provider.stream()` — cloud providers use SSE, Qwen uses `ChatSession.streamResponse()`.
 
+**Qwen memory lifecycle:** `QwenLocalProvider.preload()` calls `loadModel()` then immediately `unload()` — this downloads and caches model files on disk, momentarily loads weights into memory to verify the model, then frees them. The download progress is reported through the standard `LLMModelFactory` callback so the popover shows a real byte-level progress bar. On `summarize()`, Qwen loads weights on demand; after the summary completes `SummaryEngine` calls `provider.unload()` which calls `MLX.Memory.clearCache()` to return GPU buffers to the OS. This keeps Qwen's ~44 GB peak footprint (27B) off RAM except during active use.
+
 **SummaryEngine:** `@MainActor ObservableObject`. `activeMeetingIds: Set<String>` tracks in-progress jobs — observed by UI for spinners. `summarize()` runs LLM off main (awaits provider), saves to DB, then calls `generateTitle()`. Title generation runs AFTER `activeMeetingIds.remove()` so progress clears immediately.
 
 **MeetingDetailView:** Summary rendered via `swift-markdown-ui` (`Markdown(summary).markdownTheme(.gitHub)`). Tab bar: Summary (default) | Transcript. Local transcript search with `filteredSegments`. Delete/Copy in header `⋯` menu.
@@ -70,7 +77,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **Labels:** `Room 1`/`Room 2` for in-room speakers (mic channel), `Remote 1`/`Remote 2` for remote participants (system channel).
 - **`SpeakerEnrollmentStore`** — saves a display name + 5-second voice sample per enrolled speaker. During diarization, enrolled speaker embeddings are compared to detected clusters; best match replaces the generic label (e.g. `Room 1` → `Alice`).
 - **Onboarding:** `enrollVoice` step inserted between `systemAudio` and `done` for first-run voice enrollment.
-- **`normaliseSpeakerLabels()` in `SummaryEngine`** — pre-processes transcript before LLM call: maps `Room`/`Remote` labels to `Speaker A`/`B`/`C` etc., appends a mapping hint so the LLM can resolve real names from calendar attendees + enrollment data.
+- **`normaliseSpeakerLabels()` in `SummaryEngine`** — pre-processes transcript before LLM call: maps `Room`/`Remote` labels to `Speaker A`/`B`/`C` etc., appends a mapping hint so the LLM can resolve real names from calendar attendees + enrollment data. Speaker resolution order injected into the prompt: (1) self-introduction/direct address, (2) voice enrollment match, (3) deductive elimination — if the number of distinct speakers equals the number of scheduled attendees, assign remaining unidentified speakers to remaining attendee names by elimination, (4) fall back to Speaker A/B/C label.
 
 **Pitfalls:**
 - Sortformer has a 4-speaker cap per channel (2 local + 2 remote max).
@@ -112,18 +119,21 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 ## iCloud Sync
 
-`CloudSyncEngine` (`Memgram/Sync/CloudSyncEngine.swift`) wraps `CKSyncEngine` (macOS 14+) for syncing meetings, segments, and speakers via CloudKit private database.
+`CloudSyncEngine` (`Memgram/Sync/CloudSyncEngine.swift`) syncs meetings, segments, and speakers via CloudKit private database. Uses `SyncTransport` protocol for testability — production uses `CKSyncTransport` (wraps real `CKSyncEngine`); tests use `FakeSyncTransport`.
 
 - **Container:** `iCloud.com.memgram.app`, custom zone `MemgramZone`
 - **Record IDs:** `"{table}_{uuid}"` format (e.g. `meetings_ABC-123`)
+- **`SyncTransport` protocol** (`Memgram/Sync/SyncTransport.swift`) — abstraction over `CKSyncEngine`. Production: `CKSyncTransport` created in `start()`. Tests: `FakeSyncTransport` injected via `init(db:transport:)`.
+- **`SyncStatus` enum** — `pendingUpload`, `placeholder`, `synced`, `failed`. Stored as `sync_status` text column in `meetings` table. Set by `enqueueSave` (→ `pendingUpload`), `didSend` success (→ `synced`), `didSend` failure (→ `failed`), `applyRemoteRecord` (→ `synced`).
+- **`MeetingStatus` enum** — `recording`, `transcribing`, `diarizing`, `done`, `interrupted`. `diarizing` set before `SpeakerDiarizer` runs; `interrupted` set by crash recovery for meetings stuck in recording/transcribing/diarizing.
 - **Enqueue pattern:** Each `MeetingStore` write method calls `sync?.enqueueSave/enqueueDelete` after the GRDB write. No TransactionObserver.
 - **System fields:** Stored as `ck_system_fields` blob column (NSKeyedArchiver-encoded CKRecord metadata). Used to send updates as modifications, not creates.
-- **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings to satisfy FK constraints. Incoming records within a batch are sorted: meetings first, then segments/speakers.
-- **Initial upload:** On first launch (no sync state in UserDefaults), all existing records are enqueued for upload. On subsequent launches, orphaned records (those without `ck_system_fields`) are also re-enqueued.
+- **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings (`syncStatus = .placeholder`, `title = "Syncing…"`) to satisfy FK constraints.
+- **Initial upload:** On first launch (no sync state in UserDefaults), all existing records are enqueued. On subsequent launches, orphaned records (`sync_status = pending_upload`) are re-enqueued.
 - **What does NOT sync:** `embeddings`, `segments_fts` (rebuilt by triggers), WhisperKit/LLM models.
-- **State persistence:** `CKSyncEngine.State.Serialization` JSON-encoded in UserDefaults key `CKSyncEngineState`. Note: on this machine, UserDefaults writes to `~/Library/Preferences/com.memgram.app.plist` (not the sandboxed container path).
-- **Merge strategy:** Remote `ckSystemFields` always wins. `summary`, `rawTranscript`, and `actionItems` keep local value if non-nil (prevents remote nil from overwriting a locally generated summary).
-- **Placeholder watchdog:** If placeholder meetings (no title, created by FK pre-seeding) are still present >5 minutes after sync start, a background fetch is triggered to retry.
+- **State persistence:** `CKSyncEngine.State.Serialization` JSON-encoded in UserDefaults key `CKSyncEngineState`.
+- **Merge strategy:** Remote `ckSystemFields` always wins. `summary`, `rawTranscript`, and `actionItems` keep local value if non-nil.
+- **Placeholder watchdog:** If placeholder meetings are still present >5 minutes after sync start, a background fetch is triggered to retry.
 - **`unknownItem` error:** Treated as remote deletion — local record is deleted. Do not retry on this error.
 - **`resetAndResync()`** — wipes the local DB and UserDefaults sync state, then re-downloads everything from CloudKit. Use only for full reset; all local-only data is lost.
 
@@ -189,6 +199,26 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **MeetingDetailView:** shows `streamingText[meetingId]` as live `Markdown` with a "Generating…" badge overlay while active; falls back to saved summary; skeleton while waiting for first tokens.
 - **`<think>` suppression:** `onChunk` checks `hasPrefix("<think>") && !contains("</think>")` — no UI updates while the thinking block is still open, then content streams normally once `</think>` appears.
 - **Qwen thinking disabled:** `ChatSession` is created with `additionalContext: ["enable_thinking": false]`, which is passed as a Jinja template variable and suppresses the think block entirely. The `<think>` filter in `stream()` remains as a safety net.
+
+## Testing
+
+`Tests/MemgramTests/` — Swift Testing suite (36 tests, 0 failures). Uses in-memory GRDB databases; no network, no CloudKit entitlement needed.
+
+**Infrastructure (`Tests/MemgramTests/Infrastructure/`):**
+- **`FakeCloudKitChannel`** — in-memory iCloud backend shared across test devices. Stores `CKRecord`s, detects conflicts, simulates push notifications. Controls: `holdPushes` (network partition), `conflictingRecordIDs`, `failNextSave`.
+- **`FakeSyncTransport`** — implements `SyncTransport`. `flush()` builds records via `delegate.buildRecord`, uploads to channel, calls `delegate.didSend`. `receive(modifications:deletions:)` called by channel on push.
+- **`TestSyncEnvironment`** — bundles one simulated device: in-memory `AppDatabase` + `MeetingStore` + `CloudSyncEngine` + `FakeSyncTransport`. `make(channel:)` for two-device tests; `makeLocal()` for single-DB tests.
+
+**Test files:**
+- **`MeetingStatusTests`** — 15 tests: status transitions (recording→transcribing→diarizing→done), interrupted detection, filter logic (placeholder hidden, interrupted shown), CRUD.
+- **`SyncStatusTests`** — 11 tests: `pendingUpload` on create, `synced` after flush, `failed` on error, `serverRecordChanged` conflict re-enqueue, placeholder creation for orphaned segments, remote record normalization.
+- **`TwoDeviceSyncTests`** — 10 tests: basic A→B sync, delayed push delivery, FK out-of-order delivery (segments before meetings), bidirectional, deletion, conflict resolution, reset/resync via `fetchChanges()`, error recovery, out-of-order delivery.
+
+**Pitfalls:**
+- `@Suite`/`@Test` macros are incompatible with `@available(macOS 14.0, *)` on the struct — omit `@available` since the test target already deploys to macOS 14.0.
+- `AppDelegate.applicationDidFinishLaunching` bails out immediately when `XCTestBundlePath` env var is set — prevents Qwen preload, Parakeet/Sortformer downloads, and CloudKit init from running during tests.
+- `CloudSyncEngine.container` is `lazy` — avoids `CKContainer` initialization (which requires CloudKit entitlement) in test instances that use `FakeSyncTransport`.
+- Do NOT call `engine.applyRemoteRecord()` or `engine.reEnqueueOrphanedRecords()` from tests — both are `fileprivate`. Route incoming records through `transport.receive(modifications:deletions:)`; trigger re-enqueue via `engine.enqueueSave(table:id:)` or `engine.start()`.
 
 ## Key Implementation Details
 
