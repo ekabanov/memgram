@@ -100,10 +100,16 @@ final class StereoMixer {
         lock.lock()
         _latestMicLevel = level
         micAccumulator.append(contentsOf: mixed)
-        let shouldFlush = micAccumulator.count >= Self.framesPerChunk
         lock.unlock()
 
-        if shouldFlush { flushChunk() }
+        // Loop: a single large input buffer may span multiple chunks
+        while true {
+            lock.lock()
+            let canFlush = micAccumulator.count >= Self.framesPerChunk
+            lock.unlock()
+            guard canFlush else { break }
+            flushChunk()
+        }
     }
 
     private func appendSystem(_ buf: AVAudioPCMBuffer) {
