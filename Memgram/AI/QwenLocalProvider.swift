@@ -209,16 +209,23 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     }
 
     func preload() {
-        log.info("preload() called")
+        log.info("preload() called — downloading model files if needed (no memory load)")
         Task {
             do {
-                try await loadModel()
-                // Unload immediately after startup — model files are now cached on disk.
-                // Memory is only consumed when a summary is actually requested.
-                unload()
+                // Download model files to cache without loading weights into memory.
+                // On first launch this pulls the shards from HuggingFace; subsequent
+                // launches are instant (files already in the cache directory).
+                _ = try await defaultHubApi.snapshot(from: Self.modelID) { [weak self] progress in
+                    let frac = progress.fractionCompleted
+                    Task { @MainActor [weak self] in
+                        guard let self, frac > self.downloadProgress else { return }
+                        self.downloadProgress = frac
+                    }
+                }
+                await MainActor.run { self.downloadProgress = 1.0 }
+                log.info("Model files ready on disk — will load on first summarisation")
             } catch {
-                self.log.error("preload() failed: \(error)")
-                self.loadError = error.localizedDescription
+                log.error("preload() download failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
