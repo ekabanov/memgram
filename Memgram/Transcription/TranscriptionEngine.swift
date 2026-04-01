@@ -3,12 +3,6 @@ import Combine
 import OSLog
 import WhisperKit
 
-enum AudioChannel: String {
-    case microphone = "microphone"
-    case system     = "system"
-    case unknown    = "unknown"
-}
-
 enum TranscriptionError: LocalizedError {
     case modelNotLoaded
     var errorDescription: String? { "Whisper model is not loaded" }
