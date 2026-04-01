@@ -133,6 +133,8 @@ final class AppDatabase {
         }
 
         migrator.registerMigration("v4_semantic_status") { db in
+            // Nuke all data and recreate with sync_status + diarizing/interrupted status support.
+            // Data is re-downloaded from CloudKit; AppDelegate clears CKSyncEngineState before start().
             try db.execute(sql: "DROP TRIGGER IF EXISTS segments_au")
             try db.execute(sql: "DROP TRIGGER IF EXISTS segments_ad")
             try db.execute(sql: "DROP TRIGGER IF EXISTS segments_ai")
@@ -214,7 +216,10 @@ final class AppDatabase {
         let appliedBefore = Set((try? dbQueue.read { try migrator.appliedIdentifiers($0) }) ?? [])
         try migrator.migrate(dbQueue)
         let appliedAfter = Set((try? dbQueue.read { try migrator.appliedIdentifiers($0) }) ?? [])
-        if appliedAfter.contains("v4_semantic_status") && !appliedBefore.contains("v4_semantic_status") {
+        // Only set on upgrade (not fresh install) — appliedBefore is empty on first launch
+        if appliedAfter.contains("v4_semantic_status")
+            && !appliedBefore.contains("v4_semantic_status")
+            && appliedBefore.contains("v1_initial_schema") {
             needsCloudResync = true
         }
     }
