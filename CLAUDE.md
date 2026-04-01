@@ -18,7 +18,7 @@ No test targets. No linter. **Deployment target: macOS 14.0.**
 
 ## Architecture
 
-Memgram is a macOS menu bar app (`LSUIElement: true`) that records meetings, transcribes locally via WhisperKit, and generates AI summaries. All processing is offline.
+Memgram is a macOS menu bar app (`LSUIElement: true`) that records meetings, transcribes locally via Parakeet (default) or WhisperKit, performs speaker diarization, and generates AI summaries. All processing is offline.
 
 **Entry point:** `AppDelegate` via `MemgramApp.swift` (`@main`). Status bar item, popover, and main window owned by `AppDelegate`. Settings registered as `Settings { SettingsView() }` — use `SettingsLink` (not `sendAction`) to open them.
 
@@ -27,17 +27,21 @@ Memgram is a macOS menu bar app (`LSUIElement: true`) that records meetings, tra
 MicrophoneCapture (AVAudioEngine, 16kHz mono)
          ↓ bufferPublisher
     StereoMixer  ←  SystemAudioCaptureProvider
-         ↓ 30s stereo chunks (L=mic, R=system)
-  TranscriptionEngine (WhisperKit, Metal/ANE)
+         ↓ 10s stereo chunks (L=mic, R=system)
+  AudioChannelUtils.selectDominantChannel()
+         ↓ dominant channel mono audio
+  TranscriptionEngine (Parakeet/WhisperKit, ANE/Metal)
          ↓ segmentPublisher (main thread)
   RecordingSession → segments[] + MeetingStore (Task.detached DB write)
          ↓ on finalization
-  SummaryEngine (background) → MeetingStore.saveSummary → meetingDidUpdate notification
+  SpeakerDiarizer (batch post-processing, two Sortformer instances)
+         ↓ speaker labels per segment
+  SummaryEngine (background) → normaliseSpeakerLabels() → MeetingStore.saveSummary → meetingDidUpdate notification
 ```
 
 **System audio:** CoreAudioTapCapture on macOS 14.4+, ScreenCaptureKitCapture fallback. `kAudioObjectSystemObject` is NOT a valid process object for `CATapDescription` — always use `PermissionsManager.audioProcessObjectIDs()`.
 
-**Transcription:** WhisperKit auto-downloads models. Model auto-selected by `WhisperModelManager.autoSelectedModel` based on RAM + `preferMultilingual` flag. Users only see English/Multilingual toggle — no model list.
+**Transcription:** Backend selectable in **Settings → Recording**. Default is Parakeet (ANE). WhisperKit auto-downloads models; model auto-selected by `WhisperModelManager.autoSelectedModel` based on RAM + `preferMultilingual` flag. Users only see English/Multilingual toggle — no model list. `TranscriptionBackendManager` tracks backend preference and Parakeet/diarizer loading state.
 
 **LLM backends:** Qwen (local MLX via `mlx-swift-lm`), Custom Server (OpenAI-compatible — covers Ollama/LM Studio/vLLM), Claude, OpenAI, Gemini. `LLMProviderStore.currentProvider` delegates to `providerFor(selectedBackend)`. API keys in Keychain only. All backends stream tokens via `provider.stream()` — cloud providers use SSE, Qwen uses `ChatSession.streamResponse()`.
 
@@ -45,12 +49,41 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **MeetingDetailView:** Summary rendered via `swift-markdown-ui` (`Markdown(summary).markdownTheme(.gitHub)`). Tab bar: Summary (default) | Transcript. Local transcript search with `filteredSegments`. Delete/Copy in header `⋯` menu.
 
+## Transcription Backends
+
+`TranscriberProtocol` abstracts over two backends selectable in Settings → Recording:
+
+- **`ParakeetTranscriber`** — FluidAudio ANE-based model. Default. No model download required; model is bundled or cached via FluidAudio. Lower latency than Whisper on Apple Silicon.
+- **`WhisperTranscriber`** — WhisperKit with Metal decoder + ANE encoder. Fallback; supports multilingual. Auto-downloads model on first use.
+
+**`AudioChannelUtils.selectDominantChannel()`** — before feeding audio to the transcription backend, picks the louder of mic (L) and system (R) channels. Prevents transcription of both channels when only one has speech, which would double-transcribe echo.
+
+**`TranscriptionBackendManager`** — `@MainActor ObservableObject`. Persists backend choice in UserDefaults. Tracks loading state for Parakeet and diarizer (shown in Settings → Recording). Instantiates the active `TranscriberProtocol` implementation on demand.
+
+## Speaker Diarization
+
+`SpeakerDiarizer` (`Memgram/Diarization/`) runs batch post-processing after transcription drains. Requires macOS 14+.
+
+- **Two Sortformer instances** (FluidAudio): one for mic channel, one for system audio channel. Each returns speaker embeddings + time-coded segments independently.
+- **Echo suppression:** mic segments that occur during system-audio-dominant periods are attributed to the remote speaker rather than a local one. Prevents echo doubling in the speaker labels.
+- **Snapshot:** takes a 5-minute evenly-sampled snapshot of the recording for diarization (not the full audio). Keeps memory use bounded.
+- **Labels:** `Room 1`/`Room 2` for in-room speakers (mic channel), `Remote 1`/`Remote 2` for remote participants (system channel).
+- **`SpeakerEnrollmentStore`** — saves a display name + 5-second voice sample per enrolled speaker. During diarization, enrolled speaker embeddings are compared to detected clusters; best match replaces the generic label (e.g. `Room 1` → `Alice`).
+- **Onboarding:** `enrollVoice` step inserted between `systemAudio` and `done` for first-run voice enrollment.
+- **`normaliseSpeakerLabels()` in `SummaryEngine`** — pre-processes transcript before LLM call: maps `Room`/`Remote` labels to `Speaker A`/`B`/`C` etc., appends a mapping hint so the LLM can resolve real names from calendar attendees + enrollment data.
+
+**Pitfalls:**
+- Sortformer has a 4-speaker cap per channel (2 local + 2 remote max).
+- There is no persistent diarizer state between meetings — enrolled voice samples must be re-fed to the diarizer for each meeting at diarization time. Do not cache diarizer instances across meetings.
+- Audio must be fully drained before `SpeakerDiarizer` runs — do not call it mid-recording.
+
 ## Package Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
 | GRDB | 6.x | SQLite (WAL, FTS5, `PRAGMA foreign_keys = ON`) |
 | WhisperKit | 0.9+ | Transcription (Metal decoder + ANE encoder) |
+| FluidAudio | main | Parakeet transcription (ANE) + Sortformer speaker diarization |
 | MLXSwiftLM | branch `main` | Qwen local inference |
 | MarkdownUI | 2.x | Markdown rendering in summary tab |
 
@@ -85,10 +118,14 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **Record IDs:** `"{table}_{uuid}"` format (e.g. `meetings_ABC-123`)
 - **Enqueue pattern:** Each `MeetingStore` write method calls `sync?.enqueueSave/enqueueDelete` after the GRDB write. No TransactionObserver.
 - **System fields:** Stored as `ck_system_fields` blob column (NSKeyedArchiver-encoded CKRecord metadata). Used to send updates as modifications, not creates.
-- **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings to satisfy FK constraints.
-- **Initial upload:** On first launch (no sync state in UserDefaults), all existing records are enqueued for upload.
+- **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings to satisfy FK constraints. Incoming records within a batch are sorted: meetings first, then segments/speakers.
+- **Initial upload:** On first launch (no sync state in UserDefaults), all existing records are enqueued for upload. On subsequent launches, orphaned records (those without `ck_system_fields`) are also re-enqueued.
 - **What does NOT sync:** `embeddings`, `segments_fts` (rebuilt by triggers), WhisperKit/LLM models.
 - **State persistence:** `CKSyncEngine.State.Serialization` JSON-encoded in UserDefaults key `CKSyncEngineState`. Note: on this machine, UserDefaults writes to `~/Library/Preferences/com.memgram.app.plist` (not the sandboxed container path).
+- **Merge strategy:** Remote `ckSystemFields` always wins. `summary`, `rawTranscript`, and `actionItems` keep local value if non-nil (prevents remote nil from overwriting a locally generated summary).
+- **Placeholder watchdog:** If placeholder meetings (no title, created by FK pre-seeding) are still present >5 minutes after sync start, a background fetch is triggered to retry.
+- **`unknownItem` error:** Treated as remote deletion — local record is deleted. Do not retry on this error.
+- **`resetAndResync()`** — wipes the local DB and UserDefaults sync state, then re-downloads everything from CloudKit. Use only for full reset; all local-only data is lost.
 
 **Pitfalls:**
 - Never use raw SQL with `Date.timeIntervalSinceReferenceDate` in GRDB — always use Codable `update(db)`/`insert(db)`.

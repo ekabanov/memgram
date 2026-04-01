@@ -8,8 +8,8 @@ Memgram is a private, offline-first macOS meeting recorder. It silently captures
 
 - **Menu bar app** — always available, never in the way
 - **Dual-channel capture** — mic (you) + system audio (remote) simultaneously
-- **Local transcription** — WhisperKit (multilingual, Metal + ANE), model auto-selected by RAM
-- **Speaker diarisation** — stereo routing separates "You" from "Remote"
+- **Local transcription** — Parakeet TDT (ANE, default) or WhisperKit (multilingual, Metal + ANE), selectable in Settings → Recording
+- **Speaker diarisation** — two Sortformer instances identify up to 2 in-room and 2 remote speakers; enroll your voice for named attribution
 - **AI summaries** — stream word-by-word as the model generates; participants, topics, decisions, action items
 - **Download progress** — Qwen and Whisper model downloads shown in the popover; both preload at launch
 - **Inline search** — filter transcript segments by text or speaker; global semantic search (Cmd+F)
@@ -33,13 +33,17 @@ xcodegen generate
 open Memgram.xcodeproj
 ```
 
-On first launch: grant microphone + system audio permissions. Whisper and Qwen models download automatically in the background.
+On first launch: grant microphone + system audio permissions, then complete the onboarding flow (system audio → voice enrollment → done). Qwen and WhisperKit models download automatically in the background if selected.
 
 To enable calendar integration: **Settings → Calendar** → toggle on → grant calendar access. Requires Google (or any other) calendar account added in **System Settings → Internet Accounts**.
 
 ## Transcription
 
-WhisperKit downloads and caches models automatically. The model is chosen automatically based on your Mac's RAM and language preference (set in the model picker):
+The backend is selectable in **Settings → Recording**.
+
+**Parakeet TDT (default)** — Apple ANE-based model via FluidAudio. No model download required. Lower latency on Apple Silicon.
+
+**WhisperKit (alternative)** — downloads and caches models automatically. Model chosen by your Mac's RAM and language preference:
 
 | RAM | Model | Size |
 |-----|-------|------|
@@ -47,7 +51,13 @@ WhisperKit downloads and caches models automatically. The model is chosen automa
 | 8 GB | Large v3 Turbo Q (quantized) ★ | 632 MB |
 | < 8 GB | Small (multilingual) | 244 MB |
 
-CoreML compilation happens once on first use. Subsequent sessions are fast.
+WhisperKit CoreML compilation happens once on first use. Subsequent sessions are fast.
+
+## Speaker Diarization
+
+After each recording, Memgram identifies who spoke when using two Sortformer models (one for microphone, one for system audio). Speakers are labeled Room 1/2 (in-room) and Remote 1/2 (remote participants).
+
+**Voice enrollment** — record a 5-second voice sample in **Settings → Recording → Enroll Voice**. Enrolled speakers are labeled by name in the transcript and AI summary. The LLM also uses calendar attendee names to resolve unnamed speakers.
 
 ## AI Summaries
 
@@ -67,9 +77,11 @@ All providers use a 10-minute request timeout. API keys are Keychain-only — ne
 MicrophoneCapture (16kHz mono)
        ↓
    StereoMixer  ←  CoreAudioTap / ScreenCaptureKit
-       ↓ 30s stereo chunks
- TranscriptionEngine (WhisperKit, Metal + ANE)
+       ↓ 10s stereo chunks
+ TranscriptionEngine (Parakeet/WhisperKit, ANE/Metal)
        ↓ segments → MeetingStore (GRDB, WAL, FTS5)
+ SpeakerDiarizer (Sortformer × 2, batch post-processing)
+       ↓ speaker labels per segment
  SummaryEngine (background Task)
        ↓ Markdown summary + auto-title
    SearchEngine (FTS5 BM25 × 0.4 + cosine × 0.6)
@@ -101,6 +113,7 @@ Select which calendars to monitor in **Settings → Calendar → Calendars to Mo
 | Package | Purpose |
 |---------|---------|
 | GRDB 6.x | SQLite with WAL and FTS5 |
+| FluidAudio | Parakeet TDT transcription (ANE) + Sortformer speaker diarization |
 | WhisperKit (ekabanov fork) | Transcription — fork relaxes `swift-transformers` constraint to allow >= 1.2.0 |
 | mlx-swift-lm (main) | Qwen local inference via Apple MLX |
 | swift-markdown-ui 2.x | Markdown rendering in summary tab |
