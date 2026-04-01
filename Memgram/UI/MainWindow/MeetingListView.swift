@@ -164,7 +164,6 @@ private struct SyncStatusHeader: View {
 struct MeetingRowView: View {
     let meeting: Meeting
     @ObservedObject private var summaryEngine = SummaryEngine.shared
-    @ObservedObject private var syncEngine    = CloudSyncEngine.shared
 
     var body: some View {
         HStack(spacing: 8) {
@@ -184,6 +183,7 @@ struct MeetingRowView: View {
                 Image(systemName: "sparkles")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .help("Summary available")
             }
             CloudSyncIcon(meeting: meeting)
         }

@@ -178,7 +178,7 @@ private struct SyncStatusBanner: View {
             .padding(.horizontal)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.systemBackground))
+            .background(Color(.secondarySystemBackground))
         }
     }
 }
