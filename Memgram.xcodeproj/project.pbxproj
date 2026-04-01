@@ -32,6 +32,7 @@
 		326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B079BA5413B938636C31EC9 /* RecordingSession.swift */; };
 		3DBE0723D4971C9A81420E99 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = FF60CC32B317AA11D7A6DE75 /* FluidAudio */; };
 		40C31164B9CBA2DFD1C8293A /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
+		411FFDA07038F54EEE78E8A6 /* TranscriptionBackendManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83DC277FA3CCE61CC4DE0038 /* TranscriptionBackendManager.swift */; };
 		476B60BFCCD286137DC7646F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39857EC942E8388EC18A787D /* Assets.xcassets */; };
 		488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		4ACBFB07A558F4B15376C564 /* Meeting.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6CF342BB0459F5A34F2B93 /* Meeting.swift */; };
@@ -80,6 +81,7 @@
 		D13DB41166E75B5527836089 /* WatchAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1EF3EF9EEC1299DE473E01 /* WatchAudioRecorder.swift */; };
 		D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */; };
 		D5FE0F39D1653622D686B69C /* CoreAudioTapCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5103ED0654B4C0BBA443C7E3 /* CoreAudioTapCapture.swift */; };
+		D6193B442AE79E6324434A30 /* ParakeetTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD1DFEF8CD15CECEEC4A342 /* ParakeetTranscriber.swift */; };
 		D6216859EFD788A1BD76CFAF /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
 		D784D0550CFDB55EC6F63319 /* MeetingSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B42916D4665E4E55C140260 /* MeetingSegment.swift */; };
 		D8611AB68B1682590BC9B757 /* TranscriberProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7E0494BDFF299FE51811E28 /* TranscriberProtocol.swift */; };
@@ -164,6 +166,7 @@
 		77D919650FC3167304940F8D /* MemgramWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramWatchApp.swift; sourceTree = "<group>"; };
 		78F963FAD214383E6C348061 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		8009E920FB91831616BDC1FD /* SummaryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEngine.swift; sourceTree = "<group>"; };
+		83DC277FA3CCE61CC4DE0038 /* TranscriptionBackendManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionBackendManager.swift; sourceTree = "<group>"; };
 		8855497AAD103E0546ABADB5 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
 		8B079BA5413B938636C31EC9 /* RecordingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingSession.swift; sourceTree = "<group>"; };
 		8B42916D4665E4E55C140260 /* MeetingSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingSegment.swift; sourceTree = "<group>"; };
@@ -189,6 +192,7 @@
 		C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingEmbedding.swift; sourceTree = "<group>"; };
 		C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetailView.swift; sourceTree = "<group>"; };
 		CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
+		CCD1DFEF8CD15CECEEC4A342 /* ParakeetTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTranscriber.swift; sourceTree = "<group>"; };
 		CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerRenameView.swift; sourceTree = "<group>"; };
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D5334E3AF08B770900274F14 /* AudioChunkUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunkUploader.swift; sourceTree = "<group>"; };
@@ -515,7 +519,9 @@
 		FAD869B59D73800AFEDEE945 /* Transcription */ = {
 			isa = PBXGroup;
 			children = (
+				CCD1DFEF8CD15CECEEC4A342 /* ParakeetTranscriber.swift */,
 				F7E0494BDFF299FE51811E28 /* TranscriberProtocol.swift */,
+				83DC277FA3CCE61CC4DE0038 /* TranscriptionBackendManager.swift */,
 				CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */,
 				E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */,
 				A7CE21B92B6ED6B6BECAED50 /* WhisperTranscriber.swift */,
@@ -756,6 +762,7 @@
 				833A3C45383F91821935CB27 /* OnboardingView.swift in Sources */,
 				F4079DD0A1D5E98E12EE09D4 /* OpenAIProvider.swift in Sources */,
 				1429C65DF2D432E7767682D2 /* PDFExporter.swift in Sources */,
+				D6193B442AE79E6324434A30 /* ParakeetTranscriber.swift in Sources */,
 				F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */,
 				501FEB83850E856B56431C2B /* PopoverView.swift in Sources */,
 				0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */,
@@ -772,6 +779,7 @@
 				1870B967E488562E6551E2F2 /* SummaryEngine.swift in Sources */,
 				ADA73473A3D72BCDF5F24681 /* SystemAudioCaptureProvider.swift in Sources */,
 				D8611AB68B1682590BC9B757 /* TranscriberProtocol.swift in Sources */,
+				411FFDA07038F54EEE78E8A6 /* TranscriptionBackendManager.swift in Sources */,
 				A014CBA98A79D45243C72F8D /* TranscriptionEngine.swift in Sources */,
 				D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */,
 				F5353AF97C378156165EF69A /* WhisperTranscriber.swift in Sources */,

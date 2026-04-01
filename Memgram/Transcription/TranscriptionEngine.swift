@@ -81,7 +81,7 @@ final class TranscriptionEngine {
         Task { @MainActor in
             WhisperModelManager.shared.isWhisperReady = false
             WhisperModelManager.shared.isWhisperDownloading = false
-            TranscriptionBackendManager.shared.isReady = false
+            TranscriptionBackendManager.shared.isParakeetReady = false
             TranscriptionBackendManager.shared.isLoading = false
         }
     }

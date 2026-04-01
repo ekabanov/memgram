@@ -218,9 +218,10 @@ struct RecordingSettingsTab: View {
         Form {
             Section("Transcription Engine") {
                 Picker("Engine", selection: $backendManager.selectedBackend) {
-                    ForEach(TranscriptionBackend.allCases) { backend in
-                        Text(backend.displayName).tag(backend)
-                    }
+                    Text(TranscriptionBackend.whisper.displayName).tag(TranscriptionBackend.whisper)
+                    #if os(macOS)
+                    Text(TranscriptionBackend.parakeet.displayName).tag(TranscriptionBackend.parakeet)
+                    #endif
                 }
                 .pickerStyle(.radioGroup)
 

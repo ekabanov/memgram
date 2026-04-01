@@ -22,8 +22,8 @@ final class ParakeetTranscriber: TranscriberProtocol {
 
         await MainActor.run { TranscriptionBackendManager.shared.isLoading = true }
 
-        log.info("Downloading / loading Parakeet TDT 0.6B v2 models...")
-        let models = try await AsrModels.downloadAndLoad(version: .v2)
+        log.info("Downloading / loading Parakeet TDT 0.6B v3 models...")
+        let models = try await AsrModels.downloadAndLoad(version: .v3)
 
         let manager = AsrManager()
         try await manager.initialize(models: models)
@@ -33,7 +33,7 @@ final class ParakeetTranscriber: TranscriberProtocol {
 
         await MainActor.run {
             TranscriptionBackendManager.shared.isLoading = false
-            TranscriptionBackendManager.shared.isReady = true
+            TranscriptionBackendManager.shared.isParakeetReady = true
         }
     }
 
@@ -99,13 +99,14 @@ final class ParakeetTranscriber: TranscriberProtocol {
                 let segText = group.map(\.token).joined()
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !segText.isEmpty else { continue }
+                guard let first = group.first, let last = group.last else { continue }
                 segments.append(MeetingSegment(
                     id: UUID().uuidString,
                     meetingId: meetingId,
                     speaker: "Remote",
                     channel: "microphone",
-                    startSeconds: offsetSeconds + group.first!.startTime,
-                    endSeconds: offsetSeconds + group.last!.endTime,
+                    startSeconds: offsetSeconds + first.startTime,
+                    endSeconds: offsetSeconds + last.endTime,
                     text: segText,
                     ckSystemFields: nil
                 ))
@@ -166,10 +167,11 @@ final class ParakeetTranscriber: TranscriberProtocol {
             let segText = group.map(\.token).joined()
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard !segText.isEmpty else { continue }
+            guard let first = group.first, let last = group.last else { continue }
             segments.append(TranscriptSegment(
                 id: UUID(),
-                startSeconds: chunkStart + group.first!.startTime,
-                endSeconds: chunkStart + group.last!.endTime,
+                startSeconds: chunkStart + first.startTime,
+                endSeconds: chunkStart + last.endTime,
                 text: segText,
                 speaker: speaker,
                 channel: channel

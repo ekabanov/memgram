@@ -8,6 +8,8 @@
 	<string>Memgram</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.memgram.mobile.watchkitapp</string>
 	<key>CFBundleInfoDictionaryVersion</key>

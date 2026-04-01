@@ -13,7 +13,7 @@ struct PopoverView: View {
     private var isModelReady: Bool {
         switch backendManager.selectedBackend {
         case .whisper:  return modelManager.isWhisperReady
-        case .parakeet: return backendManager.isReady
+        case .parakeet: return backendManager.isParakeetReady
         }
     }
 

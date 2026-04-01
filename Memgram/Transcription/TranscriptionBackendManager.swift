@@ -16,7 +16,7 @@ final class TranscriptionBackendManager: ObservableObject {
     @Published var isLoading: Bool = false
 
     /// True once Parakeet model is fully ready.
-    @Published var isReady: Bool = false
+    @Published var isParakeetReady: Bool = false
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""

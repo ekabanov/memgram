@@ -116,7 +116,7 @@ final class RecordingSession: ObservableObject {
             do {
                 try await self.transcriptionEngine.prepare(modelName: modelName)
             } catch {
-                self.log.error("WhisperKit load failed for '\(modelName, privacy: .public)': \(error)")
+                self.log.error("Transcription model load failed for '\(modelName, privacy: .public)': \(error)")
             }
         }
 
