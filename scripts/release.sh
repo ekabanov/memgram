@@ -1,15 +1,28 @@
 #!/usr/bin/env bash
 # release.sh — Build, notarize, and package Memgram for direct distribution.
-# Usage: ./scripts/release.sh <apple-id-email> <app-specific-password>
+# Usage: ./scripts/release.sh <apple-id-email> <app-specific-password> [--latest]
 #
 # Prerequisites:
 #   1. Developer ID Application certificate installed in Keychain
 #   2. xcodegen installed (brew install xcodegen)
 #   3. create-dmg installed (brew install create-dmg)
+#   4. gh CLI installed and authenticated (brew install gh && gh auth login)  [only for --latest]
 #
 # App-specific password: generate at appleid.apple.com → App-Specific Passwords
+# --latest: also publish a rolling Memgram-latest.dmg to the fixed GitHub tag 'latest'
 
 set -euo pipefail
+
+PUBLISH_LATEST=false
+POSITIONAL=()
+for arg in "$@"; do
+    if [[ "$arg" == "--latest" ]]; then
+        PUBLISH_LATEST=true
+    else
+        POSITIONAL+=("$arg")
+    fi
+done
+set -- "${POSITIONAL[@]+"${POSITIONAL[@]}"}"
 
 APPLE_ID="${1:-}"
 APP_PASSWORD="${2:-}"
@@ -100,5 +113,19 @@ create-dmg \
 echo ""
 echo "✅  Release artifact: $DMG_PATH"
 echo ""
-echo "Next: create GitHub release with:"
-echo "  gh release create v${VERSION} '$DMG_PATH' --title 'Memgram ${VERSION}' --generate-notes"
+
+if $PUBLISH_LATEST; then
+    LATEST_EXT="${DMG_PATH##*.}"
+    LATEST_PATH="$BUILD_DIR/Memgram-latest.$LATEST_EXT"
+    cp "$DMG_PATH" "$LATEST_PATH"
+    echo "🚀  Publishing rolling latest..."
+    gh release delete latest --yes 2>/dev/null || true
+    gh release create latest "$LATEST_PATH" \
+        --title "Memgram Latest" \
+        --notes "Latest build (v${VERSION})" \
+        --prerelease
+    echo "✅  Latest release updated: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/download/latest/Memgram-latest.$LATEST_EXT"
+else
+    echo "Next: create GitHub release with:"
+    echo "  gh release create v${VERSION} '$DMG_PATH' --title 'Memgram ${VERSION}' --generate-notes"
+fi
