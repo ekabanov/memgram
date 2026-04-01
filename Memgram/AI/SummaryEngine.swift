@@ -38,6 +38,14 @@ final class SummaryEngine: ObservableObject {
         defer {
             activeMeetingIds.remove(meetingId)
             streamingText.removeValue(forKey: meetingId)
+            // Unload Qwen after the last active summary to free ~4–9 GB of memory.
+            // Only unload when the queue is empty — concurrent summaries reuse the loaded model.
+            #if canImport(MLXLLM)
+            if #available(macOS 14, *), activeMeetingIds.isEmpty,
+               LLMProviderStore.shared.selectedBackend == .qwen {
+                QwenLocalProvider.shared.unload()
+            }
+            #endif
         }
         lastError = nil
         log.info("Starting summarisation for \(meetingId, privacy: .public)")

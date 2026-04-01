@@ -185,6 +185,15 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         }
     }
 
+    /// Release the loaded model from memory. The next summarisation will reload it.
+    func unload() {
+        guard isLoaded else { return }
+        log.info("Unloading Qwen model to free memory")
+        modelContainer = nil
+        isLoaded = false
+        downloadProgress = 0
+    }
+
     func cancelDownload() {
         log.info("cancelDownload() called — cancelling in-flight load task")
         loadTask?.cancel()
