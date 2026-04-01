@@ -95,6 +95,7 @@
 		E043CB179060BDCFFFD24E44 /* ModelDownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67BDA8DE041EB585D0FA3D0 /* ModelDownloadView.swift */; };
 		E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9518923B9FA68D6694C5AD /* AudioConverter.swift */; };
 		E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */; };
+		EB3912B89BCE84DFCE2A4302 /* AudioChannelUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20CD7E7BC404129F2D6EA7F /* AudioChannelUtils.swift */; };
 		ED80E2CBA63F035B0C98C093 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9272F36873A483ABC9FDCB0F /* SearchView.swift */; };
 		ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */; };
 		EDDA21AB9D5F339D9FFD5522 /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
@@ -206,6 +207,7 @@
 		EE635A9AA521A55210C62EB6 /* MobileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileSettingsView.swift; sourceTree = "<group>"; };
 		F0B16CE774DDB719F2117948 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportSubmitter.swift; sourceTree = "<group>"; };
+		F20CD7E7BC404129F2D6EA7F /* AudioChannelUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChannelUtils.swift; sourceTree = "<group>"; };
 		F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		F59DACDCDE7F12941F078AF6 /* CalendarContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarContext.swift; sourceTree = "<group>"; };
 		F7E0494BDFF299FE51811E28 /* TranscriberProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriberProtocol.swift; sourceTree = "<group>"; };
@@ -519,6 +521,7 @@
 		FAD869B59D73800AFEDEE945 /* Transcription */ = {
 			isa = PBXGroup;
 			children = (
+				F20CD7E7BC404129F2D6EA7F /* AudioChannelUtils.swift */,
 				CCD1DFEF8CD15CECEEC4A342 /* ParakeetTranscriber.swift */,
 				F7E0494BDFF299FE51811E28 /* TranscriberProtocol.swift */,
 				83DC277FA3CCE61CC4DE0038 /* TranscriptionBackendManager.swift */,
@@ -727,6 +730,7 @@
 			files = (
 				ABE20E2CED634C67641EFD44 /* AppDatabase.swift in Sources */,
 				10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */,
+				EB3912B89BCE84DFCE2A4302 /* AudioChannelUtils.swift in Sources */,
 				B4E7A2364343DE306272E7E5 /* AudioChunkService.swift in Sources */,
 				E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */,
 				4E4EAB197382BD4CD2F97C7A /* BugReportConfig.swift in Sources */,
