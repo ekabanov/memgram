@@ -6,7 +6,7 @@ import os
 // MARK: - CloudSyncEngine
 
 @available(macOS 14.0, iOS 17.0, *)
-final class CloudSyncEngine: Sendable {
+final class CloudSyncEngine: ObservableObject {
 
     static let shared = CloudSyncEngine()
 
@@ -22,6 +22,10 @@ final class CloudSyncEngine: Sendable {
     nonisolated(unsafe) private var isResetting = false
     nonisolated(unsafe) private var fetchedDuringReset: Set<String> = []
     private let delegate: SyncDelegate
+
+    @Published var uploadingIds: Set<String> = []
+    @Published var pendingCount: Int = 0
+    @Published var failedCount: Int = 0
 
     private init() {
         delegate = SyncDelegate()
@@ -131,12 +135,45 @@ final class CloudSyncEngine: Sendable {
         guard let engine = syncEngine else { return }
         let recordID = makeRecordID(table: table, id: id)
         engine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
+        guard table == "meetings" else { return }
+        do {
+            try db.write { db in
+                try db.execute(
+                    sql: "UPDATE meetings SET sync_status = ? WHERE id = ?",
+                    arguments: [SyncStatus.pendingUpload.rawValue, id]
+                )
+            }
+            refreshSyncCounts()
+        } catch {
+            logger.error("[CloudSync] Failed to set pendingUpload for meeting \(id): \(error)")
+        }
     }
 
     func enqueueDelete(table: String, id: String) {
         guard let engine = syncEngine else { return }
         let recordID = makeRecordID(table: table, id: id)
         engine.state.add(pendingRecordZoneChanges: [.deleteRecord(recordID)])
+    }
+
+    fileprivate func refreshSyncCounts() {
+        do {
+            let pending = try db.read { db in
+                try Meeting
+                    .filter(Column("sync_status") == SyncStatus.pendingUpload.rawValue)
+                    .fetchCount(db)
+            }
+            let failed = try db.read { db in
+                try Meeting
+                    .filter(Column("sync_status") == SyncStatus.failed.rawValue)
+                    .fetchCount(db)
+            }
+            DispatchQueue.main.async { [weak self] in
+                self?.pendingCount = pending
+                self?.failedCount = failed
+            }
+        } catch {
+            logger.error("[CloudSync] Failed to refresh sync counts: \(error)")
+        }
     }
 
     func enqueueSaveSegments(meetingId: String) {
