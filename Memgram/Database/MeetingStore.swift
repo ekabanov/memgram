@@ -63,6 +63,9 @@ final class MeetingStore {
         )
         try db.write { db in try dbSegment.insert(db) }
         sync?.enqueueSave(table: "segments", id: dbSegment.id)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+        }
     }
     #endif
 
