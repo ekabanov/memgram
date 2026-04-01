@@ -33,7 +33,7 @@ final class RecordingSession: ObservableObject {
     private lazy var speakerDiarizer = SpeakerDiarizer()
     #endif
 
-    private(set) var currentMeetingId: String?
+    private var currentMeetingId: String?
 
     private init() {
         #if os(macOS)
