@@ -5,7 +5,6 @@ import Foundation
 /// In-memory iCloud backend for tests.
 /// Stores CKRecords, tracks versions for conflict detection,
 /// and simulates push notifications between connected transports.
-@available(macOS 14.0, *)
 final class FakeCloudKitChannel {
 
     /// All records currently "in the cloud", keyed by record ID name.

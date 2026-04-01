@@ -3,7 +3,6 @@ import GRDB
 @testable import Memgram
 
 /// Bundles one simulated "device" for tests: in-memory DB + MeetingStore + CloudSyncEngine + FakeSyncTransport.
-@available(macOS 14.0, *)
 struct TestSyncEnvironment {
     let db: AppDatabase
     let meetingStore: MeetingStore

@@ -3,7 +3,6 @@ import Foundation
 @testable import Memgram
 
 /// Test implementation of SyncTransport backed by a FakeCloudKitChannel.
-@available(macOS 14.0, *)
 final class FakeSyncTransport: SyncTransport {
 
     weak var delegate: (any SyncTransportDelegate)?
