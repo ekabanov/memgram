@@ -8,12 +8,15 @@ struct MobileMeetingListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(groupedMeetings, id: \.key) { date, group in
-                    Section(header: Text(sectionTitle(for: date))) {
-                        ForEach(group, id: \.id) { meeting in
-                            NavigationLink(value: meeting.id) {
-                                MeetingRow(meeting: meeting)
+            VStack(spacing: 0) {
+                SyncStatusBanner()
+                List {
+                    ForEach(groupedMeetings, id: \.key) { date, group in
+                        Section(header: Text(sectionTitle(for: date))) {
+                            ForEach(group, id: \.id) { meeting in
+                                NavigationLink(value: meeting.id) {
+                                    MeetingRow(meeting: meeting)
+                                }
                             }
                         }
                     }
@@ -53,14 +56,7 @@ struct MobileMeetingListView: View {
 
     private func loadMeetings() {
         let all = (try? MeetingStore.shared.fetchAll()) ?? []
-        // Hide meetings with no transcript and no summary — empty recordings
-        // that were never transcribed (matches macOS MeetingListView filter)
-        meetings = all.filter { m in
-            let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
-            let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
-            let isInterrupted = m.rawTranscript == nil
-            return hasTranscript || hasSummary || isInterrupted || m.status == .recording || m.status == .transcribing
-        }
+        meetings = all.filter { $0.syncStatus != .placeholder }
         log.debug("Loaded \(self.meetings.count) meetings (filtered from \(all.count) total)")
     }
 
@@ -69,6 +65,38 @@ struct MobileMeetingListView: View {
         if cal.isDateInToday(date) { return "Today" }
         if cal.isDateInYesterday(date) { return "Yesterday" }
         return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
+    }
+}
+
+private struct CloudSyncIcon: View {
+    let meeting: Meeting
+    @ObservedObject private var syncEngine = CloudSyncEngine.shared
+    @State private var pulse = false
+
+    var body: some View {
+        Group {
+            switch meeting.syncStatus {
+            case .synced:
+                Image(systemName: "icloud.fill").foregroundStyle(.secondary)
+            case .failed:
+                Image(systemName: "exclamationmark.icloud.fill").foregroundStyle(.red)
+            case .pendingUpload:
+                if syncEngine.uploadingIds.contains(meeting.id) {
+                    Image(systemName: "icloud.and.arrow.up.fill")
+                        .foregroundStyle(.secondary)
+                        .opacity(pulse ? 0.4 : 1.0)
+                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true),
+                                   value: pulse)
+                        .onAppear { pulse = true }
+                        .onDisappear { pulse = false }
+                } else {
+                    Image(systemName: "icloud.and.arrow.up").foregroundStyle(.secondary)
+                }
+            case .placeholder:
+                EmptyView()
+            }
+        }
+        .font(.caption2)
     }
 }
 
@@ -82,10 +110,12 @@ private struct MeetingRow: View {
                     .font(.body)
                     .lineLimit(1)
                 Spacer()
+                CloudSyncIcon(meeting: meeting)
                 StatusBadge(status: meeting.status)
             }
             HStack(spacing: 6) {
-                Text(DateFormatter.localizedString(from: meeting.startedAt, dateStyle: .none, timeStyle: .short))
+                Text(DateFormatter.localizedString(from: meeting.startedAt,
+                                                   dateStyle: .none, timeStyle: .short))
                 if let dur = meeting.durationSeconds, dur > 0 {
                     Text("·")
                     Text(formatDuration(dur))
@@ -112,18 +142,43 @@ private struct StatusBadge: View {
         switch status {
         case .recording:
             Label("Recording", systemImage: "mic.fill")
-                .font(.caption2)
-                .foregroundStyle(.red)
-        case .transcribing:
+                .font(.caption2).foregroundStyle(.red)
+        case .transcribing, .diarizing:
             Label("Processing", systemImage: "hourglass")
-                .font(.caption2)
-                .foregroundStyle(.orange)
+                .font(.caption2).foregroundStyle(.orange)
+        case .interrupted:
+            Label("Interrupted", systemImage: "exclamationmark.circle")
+                .font(.caption2).foregroundStyle(.secondary)
         case .done:
             EmptyView()
         case .error:
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.caption2)
-                .foregroundStyle(.red)
+                .font(.caption2).foregroundStyle(.red)
+        }
+    }
+}
+
+private struct SyncStatusBanner: View {
+    @ObservedObject private var syncEngine = CloudSyncEngine.shared
+
+    var body: some View {
+        if syncEngine.pendingCount > 0 || syncEngine.failedCount > 0 {
+            VStack(alignment: .leading, spacing: 2) {
+                if syncEngine.failedCount > 0 {
+                    Label("\(syncEngine.failedCount) meeting\(syncEngine.failedCount == 1 ? "" : "s") failed to sync",
+                          systemImage: "exclamationmark.icloud")
+                        .font(.caption).foregroundStyle(.red)
+                }
+                if syncEngine.pendingCount > 0 {
+                    Label("Syncing \(syncEngine.pendingCount) meeting\(syncEngine.pendingCount == 1 ? "" : "s")…",
+                          systemImage: "icloud.and.arrow.up")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.systemBackground))
         }
     }
 }
