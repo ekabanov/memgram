@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         SummaryEngine.shared.cleanExistingSummaries()
 
         // Pre-download models in the background so first recording starts instantly.
-        RecordingSession.shared.preloadWhisperModel()
+        RecordingSession.shared.preloadTranscriptionModel()
         #if canImport(MLXLLM)
         if #available(macOS 14, *), LLMProviderStore.shared.selectedBackend == .qwen {
             QwenLocalProvider.shared.preload()

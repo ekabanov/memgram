@@ -33,15 +33,15 @@ final class RecordingSession: ObservableObject {
 
     // MARK: - Startup Preload
 
-    /// Download and warm up the Whisper model in the background at app launch.
+    /// Download and warm up the transcription model in the background at app launch.
     /// Safe to call multiple times — TranscriptionEngine.prepare() is idempotent.
-    func preloadWhisperModel() {
+    func preloadTranscriptionModel() {
         let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
         Task {
             do {
                 try await transcriptionEngine.prepare(modelName: modelName)
             } catch {
-                log.error("Whisper preload failed: \(error.localizedDescription, privacy: .public)")
+                log.error("Transcription model preload failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
