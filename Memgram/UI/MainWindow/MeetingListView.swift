@@ -3,16 +3,17 @@ import SwiftUI
 extension Meeting: Identifiable {}
 
 struct MeetingListView: View {
-    @Binding var selectedMeetingId: String?
+    @Binding var selectedMeetingIds: Set<String>
     @State private var meetings: [Meeting] = []
     @State private var meetingToDelete: Meeting?
     @State private var showDeleteAlert = false
+    @State private var showBulkDeleteAlert = false
     @State private var deleteError: String?
 
     var body: some View {
         VStack(spacing: 0) {
             SyncStatusHeader()
-            List(selection: $selectedMeetingId) {
+            List(selection: $selectedMeetingIds) {
                 if meetings.isEmpty {
                     Text("No recordings yet")
                         .foregroundColor(.secondary)
@@ -24,9 +25,15 @@ struct MeetingListView: View {
                                 MeetingRowView(meeting: meeting)
                                     .tag(meeting.id)
                                     .contextMenu {
-                                        Button("Delete Recording…", role: .destructive) {
-                                            meetingToDelete = meeting
-                                            showDeleteAlert = true
+                                        if selectedMeetingIds.count > 1 && selectedMeetingIds.contains(meeting.id) {
+                                            Button("Delete \(selectedMeetingIds.count) Recordings…", role: .destructive) {
+                                                showBulkDeleteAlert = true
+                                            }
+                                        } else {
+                                            Button("Delete Recording…", role: .destructive) {
+                                                meetingToDelete = meeting
+                                                showDeleteAlert = true
+                                            }
                                         }
                                     }
                             }
@@ -36,6 +43,23 @@ struct MeetingListView: View {
             }
         }
         .navigationTitle("Meetings")
+        .toolbar {
+            if !selectedMeetingIds.isEmpty {
+                ToolbarItem {
+                    Button(role: .destructive) {
+                        if selectedMeetingIds.count == 1, let id = selectedMeetingIds.first,
+                           let meeting = meetings.first(where: { $0.id == id }) {
+                            meetingToDelete = meeting
+                            showDeleteAlert = true
+                        } else {
+                            showBulkDeleteAlert = true
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+        }
         .onAppear { load() }
         .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
         .alert("Delete Recording?", isPresented: $showDeleteAlert, presenting: meetingToDelete) { meeting in
@@ -43,6 +67,12 @@ struct MeetingListView: View {
             Button("Cancel", role: .cancel) {}
         } message: { meeting in
             Text("\"\(meeting.title)\" will be permanently deleted.")
+        }
+        .alert("Delete \(selectedMeetingIds.count) Recordings?", isPresented: $showBulkDeleteAlert) {
+            Button("Delete", role: .destructive) { deleteSelected() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
         .alert("Could Not Delete", isPresented: Binding(
             get: { deleteError != nil },
@@ -87,10 +117,26 @@ struct MeetingListView: View {
     private func delete(_ meeting: Meeting) {
         do {
             try MeetingStore.shared.deleteMeeting(meeting.id)
-            if selectedMeetingId == meeting.id { selectedMeetingId = nil }
+            selectedMeetingIds.remove(meeting.id)
             load()
         } catch {
             deleteError = error.localizedDescription
+        }
+    }
+
+    private func deleteSelected() {
+        var errors: [String] = []
+        for id in selectedMeetingIds {
+            do {
+                try MeetingStore.shared.deleteMeeting(id)
+            } catch {
+                errors.append(error.localizedDescription)
+            }
+        }
+        selectedMeetingIds = []
+        load()
+        if !errors.isEmpty {
+            deleteError = errors.first
         }
     }
 }

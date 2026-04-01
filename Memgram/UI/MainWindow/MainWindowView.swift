@@ -1,25 +1,26 @@
 import SwiftUI
 
 struct MainWindowView: View {
-    @State private var selectedMeetingId: String?
+    @State private var selectedMeetingIds: Set<String> = []
     @State private var showSearch = false
+
+    private var focusedId: String? { selectedMeetingIds.count == 1 ? selectedMeetingIds.first : nil }
 
     var body: some View {
         NavigationSplitView {
-            MeetingListView(selectedMeetingId: $selectedMeetingId)
+            MeetingListView(selectedMeetingIds: $selectedMeetingIds)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 320)
         } detail: {
-            if let id = selectedMeetingId {
-                MeetingDetailView(meetingId: id, onDelete: { selectedMeetingId = nil })
+            if let id = focusedId {
+                MeetingDetailView(meetingId: id, onDelete: { selectedMeetingIds = [] })
                     .id(id)
-                    .id(id)  // Force recreation on selection change to prevent stale data
             } else {
                 emptyState
             }
         }
         .sheet(isPresented: $showSearch) {
             SearchView(onSelectMeeting: { id in
-                selectedMeetingId = id
+                selectedMeetingIds = [id]
             })
         }
         .background {
