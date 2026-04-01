@@ -30,6 +30,12 @@ final class SummaryEngine: ObservableObject {
         - Correct obvious transcription errors in proper nouns based on context — do not \
         annotate the corrections. When calendar event metadata is provided, use it to \
         identify speakers and correct proper nouns.
+        - Speaker labels in the transcript (Room 1, Room 2, Remote 1, Remote 2, You, \
+        Remote) are from automated diarization. Resolve them to real names wherever \
+        possible: use introductions ("I'm Alice"), direct address ("Bob, what do you \
+        think?"), or calendar attendee names. Use resolved names throughout the summary. \
+        If a speaker cannot be identified, use a descriptive label like "in-room \
+        participant" or "remote participant" — never the raw Room/Remote numbers.
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
@@ -211,7 +217,8 @@ final class SummaryEngine: ObservableObject {
         var contextBlock = ""
         if let ctx = calendarContext {
             contextBlock = """
-            Calendar event metadata (use to correct proper nouns and identify speakers):
+            Calendar event metadata — use attendee names to resolve speaker labels \
+            (Room 1, Remote 1, etc.) to real names:
             \(ctx.promptBlock())
 
             """
