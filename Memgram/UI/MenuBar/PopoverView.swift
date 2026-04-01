@@ -281,12 +281,6 @@ struct PopoverView: View {
             .simultaneousGesture(TapGesture().onEnded {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     NSApp.activate(ignoringOtherApps: true)
-                    // Reset to first tab (AI) by finding the Settings window's tab view
-                    NSApp.windows
-                        .first { $0.title == "Settings" }
-                        .flatMap { $0.contentView?.subviews.first }
-                        .flatMap { Self.findTabView(in: $0) }?
-                        .selectFirstTabViewItem(nil)
                 }
             })
         } else {
@@ -373,15 +367,6 @@ struct PopoverView: View {
         Circle()
             .fill(granted ? Color.green : Color.red.opacity(0.7))
             .frame(width: 6, height: 6)
-    }
-
-    /// Recursively find the first NSTabView in the view hierarchy.
-    private static func findTabView(in view: NSView) -> NSTabView? {
-        if let tv = view as? NSTabView { return tv }
-        for sub in view.subviews {
-            if let found = findTabView(in: sub) { return found }
-        }
-        return nil
     }
 }
 
