@@ -169,6 +169,11 @@ final class SpeakerDiarizer {
             return [:]
         }
 
+        // The downsampled audio is shorter than the recording, so diarizer timestamps
+        // are in compressed time. Scale segment midpoints by the same ratio so lookups
+        // map correctly into the diarizer timeline.
+        let timeScale = Double(micInput.count) / Double(micCopy.count)  // e.g. 0.125 for 40min→5min
+
         // Resolve each segment and tally label distribution for debugging
         var result: [String: String] = [:]
         var labelCounts: [String: Int] = [:]
@@ -177,7 +182,8 @@ final class SpeakerDiarizer {
                 segment: segment,
                 micTimeline: micTimeline,
                 sysTimeline: sysTimeline,
-                energyLog: energyCopy
+                energyLog: energyCopy,
+                timeScale: timeScale
             )
             result[segment.id.uuidString] = label
             labelCounts[label, default: 0] += 1
@@ -199,11 +205,14 @@ final class SpeakerDiarizer {
         segment: TranscriptSegment,
         micTimeline: DiarizerTimeline,
         sysTimeline: DiarizerTimeline,
-        energyLog: [(startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)]
+        energyLog: [(startSec: Double, endSec: Double, micEnergy: Float, sysEnergy: Float)],
+        timeScale: Double
     ) -> String {
         let midpoint = (segment.startSeconds + segment.endSeconds) / 2.0
+        // Scale to compressed diarizer timeline (e.g. segment at 800s → 100s for 8× downsampling)
+        let scaledMidpoint = midpoint * timeScale
 
-        // Check energy ratio at the midpoint for echo suppression
+        // Echo suppression uses real timestamps (energy log was recorded in real time)
         let echoThreshold: Float = 1.2
         let isSystemDominant = energyEntry(atSec: midpoint, in: energyLog).map { entry in
             entry.sysEnergy > entry.micEnergy * echoThreshold
@@ -212,16 +221,14 @@ final class SpeakerDiarizer {
         switch segment.channel {
         case .microphone:
             if isSystemDominant {
-                // Mic picked up echo — attribute to remote speaker
-                return speakerLabel(in: sysTimeline, atSec: midpoint, prefix: "Remote")
+                return speakerLabel(in: sysTimeline, atSec: scaledMidpoint, prefix: "Remote")
             } else {
-                return speakerLabel(in: micTimeline, atSec: midpoint, prefix: "Room")
+                return speakerLabel(in: micTimeline, atSec: scaledMidpoint, prefix: "Room")
             }
         case .system:
-            return speakerLabel(in: sysTimeline, atSec: midpoint, prefix: "Remote")
+            return speakerLabel(in: sysTimeline, atSec: scaledMidpoint, prefix: "Remote")
         case .unknown:
-            // Best-effort: treat unknown channel as mic
-            return speakerLabel(in: micTimeline, atSec: midpoint, prefix: "Room")
+            return speakerLabel(in: micTimeline, atSec: scaledMidpoint, prefix: "Room")
         }
     }
 
