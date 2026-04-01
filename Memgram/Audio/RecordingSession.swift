@@ -17,6 +17,8 @@ final class RecordingSession: ObservableObject {
     @Published private(set) var silentSysAudioSeconds: Double = 0
     @Published private(set) var segments: [TranscriptSegment] = []
     @Published private(set) var interruptedMeetings: [Meeting] = []
+    /// Meeting ID currently being diarized (speaker identification running).
+    @Published private(set) var diarizingMeetingId: String?
 
     private var micCapture: MicrophoneCapture?
     private var sysCapture: SystemAudioCaptureProvider?
@@ -215,7 +217,10 @@ final class RecordingSession: ObservableObject {
                 #if os(macOS)
                 // Run diarization and update speaker labels before building rawTranscript
                 if #available(macOS 14.0, *) {
+                    self.diarizingMeetingId = id
+                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                     let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
+                    self.diarizingMeetingId = nil
                     if !labelMap.isEmpty {
                         for i in self.segments.indices {
                             if let label = labelMap[self.segments[i].id.uuidString] {

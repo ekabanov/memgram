@@ -102,10 +102,15 @@ struct MeetingListView: View {
 struct MeetingRowView: View {
     let meeting: Meeting
     @ObservedObject private var summaryEngine = SummaryEngine.shared
+    @ObservedObject private var session = RecordingSession.shared
+
+    private var isDiarizing: Bool {
+        session.diarizingMeetingId == meeting.id
+    }
 
     var body: some View {
         HStack(spacing: 8) {
-            if summaryEngine.activeMeetingIds.contains(meeting.id) {
+            if summaryEngine.activeMeetingIds.contains(meeting.id) || isDiarizing {
                 ProgressView().controlSize(.mini).frame(width: 8, height: 8)
             } else {
                 Circle().fill(statusColor).frame(width: 8, height: 8)
@@ -146,6 +151,8 @@ struct MeetingRowView: View {
     private var subtitle: String {
         let time = DateFormatter.localizedString(from: meeting.startedAt,
                                                   dateStyle: .none, timeStyle: .short)
+        if isDiarizing { return "\(time) · Identifying speakers…" }
+        if summaryEngine.activeMeetingIds.contains(meeting.id) { return "\(time) · Summarising…" }
         if isInterrupted { return "\(time) · Interrupted" }
         guard let dur = meeting.durationSeconds else { return time }
         let mins = Int(dur / 60)
