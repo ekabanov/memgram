@@ -38,7 +38,6 @@ struct BugReportPayload: Codable {
     }
 }
 
-@MainActor
 final class BugReportPayloadBuilder {
 
     static func build() async -> BugReportPayload {
@@ -51,11 +50,15 @@ final class BugReportPayloadBuilder {
 
         let hardwareModel = Self.hardwareModelIdentifier()
 
+        // Capture main-actor state on the main actor before going off-thread
         #if os(macOS)
-        let whisperModel: String? = WhisperModelManager.shared.selectedModel.whisperKitName
-        let llmBackend: String?   = LLMProviderStore.shared.selectedBackend.rawValue
-        let recordingState: String? = RecordingSession.shared.isRecording ? "recording" : "idle"
-        let micPerm: String?      = Self.microphonePermissionString()
+        let (whisperModel, llmBackend, recordingState, micPerm): (String?, String?, String?, String?) =
+            await MainActor.run {
+                (WhisperModelManager.shared.selectedModel.whisperKitName,
+                 LLMProviderStore.shared.selectedBackend.rawValue,
+                 RecordingSession.shared.isRecording ? "recording" : "idle",
+                 Self.microphonePermissionString())
+            }
         #else
         let whisperModel: String? = nil
         let llmBackend: String?   = nil
@@ -64,12 +67,13 @@ final class BugReportPayloadBuilder {
         #endif
 
         let calendarPerm = Self.calendarPermissionString()
-        // CloudSyncEngine.shared is always present on macOS 14+ / iOS 17+ (our deployment targets)
         let icloudEnabled = true
 
+        // Run expensive work off the main thread
         let meetingsMeta = await Self.buildMeetingsMeta()
-        let logs = await Self.collectLogs()
-        let crashLog = Self.mostRecentCrashLog()
+        let (logs, crashLog) = await Task.detached(priority: .userInitiated) {
+            (await Self.collectLogs(), Self.mostRecentCrashLog())
+        }.value
 
         return BugReportPayload(
             schemaVersion: 1,

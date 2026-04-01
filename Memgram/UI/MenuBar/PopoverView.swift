@@ -87,9 +87,9 @@ struct PopoverView: View {
 
     private var headerSection: some View {
         HStack {
-            Image(systemName: "waveform.badge.mic")
-                .font(.title2)
-                .foregroundColor(.accentColor)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 28, height: 28)
             Text("Memgram")
                 .font(.headline)
             Spacer()
@@ -276,6 +276,11 @@ struct PopoverView: View {
                 Image(systemName: "gearshape").font(.caption)
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            })
         } else {
             Button {
                 NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
