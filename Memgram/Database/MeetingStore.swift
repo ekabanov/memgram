@@ -240,7 +240,8 @@ final class MeetingStore {
         try db.read { db in
             try Meeting
                 .filter(Column("status") == MeetingStatus.recording.rawValue
-                     || Column("status") == MeetingStatus.transcribing.rawValue)
+                     || Column("status") == MeetingStatus.transcribing.rawValue
+                     || Column("status") == MeetingStatus.diarizing.rawValue)
                 .order(Column("started_at").desc)
                 .fetchAll(db)
         }
