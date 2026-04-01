@@ -591,15 +591,28 @@ final class CloudSyncEngine: ObservableObject {
             switch table {
             case "meetings":
                 try db.write { db in
-                    try db.execute(sql: "UPDATE meetings SET ck_system_fields = ? WHERE id = ?", arguments: [data, id])
+                    try db.execute(
+                        sql: "UPDATE meetings SET ck_system_fields = ?, sync_status = ? WHERE id = ?",
+                        arguments: [data, SyncStatus.synced.rawValue, id]
+                    )
                 }
+                DispatchQueue.main.async { [weak self] in
+                    self?.uploadingIds.remove(id)
+                }
+                refreshSyncCounts()
             case "segments":
                 try db.write { db in
-                    try db.execute(sql: "UPDATE segments SET ck_system_fields = ? WHERE id = ?", arguments: [data, id])
+                    try db.execute(
+                        sql: "UPDATE segments SET ck_system_fields = ? WHERE id = ?",
+                        arguments: [data, id]
+                    )
                 }
             case "speakers":
                 try db.write { db in
-                    try db.execute(sql: "UPDATE speakers SET ck_system_fields = ? WHERE id = ?", arguments: [data, id])
+                    try db.execute(
+                        sql: "UPDATE speakers SET ck_system_fields = ? WHERE id = ?",
+                        arguments: [data, id]
+                    )
                 }
             default:
                 break
@@ -715,6 +728,20 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
 
                 default:
                     engine.logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
+                    if let parsed = engine.parseRecordID(recordID), parsed.table == "meetings" {
+                        do {
+                            try engine.db.write { db in
+                                try db.execute(
+                                    sql: "UPDATE meetings SET sync_status = ? WHERE id = ?",
+                                    arguments: [SyncStatus.failed.rawValue, parsed.id]
+                                )
+                            }
+                            DispatchQueue.main.async { engine.uploadingIds.remove(parsed.id) }
+                            engine.refreshSyncCounts()
+                        } catch {
+                            engine.logger.error("Failed to set .failed for meeting \(parsed.id): \(error)")
+                        }
+                    }
                 }
             }
 
@@ -737,11 +764,21 @@ private final class SyncDelegate: NSObject, CKSyncEngineDelegate {
         syncEngine: CKSyncEngine
     ) async -> CKSyncEngine.RecordZoneChangeBatch? {
         let scope = context.options.scope
-        let pendingChanges = syncEngine.state.pendingRecordZoneChanges.filter { change in
-            scope.contains(change)
-        }
-
+        let pendingChanges = syncEngine.state.pendingRecordZoneChanges.filter { scope.contains($0) }
         guard !pendingChanges.isEmpty else { return nil }
+
+        // Mark meetings as in-flight before the batch is sent
+        let meetingIds = pendingChanges.compactMap { change -> String? in
+            guard case .saveRecord(let recordID) = change,
+                  let parsed = self.engine.parseRecordID(recordID),
+                  parsed.table == "meetings" else { return nil }
+            return parsed.id
+        }
+        if !meetingIds.isEmpty {
+            DispatchQueue.main.async {
+                meetingIds.forEach { self.engine.uploadingIds.insert($0) }
+            }
+        }
 
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
             guard let parsed = self.engine.parseRecordID(recordID) else { return nil }
