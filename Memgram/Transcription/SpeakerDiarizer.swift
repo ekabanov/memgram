@@ -137,6 +137,20 @@ final class SpeakerDiarizer {
         micDiarizer.initialize(models: loadedModels)
         sysDiarizer.initialize(models: loadedModels)
 
+        // Enroll the stored user speaker on both diarizer instances
+        if let enrolledName = SpeakerEnrollmentStore.shared.enrolledName,
+           let enrollAudio = SpeakerEnrollmentStore.shared.loadAudio() {
+            log.info("Enrolling '\(enrolledName)' speaker (\(enrollAudio.count) samples) on both channels")
+            let _ = try? micDiarizer.enrollSpeaker(withAudio: enrollAudio,
+                                                   sourceSampleRate: sampleRate,
+                                                   named: enrolledName)
+            let _ = try? sysDiarizer.enrollSpeaker(withAudio: enrollAudio,
+                                                   sourceSampleRate: sampleRate,
+                                                   named: enrolledName)
+        } else {
+            log.debug("No speaker enrollment found — labels will be Speaker A/B/C")
+        }
+
         // Run diarization on both channels (processComplete is CPU-intensive — run off cooperative pool)
         let micTimeline: DiarizerTimeline
         let sysTimeline: DiarizerTimeline
@@ -144,7 +158,9 @@ final class SpeakerDiarizer {
         let micStart = Date()
         do {
             micTimeline = try await Task.detached(priority: .userInitiated) {
-                try micDiarizer.processComplete(micInput, sourceSampleRate: StereoMixer.sampleRate)
+                try micDiarizer.processComplete(micInput,
+                                                sourceSampleRate: StereoMixer.sampleRate,
+                                                keepingEnrolledSpeakers: true)
             }.value
             let elapsed = Date().timeIntervalSince(micStart)
             let speakerDescs = micTimeline.speakers.values.map { s in
@@ -158,7 +174,9 @@ final class SpeakerDiarizer {
         let sysStart = Date()
         do {
             sysTimeline = try await Task.detached(priority: .userInitiated) {
-                try sysDiarizer.processComplete(sysInput, sourceSampleRate: StereoMixer.sampleRate)
+                try sysDiarizer.processComplete(sysInput,
+                                                sourceSampleRate: StereoMixer.sampleRate,
+                                                keepingEnrolledSpeakers: true)
             }.value
             let elapsed = Date().timeIntervalSince(sysStart)
             let speakerDescs = sysTimeline.speakers.values.map { s in
@@ -239,10 +257,12 @@ final class SpeakerDiarizer {
         // Search all speakers for a segment containing this time
         for (_, speaker) in timeline.speakers {
             let allSegments = speaker.finalizedSegments + speaker.tentativeSegments
-            for seg in allSegments {
-                if seg.startTime <= t && t <= seg.endTime {
-                    return "\(prefix) \(speaker.index + 1)"
+            for seg in allSegments where seg.startTime <= t && t <= seg.endTime {
+                // Use enrolled name if diarizer assigned one; otherwise fall back to index
+                if let name = speaker.name, !name.isEmpty {
+                    return name
                 }
+                return "\(prefix) \(speaker.index + 1)"
             }
         }
 
