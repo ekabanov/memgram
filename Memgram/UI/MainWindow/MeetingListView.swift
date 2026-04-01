@@ -129,7 +129,12 @@ struct MeetingRowView: View {
         .padding(.vertical, 2)
     }
 
+    private var isInterrupted: Bool {
+        meeting.rawTranscript == nil && meeting.status == .done
+    }
+
     private var statusColor: Color {
+        if isInterrupted { return .secondary }
         switch meeting.status {
         case .recording:    return .red
         case .transcribing: return .orange
@@ -141,6 +146,7 @@ struct MeetingRowView: View {
     private var subtitle: String {
         let time = DateFormatter.localizedString(from: meeting.startedAt,
                                                   dateStyle: .none, timeStyle: .short)
+        if isInterrupted { return "\(time) · Interrupted" }
         guard let dur = meeting.durationSeconds else { return time }
         let mins = Int(dur / 60)
         return mins > 0 ? "\(time) · \(mins)m" : time
