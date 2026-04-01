@@ -37,7 +37,7 @@ final class WhisperTranscriber: TranscriberProtocol {
         chunkStart: Double
     ) async throws -> [TranscriptSegment] {
         guard let whisperKit else { throw TranscriptionError.modelNotLoaded }
-        guard let samples = toMonoFloats(buffer) else { return [] }
+        guard let samples = selectDominantChannel(buffer, leftEnergy: leftEnergy, rightEnergy: rightEnergy) else { return [] }
 
         let options = DecodingOptions(task: .transcribe, language: nil,
                                       temperature: 0.0, skipSpecialTokens: true)
@@ -110,17 +110,4 @@ final class WhisperTranscriber: TranscriberProtocol {
         return result.trimmingCharacters(in: .whitespaces)
     }
 
-    private func toMonoFloats(_ buffer: AVAudioPCMBuffer) -> [Float]? {
-        guard let channels = buffer.floatChannelData else { return nil }
-        let frames = Int(buffer.frameLength)
-        let channelCount = Int(buffer.format.channelCount)
-        guard channelCount > 0, frames > 0 else { return nil }
-        var mono = [Float](repeating: 0, count: frames)
-        for ch in 0..<channelCount {
-            for i in 0..<frames { mono[i] += channels[ch][i] }
-        }
-        let scale = 1.0 / Float(channelCount)
-        for i in 0..<frames { mono[i] *= scale }
-        return mono
-    }
 }
