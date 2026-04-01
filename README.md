@@ -65,9 +65,17 @@ Configure your LLM in **Settings → AI** (gear icon in the popover):
 
 | Backend | Notes |
 |---------|-------|
-| **Qwen 3.5 (Local)** | In-process via Apple MLX. Downloads ~4.5 GB. Requires Apple Silicon. Streams tokens in real time. |
+| **Qwen 3.5 (Local)** | In-process via Apple MLX. Model auto-selected by RAM (see below). Requires Apple Silicon. Streams tokens in real time. Unloaded from memory after each summary. |
 | **Custom Server** | Any OpenAI-compatible server (LM Studio, vLLM, Ollama, mlx_lm.server). Streams tokens in real time. |
 | **Claude / OpenAI / Gemini** | Cloud API, key stored in Keychain. Streams tokens in real time. |
+
+**Qwen model selection by RAM** (peak memory usage during summarisation):
+
+| RAM | Model | Peak memory |
+|-----|-------|-------------|
+| 48 GB+ | Qwen 3.5 27B 4-bit | ~44 GB |
+| 24–47 GB | Qwen 3.5 9B 4-bit | ~12 GB |
+| < 24 GB | Qwen 3.5 4B 4-bit | ~5 GB |
 
 All providers use a 10-minute request timeout. API keys are Keychain-only — never UserDefaults or SQLite.
 

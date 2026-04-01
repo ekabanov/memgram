@@ -11,21 +11,21 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     static let shared = QwenLocalProvider()
     /// Auto-selects the model based on available RAM.
     ///
-    /// Thresholds:
-    ///  < 16 GB → 4B 4bit  (~3 GB) — fits on 8 GB machines
-    ///  16–32 GB → 9B 4bit  (~5 GB)
-    ///  ≥ 32 GB → 27B 4bit (~15 GB)
+    /// Peak memory usage measured in production (model weights + KV cache + activations):
+    ///  < 24 GB → 4B 4bit  (~5 GB peak)  — safe on 8 GB machines
+    ///  24–47 GB → 9B 4bit  (~12 GB peak) — fits on 24/32 GB machines
+    ///  ≥ 48 GB → 27B 4bit (~44 GB peak) — requires 48 GB+
     static var modelID: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 32 { return "mlx-community/Qwen3.5-27B-4bit" }
-        if ram >= 16 { return "mlx-community/Qwen3.5-9B-MLX-4bit" }
+        if ram >= 48 { return "mlx-community/Qwen3.5-27B-4bit" }
+        if ram >= 24 { return "mlx-community/Qwen3.5-9B-MLX-4bit" }
         return "mlx-community/Qwen3.5-4B-MLX-4bit"
     }
 
     var name: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 32 { return "Qwen 3.5 27B (local)" }
-        if ram >= 16 { return "Qwen 3.5 9B (local)" }
+        if ram >= 48 { return "Qwen 3.5 27B (local)" }
+        if ram >= 24 { return "Qwen 3.5 9B (local)" }
         return "Qwen 3.5 4B (local)"
     }
 
