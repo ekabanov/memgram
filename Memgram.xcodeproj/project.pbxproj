@@ -99,6 +99,7 @@
 		EECD433896F09442B3E1D4CE /* SpeakerRenameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFBC969A773271B3BC18E885 /* SpeakerRenameView.swift */; };
 		F2520954BA649DCB552F7EDD /* MobileMeetingDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C44E7E691F58F0300891B92 /* MobileMeetingDetailView.swift */; };
 		F4079DD0A1D5E98E12EE09D4 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */; };
+		F5353AF97C378156165EF69A /* WhisperTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7CE21B92B6ED6B6BECAED50 /* WhisperTranscriber.swift */; };
 		F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3102F3CC3D158F04D5C1AE9A /* PermissionsManager.swift */; };
 		FADCDA0A0090F756399BE4EC /* RemoteMeetingProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216D6741B51925547324E122 /* RemoteMeetingProcessor.swift */; };
 		FBAF3B5130CB76AB48FC75C6 /* StereoMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BDF9934A5067BEC5703004 /* StereoMixer.swift */; };
@@ -174,6 +175,7 @@
 		9B83A48D9B5013FC9151290B /* Memgram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Memgram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C44E7E691F58F0300891B92 /* MobileMeetingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileMeetingDetailView.swift; sourceTree = "<group>"; };
 		9D9D739005F69BB4F709259E /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		A7CE21B92B6ED6B6BECAED50 /* WhisperTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperTranscriber.swift; sourceTree = "<group>"; };
 		AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramMobileApp.swift; sourceTree = "<group>"; };
 		AF09BEF692E4C86B766A5C7A /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		B3EBB33D41210D3EF28EE697 /* MobileRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRecordingView.swift; sourceTree = "<group>"; };
@@ -516,6 +518,7 @@
 				F7E0494BDFF299FE51811E28 /* TranscriberProtocol.swift */,
 				CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */,
 				E040E5DB9ACC93EEA2C59A40 /* WhisperModelManager.swift */,
+				A7CE21B92B6ED6B6BECAED50 /* WhisperTranscriber.swift */,
 			);
 			path = Transcription;
 			sourceTree = "<group>";
@@ -771,6 +774,7 @@
 				D8611AB68B1682590BC9B757 /* TranscriberProtocol.swift in Sources */,
 				A014CBA98A79D45243C72F8D /* TranscriptionEngine.swift in Sources */,
 				D4FB8D759C49E374CC4363E8 /* WhisperModelManager.swift in Sources */,
+				F5353AF97C378156165EF69A /* WhisperTranscriber.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
