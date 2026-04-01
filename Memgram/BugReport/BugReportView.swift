@@ -1,9 +1,13 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct BugReportView: View {
     @State private var description = ""
     @State private var steps = ""
     @State private var isSubmitting = false
+    @State private var isSavingLogs = false
     @State private var submittedURL: String?
     @State private var errorMessage: String?
     @State private var builtPayload: BugReportPayload?
@@ -67,6 +71,10 @@ struct BugReportView: View {
                 }
 
                 HStack {
+                    Button(isSavingLogs ? "Saving…" : "Save Logs…") {
+                        Task { await saveLogs() }
+                    }
+                    .disabled(isSavingLogs)
                     Spacer()
                     Button(isSubmitting ? "Submitting…" : "Submit Report") {
                         Task { await submit() }
@@ -93,6 +101,39 @@ struct BugReportView: View {
 
         """
         logPreview = header + lines.joined(separator: "\n")
+    }
+
+    private func saveLogs() async {
+        isSavingLogs = true
+        defer { isSavingLogs = false }
+
+        let payload: BugReportPayload
+        if let cached = builtPayload {
+            payload = cached
+        } else {
+            payload = await BugReportPayloadBuilder.build()
+            builtPayload = payload
+        }
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(payload) else { return }
+
+        #if os(macOS)
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "memgram-logs-\(formattedDate()).json"
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? data.write(to: url)
+        #endif
+    }
+
+    private func formattedDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
+        return formatter.string(from: Date())
     }
 
     private func submit() async {
