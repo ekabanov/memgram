@@ -58,7 +58,8 @@ struct MobileMeetingListView: View {
         meetings = all.filter { m in
             let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
             let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
-            return hasTranscript || hasSummary || m.status == .recording || m.status == .transcribing
+            let isInterrupted = m.rawTranscript == nil
+            return hasTranscript || hasSummary || isInterrupted || m.status == .recording || m.status == .transcribing
         }
         log.debug("Loaded \(self.meetings.count) meetings (filtered from \(all.count) total)")
     }

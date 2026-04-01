@@ -78,11 +78,13 @@ struct MeetingListView: View {
 
     private func load() {
         let all = (try? MeetingStore.shared.fetchAll()) ?? []
-        // Hide meetings with no transcript and no summary — empty recordings
+        // Hide meetings with no transcript and no summary — empty recordings.
+        // Keep meetings whose rawTranscript is nil (interrupted/recovered — may have segments).
         meetings = all.filter { m in
             let hasTranscript = m.rawTranscript.map { !$0.isEmpty } ?? false
             let hasSummary    = m.summary.map { !$0.isEmpty } ?? false
-            return hasTranscript || hasSummary || m.status == .recording || m.status == .transcribing
+            let isInterrupted = m.rawTranscript == nil
+            return hasTranscript || hasSummary || isInterrupted || m.status == .recording || m.status == .transcribing
         }
     }
 
