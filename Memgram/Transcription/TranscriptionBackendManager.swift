@@ -1,10 +1,25 @@
 import Foundation
+import Combine
 
-// Temporary stub — will be replaced by full TranscriptionBackendManager in Task 5
 @MainActor
 final class TranscriptionBackendManager: ObservableObject {
     static let shared = TranscriptionBackendManager()
-    @Published var isLoading = false
-    @Published var isReady = false
-    private init() {}
+
+    private let backendKey = "transcriptionBackend"
+
+    /// The backend the user has selected (persisted in UserDefaults).
+    @Published var selectedBackend: TranscriptionBackend {
+        didSet { UserDefaults.standard.set(selectedBackend.rawValue, forKey: backendKey) }
+    }
+
+    /// True while Parakeet model is downloading or loading.
+    @Published var isLoading: Bool = false
+
+    /// True once Parakeet model is fully ready.
+    @Published var isReady: Bool = false
+
+    private init() {
+        let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""
+        selectedBackend = TranscriptionBackend(rawValue: saved) ?? .whisper
+    }
 }
