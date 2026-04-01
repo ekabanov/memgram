@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 #if canImport(MLXLLM)
+import MLX
 import MLXLLM
 import MLXLMCommon
 
@@ -192,6 +193,10 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         modelContainer = nil
         isLoaded = false
         downloadProgress = 0
+        // Release MLX Metal GPU cache — without this the allocator holds onto
+        // the buffers and memory doesn't return to the OS.
+        MLX.Memory.clearCache()
+        log.info("MLX cache cleared")
     }
 
     func cancelDownload() {
