@@ -31,10 +31,25 @@ final class SpeakerDiarizer {
 
     /// Downloads and compiles Sortformer models from HuggingFace.
     func prepare() async throws {
-        log.info("Loading Sortformer models (balancedV2_1)…")
-        let loaded = try await SortformerModels.loadFromHuggingFace(config: .balancedV2_1)
-        models = loaded
-        log.info("Sortformer models ready (compiled in \(String(format: "%.1f", loaded.compilationDuration))s)")
+        guard models == nil else {
+            log.debug("Sortformer models already loaded — skipping prepare")
+            return
+        }
+        log.info("Downloading Sortformer models (balancedV2_1) — first run compiles CoreML…")
+        await MainActor.run { TranscriptionBackendManager.shared.isDiarizerLoading = true }
+        do {
+            let loaded = try await SortformerModels.loadFromHuggingFace(config: .balancedV2_1)
+            models = loaded
+            log.info("Sortformer models ready — compiled in \(String(format: "%.1f", loaded.compilationDuration))s")
+            await MainActor.run {
+                TranscriptionBackendManager.shared.isDiarizerLoading = false
+                TranscriptionBackendManager.shared.isDiarizerReady = true
+            }
+        } catch {
+            log.error("Sortformer model load failed: \(error.localizedDescription, privacy: .public)")
+            await MainActor.run { TranscriptionBackendManager.shared.isDiarizerLoading = false }
+            throw error
+        }
     }
 
     /// Clears accumulated audio and energy log, keeping models loaded.
@@ -106,10 +121,12 @@ final class SpeakerDiarizer {
         let micInput = Self.downsample(micCopy, toMaxSamples: maxSamples)
         let sysInput = Self.downsample(sysCopy, toMaxSamples: maxSamples)
 
-        log.info("Running diarization on \(micInput.count) mic + \(sysInput.count) sys samples (capped from \(micCopy.count))")
+        let durationSec = Double(micCopy.count) / sampleRate
+        let cappedSec   = Double(micInput.count) / sampleRate
+        log.info("Diarization input: \(String(format: "%.1f", durationSec))s recording → \(String(format: "%.1f", cappedSec))s sampled (\(segments.count) segments, \(energyCopy.count) energy chunks)")
 
         guard let loadedModels = models else {
-            log.warning("[Diarizer] Models not loaded — skipping")
+            log.warning("Models not loaded — skipping diarization")
             return [:]
         }
 
@@ -123,28 +140,38 @@ final class SpeakerDiarizer {
         // Run diarization on both channels (processComplete is CPU-intensive — run off cooperative pool)
         let micTimeline: DiarizerTimeline
         let sysTimeline: DiarizerTimeline
+
+        let micStart = Date()
         do {
             micTimeline = try await Task.detached(priority: .userInitiated) {
                 try micDiarizer.processComplete(micInput, sourceSampleRate: StereoMixer.sampleRate)
             }.value
-            log.info("Mic diarization complete — \(micTimeline.speakers.count) speakers")
+            let elapsed = Date().timeIntervalSince(micStart)
+            let speakerDescs = micTimeline.speakers.values.map { s in
+                "\(s.description): \(s.finalizedSegments.count) segs" }.joined(separator: ", ")
+            log.info("Mic diarization: \(micTimeline.speakers.count) speaker(s) in \(String(format: "%.1f", elapsed))s — [\(speakerDescs)]")
         } catch {
-            log.error("Mic diarization failed: \(error.localizedDescription)")
+            log.error("Mic diarization failed after \(String(format: "%.1f", Date().timeIntervalSince(micStart)))s: \(error.localizedDescription, privacy: .public)")
             return [:]
         }
 
+        let sysStart = Date()
         do {
             sysTimeline = try await Task.detached(priority: .userInitiated) {
                 try sysDiarizer.processComplete(sysInput, sourceSampleRate: StereoMixer.sampleRate)
             }.value
-            log.info("System diarization complete — \(sysTimeline.speakers.count) speakers")
+            let elapsed = Date().timeIntervalSince(sysStart)
+            let speakerDescs = sysTimeline.speakers.values.map { s in
+                "\(s.description): \(s.finalizedSegments.count) segs" }.joined(separator: ", ")
+            log.info("System diarization: \(sysTimeline.speakers.count) speaker(s) in \(String(format: "%.1f", elapsed))s — [\(speakerDescs)]")
         } catch {
-            log.error("System diarization failed: \(error.localizedDescription)")
+            log.error("System diarization failed after \(String(format: "%.1f", Date().timeIntervalSince(sysStart)))s: \(error.localizedDescription, privacy: .public)")
             return [:]
         }
 
-        // Resolve each segment
+        // Resolve each segment and tally label distribution for debugging
         var result: [String: String] = [:]
+        var labelCounts: [String: Int] = [:]
         for segment in segments {
             let label = resolve(
                 segment: segment,
@@ -153,9 +180,11 @@ final class SpeakerDiarizer {
                 energyLog: energyCopy
             )
             result[segment.id.uuidString] = label
+            labelCounts[label, default: 0] += 1
         }
 
-        log.info("Resolved \(result.count) segments to speaker labels")
+        let distribution = labelCounts.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)" }.joined(separator: ", ")
+        log.info("Resolved \(result.count) segments — distribution: [\(distribution)]")
         return result
     }
 

@@ -18,6 +18,12 @@ final class TranscriptionBackendManager: ObservableObject {
     /// True once Parakeet model is fully ready.
     @Published var isParakeetReady: Bool = false
 
+    /// True while Sortformer diarization models are downloading or compiling.
+    @Published var isDiarizerLoading: Bool = false
+
+    /// True once Sortformer models are compiled and ready.
+    @Published var isDiarizerReady: Bool = false
+
     private init() {
         let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""
         selectedBackend = TranscriptionBackend(rawValue: saved) ?? .parakeet
