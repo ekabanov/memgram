@@ -25,6 +25,12 @@ struct MeetingListView: View {
                                 MeetingRowView(meeting: meeting)
                                     .tag(meeting.id)
                                     .contextMenu {
+                                        if meeting.status == .interrupted {
+                                            Button("Mark as Done") {
+                                                markAsDone(meeting)
+                                            }
+                                            Divider()
+                                        }
                                         if selectedMeetingIds.count > 1 && selectedMeetingIds.contains(meeting.id) {
                                             Button("Delete \(selectedMeetingIds.count) Recordings…", role: .destructive) {
                                                 showBulkDeleteAlert = true
@@ -43,23 +49,6 @@ struct MeetingListView: View {
             }
         }
         .navigationTitle("Meetings")
-        .toolbar {
-            if !selectedMeetingIds.isEmpty {
-                ToolbarItem {
-                    Button(role: .destructive) {
-                        if selectedMeetingIds.count == 1, let id = selectedMeetingIds.first,
-                           let meeting = meetings.first(where: { $0.id == id }) {
-                            meetingToDelete = meeting
-                            showDeleteAlert = true
-                        } else {
-                            showBulkDeleteAlert = true
-                        }
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
-            }
-        }
         .onAppear { load() }
         .onReceive(NotificationCenter.default.publisher(for: .meetingDidUpdate)) { _ in load() }
         .alert("Delete Recording?", isPresented: $showDeleteAlert, presenting: meetingToDelete) { meeting in
@@ -112,6 +101,11 @@ struct MeetingListView: View {
     private func load() {
         let all = (try? MeetingStore.shared.fetchAll()) ?? []
         meetings = all.filter { $0.syncStatus != .placeholder }
+    }
+
+    private func markAsDone(_ meeting: Meeting) {
+        try? MeetingStore.shared.updateStatus(meeting.id, status: .done)
+        load()
     }
 
     private func delete(_ meeting: Meeting) {

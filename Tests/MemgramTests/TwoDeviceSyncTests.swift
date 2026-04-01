@@ -3,7 +3,6 @@ import CloudKit
 import Foundation
 @testable import Memgram
 
-@available(macOS 14.0, *)
 @Suite("Two-Device Sync")
 struct TwoDeviceSyncTests {
 

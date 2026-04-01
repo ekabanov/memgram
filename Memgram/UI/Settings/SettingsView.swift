@@ -140,10 +140,13 @@ private struct QwenDownloadStatusView: View {
                 Text("Downloading… \(Int(provider.downloadProgress * 100))%")
                     .font(.caption).foregroundColor(.secondary)
             }
+        } else if provider.downloadProgress >= 1 {
+            Label("Ready — model loads on first summary", systemImage: "checkmark.circle")
+                .foregroundColor(.secondary)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
-                Button("Download Model (~4.5 GB)") { provider.preload() }
-                    .buttonStyle(.borderedProminent)
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Downloading model files…", systemImage: "arrow.down.circle")
+                    .foregroundColor(.secondary)
                 if let err = provider.loadError {
                     Text(err).font(.caption).foregroundColor(.red)
                 }

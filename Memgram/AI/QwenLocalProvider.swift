@@ -29,6 +29,14 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         return "Qwen 3.5 4B (local)"
     }
 
+    /// Approximate download size label shown in the popover during model download.
+    static var downloadSizeLabel: String {
+        let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        if ram >= 48 { return "~14 GB" }
+        if ram >= 24 { return "~4.5 GB" }
+        return "~2.2 GB"
+    }
+
     @Published var downloadProgress: Double = 0
     @Published var isLoaded = false
     @Published var loadError: String?
@@ -141,6 +149,11 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
             log.debug("Model already loaded, skipping")
             return
         }
+        if let existing = loadTask {
+            log.info("Download already in progress — waiting for existing task")
+            try await existing.value
+            return
+        }
 
         log.info("Loading model: \(Self.modelID, privacy: .public)")
         loadError = nil
@@ -192,7 +205,8 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         log.info("Unloading Qwen model to free memory")
         modelContainer = nil
         isLoaded = false
-        downloadProgress = 0
+        // Keep downloadProgress at 1.0 so settings shows "Ready" after preload+unload.
+        // It is only reset to 0 when a fresh download starts in loadModel().
         // Release MLX Metal GPU cache — without this the allocator holds onto
         // the buffers and memory doesn't return to the OS.
         MLX.Memory.clearCache()
@@ -209,23 +223,18 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     }
 
     func preload() {
-        log.info("preload() called — downloading model files if needed (no memory load)")
+        log.info("preload() called")
         Task {
             do {
-                // Download model files to cache without loading weights into memory.
-                // On first launch this pulls the shards from HuggingFace; subsequent
-                // launches are instant (files already in the cache directory).
-                _ = try await defaultHubApi.snapshot(from: Self.modelID) { [weak self] progress in
-                    let frac = progress.fractionCompleted
-                    Task { @MainActor [weak self] in
-                        guard let self, frac > self.downloadProgress else { return }
-                        self.downloadProgress = frac
-                    }
-                }
-                await MainActor.run { self.downloadProgress = 1.0 }
-                log.info("Model files ready on disk — will load on first summarisation")
+                // Download and load model weights, then immediately unload.
+                // This ensures model files are cached on disk so the first
+                // summarisation starts instantly without waiting for a download.
+                try await loadModel()
+                unload()
+                log.info("Preload complete — model files cached, memory freed until first summary")
             } catch {
-                log.error("preload() download failed: \(error.localizedDescription, privacy: .public)")
+                self.log.error("preload() failed: \(error)")
+                self.loadError = error.localizedDescription
             }
         }
     }

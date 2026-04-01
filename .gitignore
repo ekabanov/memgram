@@ -28,6 +28,12 @@ Memgram.xcodeproj/project.xcworkspace/xcuserdata/
 # Superpowers planning files (internal tooling)
 docs/superpowers/
 .worktrees/
+.superpowers/
+.claire/
+.claude/
+
+# Mobile build artifacts
+build-mobile/
 
 # Bug report config (contains GitHub token — never commit)
 Memgram/BugReport/BugReportConfig.swift

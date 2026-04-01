@@ -407,7 +407,7 @@ private struct QwenDownloadCard: View {
                 if isDownloading {
                     ProgressView(value: qwen.downloadProgress)
                         .tint(.purple)
-                    Text("~4.5 GB · runs locally")
+                    Text("\(QwenLocalProvider.downloadSizeLabel) · runs locally")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else if let err = qwen.loadError {

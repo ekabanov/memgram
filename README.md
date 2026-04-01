@@ -57,7 +57,7 @@ WhisperKit CoreML compilation happens once on first use. Subsequent sessions are
 
 After each recording, Memgram identifies who spoke when using two Sortformer models (one for microphone, one for system audio). Speakers are labeled Room 1/2 (in-room) and Remote 1/2 (remote participants).
 
-**Voice enrollment** — record a 5-second voice sample in **Settings → Recording → Enroll Voice**. Enrolled speakers are labeled by name in the transcript and AI summary. The LLM also uses calendar attendee names to resolve unnamed speakers.
+**Voice enrollment** — record a 5-second voice sample in **Settings → Recording → Enroll Voice**. Enrolled speakers are labeled by name in the transcript and AI summary. The LLM resolves speaker names in this order: (1) self-introduction or direct address in the transcript, (2) voice enrollment match, (3) deductive elimination — if the number of detected speakers equals the number of calendar attendees, remaining unidentified speakers are assigned to remaining attendee names by process of elimination, (4) fall back to Speaker A/B/C.
 
 ## AI Summaries
 
@@ -65,7 +65,7 @@ Configure your LLM in **Settings → AI** (gear icon in the popover):
 
 | Backend | Notes |
 |---------|-------|
-| **Qwen 3.5 (Local)** | In-process via Apple MLX. Model auto-selected by RAM (see below). Requires Apple Silicon. Streams tokens in real time. Unloaded from memory after each summary. |
+| **Qwen 3.5 (Local)** | In-process via Apple MLX. Model auto-selected by RAM (see below). Requires Apple Silicon. Streams tokens in real time. At launch, model files are downloaded to disk via `HubApi.snapshot` without loading weights into memory. Weights load on demand when summarising and are unloaded (including `MLX.Memory.clearCache()`) immediately after — keeping the ~44 GB peak footprint off RAM except during active use. |
 | **Custom Server** | Any OpenAI-compatible server (LM Studio, vLLM, Ollama, mlx_lm.server). Streams tokens in real time. |
 | **Claude / OpenAI / Gemini** | Cloud API, key stored in Keychain. Streams tokens in real time. |
 

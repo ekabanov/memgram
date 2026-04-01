@@ -48,7 +48,7 @@ if [ "$KEEP_MODELS" = false ]; then
   rm -rf "$APP_CACHES/huggingface/hub/models--argmaxinc--whisperkit-coreml"
 
   echo "   Removing Qwen/MLX model cache…"
-  rm -rf "$APP_CACHES/huggingface/hub/models--mlx-community"
+  rm -rf "$APP_CACHES/huggingface/hub/models--mlx-community"*
   rm -rf "$APP_CACHES/models"
 
   echo "   Removing Parakeet (FluidAudio) model cache…"
