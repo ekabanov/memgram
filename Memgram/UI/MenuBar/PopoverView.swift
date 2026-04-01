@@ -6,8 +6,23 @@ struct PopoverView: View {
     @ObservedObject private var session = RecordingSession.shared
     @ObservedObject private var calendar = CalendarManager.shared
     @ObservedObject private var modelManager = WhisperModelManager.shared
+    @ObservedObject private var backendManager = TranscriptionBackendManager.shared
     @ObservedObject private var llmStore = LLMProviderStore.shared
     @State private var lastError: String?
+
+    private var isModelReady: Bool {
+        switch backendManager.selectedBackend {
+        case .whisper:  return isModelReady
+        case .parakeet: return backendManager.isReady
+        }
+    }
+
+    private var isModelLoading: Bool {
+        switch backendManager.selectedBackend {
+        case .whisper:  return modelManager.isWhisperDownloading
+        case .parakeet: return backendManager.isLoading
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -101,7 +116,7 @@ struct PopoverView: View {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 32))
                     .foregroundColor(.red)
-                Text(modelManager.isWhisperReady ? "Recording & transcribing…" : "Recording…")
+                Text(isModelReady ? "Recording & transcribing…" : "Recording…")
                     .font(.body)
             } else {
                 VStack(spacing: 10) {
@@ -133,6 +148,15 @@ struct PopoverView: View {
                 iconColor: .blue,
                 title: "Setting up Whisper",
                 subtitle: "\(modelManager.selectedModel.sizeMB) MB · first run only",
+                progress: nil
+            )
+        }
+        if backendManager.isLoading {
+            downloadProgressCard(
+                icon: "arrow.down.circle",
+                iconColor: .indigo,
+                title: "Setting up Parakeet",
+                subtitle: "~600 MB · ANE model · first run only",
                 progress: nil
             )
         }
@@ -212,8 +236,8 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .disabled(!permissions.microphoneGranted || !permissions.systemAudioGranted || !modelManager.isWhisperReady)
-                .help(modelManager.isWhisperReady ? "" : "Whisper is loading — ready shortly")
+                .disabled(!permissions.microphoneGranted || !permissions.systemAudioGranted || !isModelReady)
+                .help(isModelReady ? "" : "\(backendManager.selectedBackend.displayName) is loading — ready shortly")
             }
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
@@ -317,8 +341,8 @@ struct PopoverView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!modelManager.isWhisperReady)
-                    .help(modelManager.isWhisperReady ? "" : "Whisper is loading — ready shortly")
+                    .disabled(!isModelReady)
+                    .help(isModelReady ? "" : "\(backendManager.selectedBackend.displayName) is loading — ready shortly")
                 }
         }
     }
