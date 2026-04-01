@@ -57,6 +57,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
 
         if #available(macOS 14.0, *) {
+            if AppDatabase.shared.needsCloudResync {
+                UserDefaults.standard.removeObject(forKey: "CKSyncEngineState")
+                appLog.info("Cleared CloudKit sync state after v4 schema migration")
+            }
             CloudSyncEngine.shared.start()
             appLog.info("CloudSync started")
             RemoteMeetingProcessor.shared.start()

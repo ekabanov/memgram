@@ -19,6 +19,7 @@ final class AppDatabase {
     }()
 
     private let dbQueue: DatabaseQueue
+    private(set) var needsCloudResync = false
 
     private init() throws {
         let appSupport = FileManager.default.urls(
@@ -56,7 +57,6 @@ final class AppDatabase {
         var migrator = DatabaseMigrator()
 
         migrator.registerMigration("v1_initial_schema") { db in
-            // meetings
             try db.create(table: "meetings") { t in
                 t.column("id", .text).primaryKey()
                 t.column("title", .text).notNull()
@@ -68,39 +68,28 @@ final class AppDatabase {
                 t.column("action_items", .text)
                 t.column("raw_transcript", .text)
             }
-
-            // segments
             try db.create(table: "segments") { t in
                 t.column("id", .text).primaryKey()
-                t.column("meeting_id", .text).notNull()
-                    .references("meetings", onDelete: .cascade)
+                t.column("meeting_id", .text).notNull().references("meetings", onDelete: .cascade)
                 t.column("speaker", .text).notNull()
                 t.column("channel", .text).notNull()
                 t.column("start_seconds", .double).notNull()
                 t.column("end_seconds", .double).notNull()
                 t.column("text", .text).notNull()
             }
-
-            // speakers
             try db.create(table: "speakers") { t in
                 t.column("id", .text).primaryKey()
-                t.column("meeting_id", .text).notNull()
-                    .references("meetings", onDelete: .cascade)
+                t.column("meeting_id", .text).notNull().references("meetings", onDelete: .cascade)
                 t.column("label", .text).notNull()
                 t.column("custom_name", .text)
             }
-
-            // embeddings
             try db.create(table: "embeddings") { t in
                 t.column("id", .text).primaryKey()
-                t.column("meeting_id", .text).notNull()
-                    .references("meetings", onDelete: .cascade)
+                t.column("meeting_id", .text).notNull().references("meetings", onDelete: .cascade)
                 t.column("chunk_text", .text).notNull()
                 t.column("embedding", .blob).notNull()
                 t.column("model", .text).notNull()
             }
-
-            // FTS5 virtual table (content-backed by segments)
             try db.create(virtualTable: "segments_fts", using: FTS5()) { t in
                 t.tokenizer = .unicode61()
                 t.content = "segments"
@@ -108,8 +97,6 @@ final class AppDatabase {
                 t.column("text")
                 t.column("speaker")
             }
-
-            // Triggers to keep FTS5 in sync with segments
             try db.execute(sql: """
                 CREATE TRIGGER segments_ai AFTER INSERT ON segments BEGIN
                     INSERT INTO segments_fts(rowid, text, speaker)
@@ -133,15 +120,9 @@ final class AppDatabase {
         }
 
         migrator.registerMigration("v2_cloudkit_sync") { db in
-            try db.alter(table: "meetings") { t in
-                t.add(column: "ck_system_fields", .blob)
-            }
-            try db.alter(table: "segments") { t in
-                t.add(column: "ck_system_fields", .blob)
-            }
-            try db.alter(table: "speakers") { t in
-                t.add(column: "ck_system_fields", .blob)
-            }
+            try db.alter(table: "meetings") { t in t.add(column: "ck_system_fields", .blob) }
+            try db.alter(table: "segments") { t in t.add(column: "ck_system_fields", .blob) }
+            try db.alter(table: "speakers") { t in t.add(column: "ck_system_fields", .blob) }
         }
 
         migrator.registerMigration("v3_calendar_fields") { db in
@@ -151,6 +132,90 @@ final class AppDatabase {
             }
         }
 
+        migrator.registerMigration("v4_semantic_status") { db in
+            try db.execute(sql: "DROP TRIGGER IF EXISTS segments_au")
+            try db.execute(sql: "DROP TRIGGER IF EXISTS segments_ad")
+            try db.execute(sql: "DROP TRIGGER IF EXISTS segments_ai")
+            try db.execute(sql: "DROP TABLE IF EXISTS segments_fts")
+            try db.execute(sql: "DROP TABLE IF EXISTS embeddings")
+            try db.execute(sql: "DROP TABLE IF EXISTS speakers")
+            try db.execute(sql: "DROP TABLE IF EXISTS segments")
+            try db.execute(sql: "DROP TABLE IF EXISTS meetings")
+
+            try db.create(table: "meetings") { t in
+                t.column("id", .text).primaryKey()
+                t.column("title", .text).notNull()
+                t.column("started_at", .double).notNull()
+                t.column("ended_at", .double)
+                t.column("duration_seconds", .double)
+                t.column("status", .text).notNull().defaults(to: "done")
+                t.column("sync_status", .text).notNull().defaults(to: "pending_upload")
+                t.column("summary", .text)
+                t.column("action_items", .text)
+                t.column("raw_transcript", .text)
+                t.column("ck_system_fields", .blob)
+                t.column("calendar_event_id", .text)
+                t.column("calendar_context", .text)
+            }
+            try db.create(table: "segments") { t in
+                t.column("id", .text).primaryKey()
+                t.column("meeting_id", .text).notNull().references("meetings", onDelete: .cascade)
+                t.column("speaker", .text).notNull()
+                t.column("channel", .text).notNull()
+                t.column("start_seconds", .double).notNull()
+                t.column("end_seconds", .double).notNull()
+                t.column("text", .text).notNull()
+                t.column("ck_system_fields", .blob)
+            }
+            try db.create(table: "speakers") { t in
+                t.column("id", .text).primaryKey()
+                t.column("meeting_id", .text).notNull().references("meetings", onDelete: .cascade)
+                t.column("label", .text).notNull()
+                t.column("custom_name", .text)
+                t.column("ck_system_fields", .blob)
+            }
+            try db.create(table: "embeddings") { t in
+                t.column("id", .text).primaryKey()
+                t.column("meeting_id", .text).notNull().references("meetings", onDelete: .cascade)
+                t.column("chunk_text", .text).notNull()
+                t.column("embedding", .blob).notNull()
+                t.column("model", .text).notNull()
+            }
+            try db.create(virtualTable: "segments_fts", using: FTS5()) { t in
+                t.tokenizer = .unicode61()
+                t.content = "segments"
+                t.contentRowID = "rowid"
+                t.column("text")
+                t.column("speaker")
+            }
+            try db.execute(sql: """
+                CREATE TRIGGER segments_ai AFTER INSERT ON segments BEGIN
+                    INSERT INTO segments_fts(rowid, text, speaker)
+                    VALUES (new.rowid, new.text, new.speaker);
+                END
+            """)
+            try db.execute(sql: """
+                CREATE TRIGGER segments_ad AFTER DELETE ON segments BEGIN
+                    INSERT INTO segments_fts(segments_fts, rowid, text, speaker)
+                    VALUES ('delete', old.rowid, old.text, old.speaker);
+                END
+            """)
+            try db.execute(sql: """
+                CREATE TRIGGER segments_au AFTER UPDATE ON segments BEGIN
+                    INSERT INTO segments_fts(segments_fts, rowid, text, speaker)
+                    VALUES ('delete', old.rowid, old.text, old.speaker);
+                    INSERT INTO segments_fts(rowid, text, speaker)
+                    VALUES (new.rowid, new.text, new.speaker);
+                END
+            """)
+        }
+
+        // Detect if v4 was just applied so AppDelegate can clear CloudKit sync state
+        let appliedBefore = Set((try? dbQueue.read { try migrator.appliedIdentifiers($0) }) ?? [])
         try migrator.migrate(dbQueue)
+        let appliedAfter = Set((try? dbQueue.read { try migrator.appliedIdentifiers($0) }) ?? [])
+        if appliedAfter.contains("v4_semantic_status") && !appliedBefore.contains("v4_semantic_status") {
+            needsCloudResync = true
+        }
     }
 }
