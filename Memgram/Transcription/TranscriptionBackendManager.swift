@@ -20,6 +20,6 @@ final class TranscriptionBackendManager: ObservableObject {
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""
-        selectedBackend = TranscriptionBackend(rawValue: saved) ?? .whisper
+        selectedBackend = TranscriptionBackend(rawValue: saved) ?? .parakeet
     }
 }
