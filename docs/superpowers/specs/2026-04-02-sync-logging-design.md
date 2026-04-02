@@ -1,90 +1,101 @@
-# Sync Logging Instrumentation
+# Sync Logging Instrumentation + Global Privacy Fix
 
 **Date:** 2026-04-02  
 **Status:** Approved  
-**Goal:** Make CloudKit sync fully observable via Console.app to debug meetings diverging across devices even after re-sync.
+**Goal:** Make all app logs fully readable in Console.app and BugReport submissions, and make CloudKit sync fully observable for cross-device debugging.
 
 ---
 
 ## Problem
 
-Two symptoms observed:
-1. Each device shows meetings the other doesn't, even after `resetAndResync()` on both sides.
-2. Console.app logs are useless for diagnosis because all dynamic values (`id`, `meetingId`, error details) are redacted as `<private>` by OSLog's default privacy policy.
-
-This design addresses both.
+1. Every dynamic value in every log call across the app shows as `<private>` in Console.app and in BugReport submissions. OSLog redacts string interpolations by default unless explicitly marked `.public`. This affects all 32 files that use `log.*` or `logger.*`.
+2. Sync-specific gaps: six key lifecycle events in CloudKit upload/download have no log entries at all, so even with privacy fixed you can't trace why a meeting didn't sync.
 
 ---
 
 ## Approach
 
-**C1 — Surgical annotation + gap-fill** in `CloudSyncEngine.swift` and `CKSyncTransport.swift`. No new files, no new abstractions. Two changes:
+Two complementary changes:
 
-1. Add `privacy: .public` to every dynamic interpolation in existing log calls.
-2. Add six missing log points that cover the full upload/download lifecycle.
+**1. Global privacy fix via `PublicLogger` wrapper** — change `Logger.make()` to return a thin `PublicLogger` struct whose methods accept `@autoclosure () -> String`. Interpolations evaluate to a plain `String` first, then log with `privacy: .public`. No call sites change — `log.info("got \(value)")` keeps working as-is. The 30 files using `Logger.make()` get the fix for free. The two sync files (`CloudSyncEngine`, `CKSyncTransport`) that construct `Logger` directly are migrated to use `Logger.make()`.
 
----
-
-## Privacy Fix
-
-Every `\(someValue)` in both sync files gets annotated as `\(someValue, privacy: .public)`.
-
-Scope of values being made public:
-- Meeting/segment/speaker UUIDs — not personal data
-- Table names (`"meetings"`, `"segments"`, `"speakers"`) — constants effectively  
-- Record names (`recordID.recordName`) — same format as UUIDs
-- Error codes (`.rawValue` ints) and `localizedDescription` — needed for diagnosis
-- Counts (integers) — already public by OSLog convention but annotating explicitly for consistency
-
-`Log.swift` is not changed. Privacy is controlled per call-site.
+**2. Six missing sync log points** — added to `CloudSyncEngine.swift` and `CKSyncTransport.swift` covering the full upload/download lifecycle.
 
 ---
 
-## Missing Instrumentation Points
+## Privacy Fix: `PublicLogger`
 
-Six log calls added, covering the full round-trip:
+`Log.swift` is rewritten to define a `PublicLogger` struct and change `Logger.make()` to return it:
+
+```swift
+struct PublicLogger {
+    private let logger: Logger
+
+    func info(_ message: @autoclosure () -> String)    { let m = message(); logger.info("\(m, privacy: .public)") }
+    func error(_ message: @autoclosure () -> String)   { let m = message(); logger.error("\(m, privacy: .public)") }
+    func warning(_ message: @autoclosure () -> String) { let m = message(); logger.warning("\(m, privacy: .public)") }
+    func debug(_ message: @autoclosure () -> String)   { let m = message(); logger.debug("\(m, privacy: .public)") }
+    func fault(_ message: @autoclosure () -> String)   { let m = message(); logger.fault("\(m, privacy: .public)") }
+}
+
+extension Logger {
+    static func make(_ category: String) -> PublicLogger {
+        PublicLogger(logger: Logger(subsystem: "com.memgram.app", category: category))
+    }
+}
+```
+
+**Trade-off accepted:** OSLog's specialized per-type formatting (e.g., `%{public}d`) is lost. Since all values are being made public anyway, this doesn't matter. The string evaluated by `@autoclosure` is standard Swift interpolation — identical to what the original call sites produce.
+
+**Migration:** `CloudSyncEngine` and `CKSyncTransport` currently create `Logger(subsystem:category:)` directly, bypassing `Logger.make()`. Both are updated to use `Logger.make("CloudSync")` and `Logger.make("CKSyncTransport")` respectively, and their `logger`/`log` properties change type from `Logger` to `PublicLogger`. All existing call sites in those files remain unchanged.
+
+---
+
+## Missing Sync Instrumentation Points
+
+Six log calls added to complete the upload/download chain:
 
 ### 1. `enqueueSave(table:id:)` — entry
 ```
-[CloudSync] Enqueued table/id for upload
+[CloudSync] Enqueued <table>/<id> for upload
 ```
 Confirms the DB write triggered sync. Currently only logs on error.
 
 ### 2. `buildCKRecord(table:id:)` — success path
 ```
-[CloudSync] Built record table/id (new | existing systemFields)
+[CloudSync] Built record <table>/<id> (new | has systemFields)
 ```
-Confirms the CKRecord was constructed and handed to the engine. Currently only logs on error or unknown table.
+Confirms the CKRecord was constructed. Currently only logs on error or unknown table.
 
-### 3. `nextRecordZoneChangeBatch` — batch summary (in `CKSyncTransport`)
+### 3. `nextRecordZoneChangeBatch` — batch summary (`CKSyncTransport`)
 ```
 [CKSyncTransport] Sending batch of N records
 ```
-Confirms CKSyncEngine is actually asking for records to upload. If this never fires, the engine isn't triggering sends.
+Confirms CKSyncEngine is requesting records to send. If this never fires, the engine isn't triggering uploads.
 
 ### 4. `didSend` — per saved record
 ```
-[CloudSync] Uploaded table/id successfully
+[CloudSync] Uploaded <table>/<id> successfully
 ```
-Confirms CloudKit acknowledged the record. Currently `didSend` calls `updateSystemFields` silently on success.
+Confirms CloudKit acknowledged the record. Currently silent on success.
 
-### 5. `didSend` — per failed record with error code
+### 5. `didSend` — per failed record with error code (all branches)
 ```
-[CloudSync] Upload failed for table/id — code N: description
+[CloudSync] Upload failed for <table>/<id> — code N: <description>
 ```
-Currently only logs for the `default` error case; `.serverRecordChanged`, `.zoneNotFound`, `.unknownItem` log warnings without the meeting ID.
+Currently `.serverRecordChanged`, `.zoneNotFound`, `.unknownItem` log warnings without the meeting ID. This adds consistent ID + error code logging to all branches.
 
 ### 6. `applyRemoteRecord` — meeting insert vs update + final status
 ```
-[CloudSync] Applied meeting id — inserted | updated — finalStatus
+[CloudSync] Applied meeting <id> — inserted|updated — status <finalStatus>
 ```
-Confirms what the receiving device stored. Currently meeting apply has no success log at all (only segments do).
+Confirms what the receiving device stored. Currently meeting apply has no success log (only segments do).
 
 ---
 
 ## What This Enables in Console.app
 
-Filter by subsystem `com.memgram.app` and category `CloudSync` or `CKSyncTransport`. With these changes you can correlate across devices:
+Filter by subsystem `com.memgram.app`. For sync specifically, filter by category `CloudSync` or `CKSyncTransport` and correlate across devices:
 
 | Question | Log point |
 |---|---|
@@ -95,7 +106,7 @@ Filter by subsystem `com.memgram.app` and category `CloudSync` or `CKSyncTranspo
 | Why did upload fail? | Point 5 |
 | Did device B receive and store it? | Point 6 |
 
-A meeting missing on device B that exists on device A will show exactly where the chain broke.
+For BugReport: log entries collected via `OSLogStore` will now contain actual values instead of `<private>` placeholders.
 
 ---
 
@@ -103,16 +114,16 @@ A meeting missing on device B that exists on device A will show exactly where th
 
 | File | Change |
 |---|---|
-| `Memgram/Sync/CloudSyncEngine.swift` | Privacy annotations on all existing log calls; add points 1, 2, 4, 5, 6 |
-| `Memgram/Sync/CKSyncTransport.swift` | Privacy annotations on all existing log calls; add point 3 |
+| `Memgram/Utilities/Log.swift` | Add `PublicLogger`; change `Logger.make()` return type |
+| `Memgram/Sync/CloudSyncEngine.swift` | Migrate to `Logger.make()`; add points 1, 2, 4, 5, 6 |
+| `Memgram/Sync/CKSyncTransport.swift` | Migrate to `Logger.make()`; add point 3 |
 
-No other files touched.
+The 30 other files using `Logger.make()` get the privacy fix automatically — no changes needed.
 
 ---
 
 ## Out of Scope
 
 - No UI debug panel (deferred)
-- No `os_signpost` timing traces (not needed for this bug)
-- No changes to `Log.swift` or other subsystems
+- No `os_signpost` timing traces
 - No new log categories or structured logging format
