@@ -2,7 +2,7 @@ import WatchConnectivity
 import Foundation
 import os
 
-private let log = Logger(subsystem: "com.memgram.app", category: "WatchSession")
+private let log = Logger.make("WatchSession")
 
 final class WatchSessionManager: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchSessionManager()

@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import os
 
-private let log = Logger(subsystem: "com.memgram.app", category: "WatchRecording")
+private let log = Logger.make("WatchRecording")
 
 @MainActor
 final class WatchAudioRecorder: ObservableObject {

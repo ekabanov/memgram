@@ -1,7 +1,7 @@
 import SwiftUI
 import os
 
-private let log = Logger(subsystem: "com.memgram.app", category: "WatchUI")
+private let log = Logger.make("WatchUI")
 
 struct WatchRecordingView: View {
     @StateObject private var recorder = WatchAudioRecorder()
