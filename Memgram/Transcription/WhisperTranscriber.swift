@@ -16,14 +16,14 @@ final class WhisperTranscriber: TranscriberProtocol {
             return
         }
         let modelName = await MainActor.run { WhisperModelManager.shared.selectedModel.whisperKitName }
-        log.info("Loading WhisperKit model: \(modelName, privacy: .public)")
+        log.info("Loading WhisperKit model: \(modelName)")
         await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = true }
         let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
         self.whisperKit = wk
         log.info("WhisperKit loaded — triggering CoreML warm-up")
         let silence = [Float](repeating: 0, count: 16000)
         _ = try? await wk.transcribe(audioArray: silence)
-        log.info("WhisperKit ready — model: \(modelName, privacy: .public)")
+        log.info("WhisperKit ready — model: \(modelName)")
         await MainActor.run {
             WhisperModelManager.shared.isWhisperDownloading = false
             WhisperModelManager.shared.isWhisperReady = true

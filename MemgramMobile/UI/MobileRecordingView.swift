@@ -214,7 +214,7 @@ struct MobileRecordingView: View {
 
         do {
             let meetingId = try uploader.startMeeting(title: title, calendarContext: calendarContext)
-            log.info("Meeting started: \(meetingId, privacy: .public)")
+            log.info("Meeting started: \(meetingId)")
 
             recorder.onChunkReady = { fileURL, chunkIndex, offsetSeconds in
                 uploader.uploadChunk(fileURL: fileURL, chunkIndex: chunkIndex, offsetSeconds: offsetSeconds)
@@ -223,7 +223,7 @@ struct MobileRecordingView: View {
             try recorder.start()
         } catch {
             errorMessage = error.localizedDescription
-            log.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
+            log.error("Failed to start recording: \(error.localizedDescription)")
         }
     }
 

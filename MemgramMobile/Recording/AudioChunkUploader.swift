@@ -32,7 +32,7 @@ final class AudioChunkUploader: ObservableObject {
         currentMeetingId = meeting.id
         pendingChunks = 0
         uploadTasks.removeAll()
-        log.info("Started meeting: \(meeting.id, privacy: .public)")
+        log.info("Started meeting: \(meeting.id)")
         return meeting.id
     }
 
@@ -55,9 +55,9 @@ final class AudioChunkUploader: ObservableObject {
         let task = Task { [chunkService] in
             do {
                 try await chunkService.upload(record: record)
-                log.info("Chunk \(chunkIndex) uploaded for meeting \(meetingId, privacy: .public)")
+                log.info("Chunk \(chunkIndex) uploaded for meeting \(meetingId)")
             } catch {
-                log.error("Chunk \(chunkIndex) upload failed: \(error.localizedDescription, privacy: .public)")
+                log.error("Chunk \(chunkIndex) upload failed: \(error.localizedDescription)")
             }
 
             // Clean up local temp file
@@ -89,9 +89,9 @@ final class AudioChunkUploader: ObservableObject {
         // Mark meeting as transcribing so the Mac can pick it up
         do {
             try store.updateStatus(meetingId, status: .transcribing)
-            log.info("Meeting \(meetingId, privacy: .public) set to transcribing")
+            log.info("Meeting \(meetingId) set to transcribing")
         } catch {
-            log.error("Failed to update meeting status: \(error.localizedDescription, privacy: .public)")
+            log.error("Failed to update meeting status: \(error.localizedDescription)")
         }
 
         uploadedMeetingId = meetingId

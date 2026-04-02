@@ -33,12 +33,12 @@ final class LLMProviderStore: ObservableObject {
         selectedBackend   = LLMBackend(rawValue: saved) ?? .qwen
         customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
         customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
-        log.info("Loaded — backend: \(self.selectedBackend.displayName, privacy: .public) (raw saved: \(saved, privacy: .public))")
+        log.info("Loaded — backend: \(self.selectedBackend.displayName) (raw saved: \(saved))")
     }
 
     var currentProvider: any LLMProvider {
         let p = providerFor(selectedBackend)
-        log.debug("currentProvider → \(p.name, privacy: .public)")
+        log.debug("currentProvider → \(p.name)")
         return p
     }
 

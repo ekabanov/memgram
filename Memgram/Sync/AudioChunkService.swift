@@ -30,14 +30,14 @@ final class AudioChunkService {
 
     /// Upload a single audio chunk record.
     func upload(record: CKRecord) async throws {
-        log.info("Uploading chunk: \(record.recordID.recordName, privacy: .public)")
+        log.info("Uploading chunk: \(record.recordID.recordName)")
         let (_, results) = try await database.modifyRecords(saving: [record], deleting: [])
         for (_, result) in results {
             if case .failure(let error) = result {
                 throw error
             }
         }
-        log.info("Chunk uploaded: \(record.recordID.recordName, privacy: .public)")
+        log.info("Chunk uploaded: \(record.recordID.recordName)")
     }
 
     /// Fetch all pending audio chunks for a given meeting, ordered by chunkIndex.
@@ -68,34 +68,34 @@ final class AudioChunkService {
             op.savePolicy = .ifServerRecordUnchanged
             op.qualityOfService = .userInitiated
             try await database.modifyRecords(saving: [record], deleting: [])
-            log.info("Claimed chunk: \(record.recordID.recordName, privacy: .public)")
+            log.info("Claimed chunk: \(record.recordID.recordName)")
             return true
         } catch let error as CKError where error.code == .serverRecordChanged {
-            log.info("Chunk already claimed by another Mac: \(record.recordID.recordName, privacy: .public)")
+            log.info("Chunk already claimed by another Mac: \(record.recordID.recordName)")
             return false
         } catch {
-            log.error("Claim failed for chunk \(record.recordID.recordName, privacy: .public): \(error)")
+            log.error("Claim failed for chunk \(record.recordID.recordName): \(error)")
             return false
         }
     }
 
     /// Delete a processed audio chunk record (removes CKAsset from iCloud storage).
     func markDoneAndDelete(recordID: CKRecord.ID) async throws {
-        log.info("Deleting processed chunk: \(recordID.recordName, privacy: .public)")
+        log.info("Deleting processed chunk: \(recordID.recordName)")
         let (_, results) = try await database.modifyRecords(saving: [], deleting: [recordID])
         for (_, result) in results {
             if case .failure(let error) = result {
                 throw error
             }
         }
-        log.info("Chunk deleted: \(recordID.recordName, privacy: .public)")
+        log.info("Chunk deleted: \(recordID.recordName)")
     }
 
     /// Download the audio asset from a chunk record to a local temp file.
     func downloadAudioAsset(from record: CKRecord) throws -> URL? {
         guard let asset = record["audioData"] as? CKAsset,
               let assetURL = asset.fileURL else {
-            log.warning("No audio asset in chunk: \(record.recordID.recordName, privacy: .public)")
+            log.warning("No audio asset in chunk: \(record.recordID.recordName)")
             return nil
         }
         let tempURL = FileManager.default.temporaryDirectory

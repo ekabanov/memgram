@@ -48,10 +48,10 @@ final class SummaryEngine: ObservableObject {
             #endif
         }
         lastError = nil
-        log.info("Starting summarisation for \(meetingId, privacy: .public)")
+        log.info("Starting summarisation for \(meetingId)")
 
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {
-            log.warning("Meeting not found: \(meetingId, privacy: .public)")
+            log.warning("Meeting not found: \(meetingId)")
             return
         }
         // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings)
@@ -74,7 +74,7 @@ final class SummaryEngine: ObservableObject {
             overrideBackend.map { LLMProviderStore.shared.providerFor($0) }
                 ?? LLMProviderStore.shared.currentProvider
         }
-        log.info("Using provider: \(provider.name, privacy: .public) | transcript: \(transcript.count) chars")
+        log.info("Using provider: \(provider.name) | transcript: \(transcript.count) chars")
 
         do {
             let summary: String
@@ -120,7 +120,7 @@ final class SummaryEngine: ObservableObject {
             // Fire title generation in a separate task so summarize() returns immediately
             Task { await self.generateTitle(meetingId: meetingId, overrideBackend: overrideBackend) }
         } catch {
-            log.error("Failed to summarise meeting \(meetingId, privacy: .public): \(error)")
+            log.error("Failed to summarise meeting \(meetingId): \(error)")
             streamingText.removeValue(forKey: meetingId)
             await MainActor.run {
                 self.lastError = (meetingId: meetingId, message: error.localizedDescription)
@@ -204,7 +204,7 @@ final class SummaryEngine: ObservableObject {
                       summary.contains("<think>") else { continue }
                 let cleanedSummary = self.stripThinkingTags(summary)
                 try? MeetingStore.shared.saveSummary(meetingId: meeting.id, summary: cleanedSummary)
-                self.log.info("Cleaned <think> tags from meeting \(meeting.id, privacy: .public)")
+                self.log.info("Cleaned <think> tags from meeting \(meeting.id)")
                 cleaned = true
             }
             if cleaned {

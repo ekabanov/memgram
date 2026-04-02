@@ -30,7 +30,7 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
         let tapProcesses: [AudioObjectID] = processIDs.isEmpty
             ? [AudioObjectID(kAudioObjectSystemObject)]
             : processIDs
-        log.info("CoreAudioTapCapture: \(processIDs.count) audio processes — strategy: \(processIDs.isEmpty ? "system-fallback" : "process-list", privacy: .public)")
+        log.info("CoreAudioTapCapture: \(processIDs.count) audio processes — strategy: \(processIDs.isEmpty ? "system-fallback" : "process-list")")
         let tapDesc = CATapDescription(stereoMixdownOfProcesses: tapProcesses)
         tapDesc.name = "MemgramSystemTap"
         // isExclusive = false → spy tap (audio still plays through speakers)

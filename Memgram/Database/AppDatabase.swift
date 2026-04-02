@@ -13,7 +13,7 @@ final class AppDatabase {
         let backupName = "memgram.db.corrupted-\(Int(Date().timeIntervalSince1970))"
         let backupURL = appSupport.appendingPathComponent("Memgram/\(backupName)")
         try? FileManager.default.moveItem(at: dbURL, to: backupURL)
-        dbLog.critical("Database corrupted — moved to \(backupName, privacy: .public), starting fresh")
+        dbLog.critical("Database corrupted — moved to \(backupName), starting fresh")
         do { return try AppDatabase() }
         catch { fatalError("[AppDatabase] Cannot open database even after recovery: \(error)") }
     }()

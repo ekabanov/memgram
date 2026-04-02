@@ -89,7 +89,7 @@ final class RemoteMeetingProcessor {
         // Atomically claim this chunk — first Mac to update wins
         guard await AudioChunkService.shared.claimChunk(record) else { return }
 
-        log.info("Processing chunk \(chunkIndex) for meeting \(meetingId, privacy: .public)")
+        log.info("Processing chunk \(chunkIndex) for meeting \(meetingId)")
 
         do {
             guard let audioURL = try AudioChunkService.shared.downloadAudioAsset(from: record) else { return }
@@ -128,11 +128,11 @@ final class RemoteMeetingProcessor {
                 // Re-fetch to confirm we won (another Mac may have also written .done)
                 guard let current = try? MeetingStore.shared.fetchMeeting(meeting.id),
                       current.rawTranscript == nil else {
-                    log.info("Meeting \(meeting.id, privacy: .public) — already finalized by another Mac")
+                    log.info("Meeting \(meeting.id) — already finalized by another Mac")
                     continue
                 }
 
-                log.info("Meeting \(meeting.id, privacy: .public) — all chunks processed, finalizing")
+                log.info("Meeting \(meeting.id) — all chunks processed, finalizing")
                 let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meeting.id)) ?? []
                 let rawTranscript = segments
                     .sorted { $0.startSeconds < $1.startSeconds }
@@ -142,9 +142,9 @@ final class RemoteMeetingProcessor {
                 try MeetingStore.shared.finalizeMeeting(meeting.id, endedAt: Date(), rawTranscript: rawTranscript)
                 await SummaryEngine.shared.summarize(meetingId: meeting.id)
                 await EmbeddingEngine.shared.embed(meetingId: meeting.id)
-                log.info("Meeting \(meeting.id, privacy: .public) — summarized and done")
+                log.info("Meeting \(meeting.id) — summarized and done")
             } catch {
-                log.error("Failed to finalize meeting \(meeting.id, privacy: .public): \(error)")
+                log.error("Failed to finalize meeting \(meeting.id): \(error)")
             }
         }
     }

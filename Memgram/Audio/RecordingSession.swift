@@ -57,14 +57,14 @@ final class RecordingSession: ObservableObject {
             do {
                 try await transcriptionEngine.prepare(modelName: modelName)
             } catch {
-                log.error("Transcription model preload failed: \(error.localizedDescription, privacy: .public)")
+                log.error("Transcription model preload failed: \(error.localizedDescription)")
             }
         }
         #if os(macOS)
         if #available(macOS 14.0, *) {
             Task {
                 do { try await speakerDiarizer.prepare() }
-                catch { log.error("Diarizer preload failed: \(error.localizedDescription, privacy: .public)") }
+                catch { log.error("Diarizer preload failed: \(error.localizedDescription)") }
             }
         }
         #endif
@@ -78,13 +78,13 @@ final class RecordingSession: ObservableObject {
 
     func recoverMeeting(_ meeting: Meeting) {
         do { try MeetingStore.shared.updateStatus(meeting.id, status: .interrupted) }
-        catch { log.error("updateStatus(.interrupted) failed for meeting \(meeting.id, privacy: .public): \(error)") }
+        catch { log.error("updateStatus(.interrupted) failed for meeting \(meeting.id): \(error)") }
         interruptedMeetings.removeAll { $0.id == meeting.id }
     }
 
     func discardMeeting(_ meeting: Meeting) {
         do { try MeetingStore.shared.discardMeeting(meeting.id) }
-        catch { log.error("discardMeeting failed for meeting \(meeting.id, privacy: .public): \(error)") }
+        catch { log.error("discardMeeting failed for meeting \(meeting.id): \(error)") }
         interruptedMeetings.removeAll { $0.id == meeting.id }
     }
 
@@ -121,7 +121,7 @@ final class RecordingSession: ObservableObject {
             do {
                 try await self.transcriptionEngine.prepare(modelName: modelName)
             } catch {
-                self.log.error("Transcription model load failed for '\(modelName, privacy: .public)': \(error)")
+                self.log.error("Transcription model load failed for '\(modelName)': \(error)")
             }
         }
 
@@ -132,7 +132,7 @@ final class RecordingSession: ObservableObject {
             mic.stop()
             if let id = currentMeetingId {
                 do { try MeetingStore.shared.updateStatus(id, status: .error) }
-                catch { log.error("updateStatus(.error) failed for meeting \(id, privacy: .public): \(error)") }
+                catch { log.error("updateStatus(.error) failed for meeting \(id): \(error)") }
             }
             throw error
         }
@@ -171,7 +171,7 @@ final class RecordingSession: ObservableObject {
                 let id = meetingId
                 Task.detached(priority: .utility) { [log = self?.log] in    // DB write off main
                     do { try MeetingStore.shared.appendSegment(segment, toMeeting: id) }
-                    catch { log?.error("appendSegment failed for meeting \(id, privacy: .public): \(error)") }
+                    catch { log?.error("appendSegment failed for meeting \(id): \(error)") }
                 }
             }
 
@@ -185,7 +185,7 @@ final class RecordingSession: ObservableObject {
 
         if let id = meetingId {
             do { try MeetingStore.shared.updateStatus(id, status: .transcribing) }
-            catch { log.error("updateStatus(.transcribing) failed for meeting \(id, privacy: .public): \(error)") }
+            catch { log.error("updateStatus(.transcribing) failed for meeting \(id): \(error)") }
         }
 
         mixer.flushAndDisconnect()
@@ -238,9 +238,9 @@ final class RecordingSession: ObservableObject {
                 let rawTranscript = self.segments
                     .map { "\($0.speaker): \($0.text)" }
                     .joined(separator: "\n")
-                self.log.info("Finalising meeting \(id, privacy: .public) — \(self.segments.count) segments, \(rawTranscript.count) chars")
+                self.log.info("Finalising meeting \(id) — \(self.segments.count) segments, \(rawTranscript.count) chars")
                 do { try MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript) }
-                catch { self.log.error("finalizeMeeting failed for meeting \(id, privacy: .public): \(error)") }
+                catch { self.log.error("finalizeMeeting failed for meeting \(id): \(error)") }
                 self.currentMeetingId = nil
                 self.segmentCancellable = nil
                 self.finalizationCancellable = nil

@@ -150,7 +150,7 @@ final class MobileAudioRecorder: ObservableObject {
         }
 
         if let error {
-            log.error("Conversion error: \(error.localizedDescription, privacy: .public)")
+            log.error("Conversion error: \(error.localizedDescription)")
             return
         }
 
@@ -190,7 +190,7 @@ final class MobileAudioRecorder: ObservableObject {
             try data.write(to: url, options: .atomic)
             return url
         } catch {
-            log.error("Failed to write chunk file: \(error.localizedDescription, privacy: .public)")
+            log.error("Failed to write chunk file: \(error.localizedDescription)")
             return nil
         }
     }

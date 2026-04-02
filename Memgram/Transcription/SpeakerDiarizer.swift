@@ -46,7 +46,7 @@ final class SpeakerDiarizer {
                 TranscriptionBackendManager.shared.isDiarizerReady = true
             }
         } catch {
-            log.error("Sortformer model load failed: \(error.localizedDescription, privacy: .public)")
+            log.error("Sortformer model load failed: \(error.localizedDescription)")
             await MainActor.run { TranscriptionBackendManager.shared.isDiarizerLoading = false }
             throw error
         }
@@ -167,7 +167,7 @@ final class SpeakerDiarizer {
                 "\(s.description): \(s.finalizedSegments.count) segs" }.joined(separator: ", ")
             log.info("Mic diarization: \(micTimeline.speakers.count) speaker(s) in \(String(format: "%.1f", elapsed))s — [\(speakerDescs)]")
         } catch {
-            log.error("Mic diarization failed after \(String(format: "%.1f", Date().timeIntervalSince(micStart)))s: \(error.localizedDescription, privacy: .public)")
+            log.error("Mic diarization failed after \(String(format: "%.1f", Date().timeIntervalSince(micStart)))s: \(error.localizedDescription)")
             return [:]
         }
 
@@ -183,7 +183,7 @@ final class SpeakerDiarizer {
                 "\(s.description): \(s.finalizedSegments.count) segs" }.joined(separator: ", ")
             log.info("System diarization: \(sysTimeline.speakers.count) speaker(s) in \(String(format: "%.1f", elapsed))s — [\(speakerDescs)]")
         } catch {
-            log.error("System diarization failed after \(String(format: "%.1f", Date().timeIntervalSince(sysStart)))s: \(error.localizedDescription, privacy: .public)")
+            log.error("System diarization failed after \(String(format: "%.1f", Date().timeIntervalSince(sysStart)))s: \(error.localizedDescription)")
             return [:]
         }
 

@@ -155,7 +155,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
             return
         }
 
-        log.info("Loading model: \(Self.modelID, privacy: .public)")
+        log.info("Loading model: \(Self.modelID)")
         loadError = nil
         downloadProgress = 0
 

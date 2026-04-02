@@ -95,15 +95,15 @@ final class ClaudeProvider: LLMProvider {
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.httpBody = try JSONEncoder().encode(body)
-        log.debug("→ POST \(request.url?.path ?? "?", privacy: .public)")
+        log.debug("→ POST \(request.url?.path ?? "?")")
         let (data, resp) = try await URLSession.shared.data(for: request)
         guard let http = resp as? HTTPURLResponse else {
-            log.error("← non-HTTP response from \(request.url?.host ?? "?", privacy: .public)")
+            log.error("← non-HTTP response from \(request.url?.host ?? "?")")
             throw URLError(.badServerResponse)
         }
         guard (200...299).contains(http.statusCode) else {
             let snippet = String(data: data.prefix(200), encoding: .utf8) ?? "(binary)"
-            log.error("← HTTP \(http.statusCode) from \(request.url?.host ?? "?", privacy: .public): \(snippet, privacy: .public)")
+            log.error("← HTTP \(http.statusCode) from \(request.url?.host ?? "?"): \(snippet)")
             throw URLError(.badServerResponse)
         }
         log.debug("← HTTP \(http.statusCode), \(data.count) bytes")

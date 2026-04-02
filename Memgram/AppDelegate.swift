@@ -33,7 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard ProcessInfo.processInfo.environment["XCTestBundlePath"] == nil else { return }
-        appLog.info("App launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?", privacy: .public) (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?", privacy: .public))")
+        appLog.info("App launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))")
         NSApp.setActivationPolicy(.accessory)
 
         setupStatusItem()
@@ -118,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        appLog.error("Remote notification registration failed: \(error.localizedDescription, privacy: .public)")
+        appLog.error("Remote notification registration failed: \(error.localizedDescription)")
     }
 
     func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {

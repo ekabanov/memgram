@@ -34,7 +34,7 @@ final class SpeakerEnrollmentStore {
             try data.write(to: audioURL, options: .atomic)
             log.info("Saved \(samples.count) enrollment samples")
         } catch {
-            log.error("Failed to save enrollment audio: \(error.localizedDescription, privacy: .public)")
+            log.error("Failed to save enrollment audio: \(error.localizedDescription)")
         }
     }
 
