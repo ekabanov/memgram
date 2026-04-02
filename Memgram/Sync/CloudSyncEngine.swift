@@ -215,11 +215,12 @@ final class CloudSyncEngine: ObservableObject {
         do {
             let orphans: [Meeting] = try db.read { db in
                 try Meeting
-                    .filter(Column("sync_status") == SyncStatus.pendingUpload.rawValue)
+                    .filter(Column("sync_status") == SyncStatus.pendingUpload.rawValue
+                         || Column("sync_status") == SyncStatus.failed.rawValue)
                     .fetchAll(db)
             }
             guard !orphans.isEmpty else { return }
-            logger.info("[CloudSync] Re-enqueuing \(orphans.count) orphaned local records")
+            logger.info("[CloudSync] Re-enqueuing \(orphans.count) orphaned/failed local records")
             for meeting in orphans {
                 enqueueSave(table: "meetings", id: meeting.id)
                 enqueueSaveSegments(meetingId: meeting.id)
