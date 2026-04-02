@@ -150,7 +150,7 @@ final class BugReportPayloadBuilder {
 
         let formatter = ISO8601DateFormatter()
         var result: [BugReportPayload.LogEntry] = []
-        for entry in entries.prefix(500) {
+        for entry in entries.prefix(2000) {
             guard let logEntry = entry as? OSLogEntryLog else { continue }
             result.append(BugReportPayload.LogEntry(
                 date: formatter.string(from: logEntry.date),

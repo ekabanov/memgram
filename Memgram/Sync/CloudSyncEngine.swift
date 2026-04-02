@@ -68,7 +68,8 @@ final class CloudSyncEngine: ObservableObject {
             do {
                 logger.info("[CloudSync] Fetching changes...")
                 try await ckTransport.fetchChanges()
-                logger.info("[CloudSync] Fetch complete")
+                let postFetchCounts = self.dbCounts()
+                logger.info("[CloudSync] Fetch complete — DB now has \(postFetchCounts.meetings) meetings, \(postFetchCounts.segments) segments, \(postFetchCounts.placeholders) placeholders")
                 auditStalePlaceholders()
             } catch {
                 logger.error("[CloudSync] Fetch failed: \(error)")
@@ -89,7 +90,8 @@ final class CloudSyncEngine: ObservableObject {
     /// from CloudKit. Use when the local DB is out of sync with the server
     /// (e.g., stuck "Syncing…" placeholder meetings).
     func resetAndResync() {
-        logger.info("[CloudSync] Full reset — wiping local data and re-downloading from CloudKit")
+        let preCounts = dbCounts()
+        logger.info("[CloudSync] Full reset — wiping local data (\(preCounts.meetings) meetings, \(preCounts.segments) segments) and re-downloading from CloudKit")
         transport = nil
 
         // Wipe local meetings, segments, and speakers so CloudKit becomes the
@@ -201,7 +203,7 @@ final class CloudSyncEngine: ObservableObject {
             for speaker in speakers {
                 enqueueSave(table: "speakers", id: speaker.id)
             }
-            logger.info("Enqueued all existing records for first-launch sync")
+            logger.info("[CloudSync] Enqueued all existing records for first-launch sync — \(meetings.count) meetings, \(speakers.count) speakers")
         } catch {
             logger.error("Failed to enqueue existing records: \(error)")
         }
@@ -243,6 +245,46 @@ final class CloudSyncEngine: ObservableObject {
             Task { await self.fetchNow() }
         } catch {
             logger.error("[CloudSync] Placeholder audit failed: \(error)")
+        }
+    }
+
+    // MARK: - Record Comparison
+
+    /// Compare two CKRecords field-by-field for the synced fields.
+    /// Used to avoid re-enqueueing identical data after a conflict resolution.
+    fileprivate func recordsMatch(_ a: CKRecord, _ b: CKRecord, table: String) -> Bool {
+        switch table {
+        case "meetings":
+            return a["title"] as? String == b["title"] as? String
+                && a["status"] as? String == b["status"] as? String
+                && a["summary"] as? String == b["summary"] as? String
+                && a["rawTranscript"] as? String == b["rawTranscript"] as? String
+                && a["actionItems"] as? String == b["actionItems"] as? String
+        case "segments":
+            return a["text"] as? String == b["text"] as? String
+                && a["speaker"] as? String == b["speaker"] as? String
+        case "speakers":
+            return a["label"] as? String == b["label"] as? String
+                && a["customName"] as? String == b["customName"] as? String
+        default:
+            return false
+        }
+    }
+
+    // MARK: - Diagnostic Helpers
+
+    fileprivate func dbCounts() -> (meetings: Int, segments: Int, placeholders: Int) {
+        do {
+            return try db.read { db in
+                let meetings = try Meeting.fetchCount(db)
+                let segments = try MeetingSegment.fetchCount(db)
+                let placeholders = try Meeting
+                    .filter(Column("sync_status") == SyncStatus.placeholder.rawValue)
+                    .fetchCount(db)
+                return (meetings, segments, placeholders)
+            }
+        } catch {
+            return (0, 0, 0)
         }
     }
 
@@ -578,21 +620,19 @@ extension CloudSyncEngine: SyncTransportDelegate {
             switch ckError.code {
             case .serverRecordChanged:
                 logger.warning("[CloudSync] Upload conflict for \(recordID.recordName) — applying server version")
-                // Apply server version, then only re-enqueue if local data
-                // actually differs (prevents infinite sync loops)
-                if let serverRecord = ckError.serverRecord {
-                    let localRecord = buildCKRecord(
-                        table: parseRecordID(recordID)?.table ?? "",
-                        id: parseRecordID(recordID)?.id ?? ""
-                    )
+                if let serverRecord = ckError.serverRecord,
+                   let parsed = parseRecordID(recordID) {
                     applyRemoteRecord(serverRecord)
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
                     }
-                    // Only re-enqueue if local had different content
-                    if localRecord != nil {
-                        enqueueSave(table: parseRecordID(recordID)?.table ?? "",
-                                    id: parseRecordID(recordID)?.id ?? "")
+                    // Re-enqueue only if the merged local record differs from
+                    // the server version (e.g. local has a summary the server lacks).
+                    // Comparing the rebuilt record prevents infinite sync loops.
+                    let mergedRecord = buildCKRecord(table: parsed.table, id: parsed.id)
+                    if let merged = mergedRecord, !recordsMatch(merged, serverRecord, table: parsed.table) {
+                        logger.info("[CloudSync] Local data differs from server for \(parsed.table)/\(parsed.id) — re-enqueueing")
+                        enqueueSave(table: parsed.table, id: parsed.id)
                     }
                 }
                 // Remove from uploadingIds — the record will re-enter when the retry batch fires
