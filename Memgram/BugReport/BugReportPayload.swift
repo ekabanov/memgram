@@ -142,6 +142,9 @@ final class BugReportPayloadBuilder {
     }
 
     private static func collectLogs() async -> [BugReportPayload.LogEntry] {
+        // OSLog writes to a ring buffer — entries may not be queryable immediately.
+        // Brief pause lets the store flush before we read.
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
         guard let store = try? OSLogStore(scope: .currentProcessIdentifier) else { return [] }
         let since = Date().addingTimeInterval(-14400)  // last 4 hours
         let position = store.position(date: since)
