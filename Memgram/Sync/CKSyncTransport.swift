@@ -116,6 +116,8 @@ final class CKSyncTransport: NSObject, SyncTransport, CKSyncEngineDelegate {
         let pendingChanges = syncEngine.state.pendingRecordZoneChanges.filter { scope.contains($0) }
         guard !pendingChanges.isEmpty else { return nil }
 
+        logger.info("[CKSyncTransport] Sending batch of \(pendingChanges.count) records")
+
         return await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: pendingChanges) { recordID in
             let name = recordID.recordName
             guard let underscoreIndex = name.firstIndex(of: "_") else { return nil }
