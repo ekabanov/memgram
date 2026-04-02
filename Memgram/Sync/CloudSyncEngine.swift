@@ -24,10 +24,6 @@ final class CloudSyncEngine: ObservableObject {
     @Published var pendingCount: Int = 0
     @Published var failedCount: Int = 0
 
-    /// When true, incoming deletions are skipped. Set during resetAndResync
-    /// to prevent CloudKit tombstone replay from undoing fresh downloads.
-    private var suppressDeletions = false
-
     private init() {
         self.db = AppDatabase.shared
         self.transport = nil  // created in start()
@@ -74,10 +70,6 @@ final class CloudSyncEngine: ObservableObject {
                 try await ckTransport.fetchChanges()
                 let postFetchCounts = self.dbCounts()
                 logger.info("[CloudSync] Fetch complete — DB now has \(postFetchCounts.meetings) meetings, \(postFetchCounts.segments) segments, \(postFetchCounts.placeholders) placeholders")
-                if self.suppressDeletions {
-                    self.suppressDeletions = false
-                    logger.info("[CloudSync] Reset complete — deletions re-enabled")
-                }
                 auditStalePlaceholders()
             } catch {
                 logger.error("[CloudSync] Fetch failed: \(error)")
@@ -97,18 +89,10 @@ final class CloudSyncEngine: ObservableObject {
     /// Wipe the local sync state (change token) and re-download all records
     /// from CloudKit. Use when the local DB is out of sync with the server
     /// (e.g., stuck "Syncing…" placeholder meetings).
-    ///
-    /// Two-phase approach:
-    /// 1. Direct CKDatabase fetch with nil change token — bypasses CKSyncEngine's
-    ///    per-device server-side continuations which can omit records the server
-    ///    thinks this device has already seen.
-    /// 2. Start CKSyncEngine normally with suppressDeletions on — prevents
-    ///    tombstone replay from deleting the freshly downloaded records.
     func resetAndResync() {
         let preCounts = dbCounts()
         logger.info("[CloudSync] Full reset — wiping local data (\(preCounts.meetings) meetings, \(preCounts.segments) segments) and re-downloading from CloudKit")
         transport = nil
-        suppressDeletions = true
 
         // Wipe local meetings, segments, and speakers so CloudKit becomes the
         // sole source of truth. Embeddings and FTS are rebuilt by triggers.
@@ -128,72 +112,7 @@ final class CloudSyncEngine: ObservableObject {
         }
 
         UserDefaults.standard.removeObject(forKey: stateKey)
-
-        Task {
-            // Phase 1: Direct fetch bypasses per-device server state
-            do {
-                try await fetchAllRecordsDirect()
-            } catch {
-                logger.error("[CloudSync] Direct fetch failed: \(error) — falling back to CKSyncEngine only")
-            }
-
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-            }
-
-            // Phase 2: Start CKSyncEngine for ongoing sync.
-            // suppressDeletions remains on until after CKSyncEngine's initial fetch.
-            start()
-        }
-    }
-
-    /// Fetch all records directly via CKQuery — completely bypasses CKSyncEngine's
-    /// per-device server-side continuations AND CKDatabase.recordZoneChanges' per-device
-    /// tracking. A raw query has no change token or device state; it returns every
-    /// record in the zone unconditionally. Used by resetAndResync to ensure a true
-    /// full download after wiping the local DB.
-    private func fetchAllRecordsDirect() async throws {
-        let database = container.privateCloudDatabase
-
-        logger.info("[CloudSync] Direct query fetch — bypassing all per-device server state")
-
-        // Fetch meetings first (parent rows must exist for FK constraints)
-        let meetingRecords = try await queryAllRecords(database: database, recordType: "Meeting")
-        for record in meetingRecords {
-            applyRemoteRecord(record)
-        }
-
-        // Then segments and speakers in parallel
-        async let segmentRecords = queryAllRecords(database: database, recordType: "Segment")
-        async let speakerRecords = queryAllRecords(database: database, recordType: "Speaker")
-
-        for record in try await segmentRecords {
-            applyRemoteRecord(record)
-        }
-        for record in try await speakerRecords {
-            applyRemoteRecord(record)
-        }
-
-        let counts = dbCounts()
-        logger.info("[CloudSync] Direct query done — DB has \(counts.meetings) meetings, \(counts.segments) segments (\(meetingRecords.count) meeting records fetched)")
-    }
-
-    /// Query all records of a given type from the zone using CKQuery (cursor-based pagination).
-    private func queryAllRecords(database: CKDatabase, recordType: String) async throws -> [CKRecord] {
-        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
-        var allRecords: [CKRecord] = []
-
-        let (initial, cursor) = try await database.records(matching: query, inZoneWith: zoneID)
-        allRecords.append(contentsOf: initial.compactMap { _, result in try? result.get() })
-
-        var nextCursor = cursor
-        while let c = nextCursor {
-            let (batch, next) = try await database.records(continuingMatchFrom: c)
-            allRecords.append(contentsOf: batch.compactMap { _, result in try? result.get() })
-            nextCursor = next
-        }
-
-        return allRecords
+        start()
     }
 
     /// Trigger an immediate fetch from CloudKit — use for pull-to-refresh.
@@ -762,15 +681,8 @@ extension CloudSyncEngine: SyncTransportDelegate {
         for record in modifications {
             applyRemoteRecord(record)
         }
-
-        if suppressDeletions {
-            if !deletions.isEmpty {
-                logger.info("[CloudSync] Suppressing \(deletions.count) tombstone deletions during reset")
-            }
-        } else {
-            for recordID in deletions {
-                applyRemoteDeletion(recordID)
-            }
+        for recordID in deletions {
+            applyRemoteDeletion(recordID)
         }
 
         // Batch notification — one UI refresh for all changes instead of N
