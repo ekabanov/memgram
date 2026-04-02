@@ -147,45 +147,53 @@ final class CloudSyncEngine: ObservableObject {
         }
     }
 
-    /// Fetch all records directly via CKDatabase API with a nil server change token.
-    /// This bypasses CKSyncEngine's per-device server-side continuations, which can
-    /// omit records the server thinks this device has already seen. Used by resetAndResync
-    /// to ensure a true full download after wiping the local DB.
+    /// Fetch all records directly via CKQuery — completely bypasses CKSyncEngine's
+    /// per-device server-side continuations AND CKDatabase.recordZoneChanges' per-device
+    /// tracking. A raw query has no change token or device state; it returns every
+    /// record in the zone unconditionally. Used by resetAndResync to ensure a true
+    /// full download after wiping the local DB.
     private func fetchAllRecordsDirect() async throws {
         let database = container.privateCloudDatabase
-        var token: CKServerChangeToken? = nil
-        var totalMods = 0
-        var totalDels = 0
 
-        logger.info("[CloudSync] Direct fetch — bypassing CKSyncEngine per-device state")
+        logger.info("[CloudSync] Direct query fetch — bypassing all per-device server state")
 
-        while true {
-            let changes = try await database.recordZoneChanges(inZoneWith: zoneID, since: token)
+        // Fetch meetings first (parent rows must exist for FK constraints)
+        let meetingRecords = try await queryAllRecords(database: database, recordType: "Meeting")
+        for record in meetingRecords {
+            applyRemoteRecord(record)
+        }
 
-            let records = changes.modificationResultsByID.compactMap { (_, result) -> CKRecord? in
-                if case .success(let modification) = result { return modification.record }
-                return nil
-            }
+        // Then segments and speakers in parallel
+        async let segmentRecords = queryAllRecords(database: database, recordType: "Segment")
+        async let speakerRecords = queryAllRecords(database: database, recordType: "Speaker")
 
-            // Sort meetings first so parent rows exist before segments/speakers
-            let sorted = records.sorted { a, _ in a.recordType == "Meeting" }
-            for record in sorted {
-                applyRemoteRecord(record)
-            }
-
-            totalMods += records.count
-            totalDels += changes.deletions.count
-            // Skip deletions — DB was just wiped, tombstones would only cause harm
-
-            token = changes.changeToken
-
-            if !changes.moreComing {
-                break
-            }
+        for record in try await segmentRecords {
+            applyRemoteRecord(record)
+        }
+        for record in try await speakerRecords {
+            applyRemoteRecord(record)
         }
 
         let counts = dbCounts()
-        logger.info("[CloudSync] Direct fetch done — applied \(totalMods) records, skipped \(totalDels) deletions — DB has \(counts.meetings) meetings, \(counts.segments) segments")
+        logger.info("[CloudSync] Direct query done — DB has \(counts.meetings) meetings, \(counts.segments) segments (\(meetingRecords.count) meeting records fetched)")
+    }
+
+    /// Query all records of a given type from the zone using CKQuery (cursor-based pagination).
+    private func queryAllRecords(database: CKDatabase, recordType: String) async throws -> [CKRecord] {
+        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
+        var allRecords: [CKRecord] = []
+
+        let (initial, cursor) = try await database.records(matching: query, inZoneWith: zoneID)
+        allRecords.append(contentsOf: initial.compactMap { _, result in try? result.get() })
+
+        var nextCursor = cursor
+        while let c = nextCursor {
+            let (batch, next) = try await database.records(continuingMatchFrom: c)
+            allRecords.append(contentsOf: batch.compactMap { _, result in try? result.get() })
+            nextCursor = next
+        }
+
+        return allRecords
     }
 
     /// Trigger an immediate fetch from CloudKit — use for pull-to-refresh.
