@@ -147,6 +147,7 @@ final class CloudSyncEngine: ObservableObject {
         guard let transport else { return }
         let recordID = makeRecordID(table: table, id: id)
         transport.enqueueSave(recordID)
+        logger.info("[CloudSync] Enqueued \(table)/\(id) for upload")
     }
 
     func enqueueDelete(table: String, id: String) {
@@ -300,6 +301,7 @@ final class CloudSyncEngine: ObservableObject {
                 record["rawTranscript"] = meeting.rawTranscript
                 record["calendarEventId"] = meeting.calendarEventId as CKRecordValue?
                 record["calendarContext"] = meeting.calendarContext as CKRecordValue?
+                logger.info("[CloudSync] Built record meetings/\(id) (\(meeting.ckSystemFields != nil ? "has systemFields" : "new"))")
                 return record
 
             case "segments":
@@ -311,6 +313,7 @@ final class CloudSyncEngine: ObservableObject {
                 record["startSeconds"] = segment.startSeconds
                 record["endSeconds"] = segment.endSeconds
                 record["text"] = segment.text
+                logger.info("[CloudSync] Built record segments/\(id)")
                 return record
 
             case "speakers":
@@ -319,6 +322,7 @@ final class CloudSyncEngine: ObservableObject {
                 record["meetingId"] = speaker.meetingId
                 record["label"] = speaker.label
                 record["customName"] = speaker.customName
+                logger.info("[CloudSync] Built record speakers/\(id)")
                 return record
 
             default:
@@ -371,6 +375,7 @@ final class CloudSyncEngine: ObservableObject {
                 if meeting.status == .done && meeting.rawTranscript == nil {
                     meeting.status = .interrupted
                 }
+                var wasInsert = false
                 try db.write { db in
                     if let existing = try Meeting.fetchOne(db, key: id) {
                         var merged = meeting
@@ -387,9 +392,11 @@ final class CloudSyncEngine: ObservableObject {
                         }
                         try merged.update(db)
                     } else {
+                        wasInsert = true
                         try meeting.insert(db)
                     }
                 }
+                logger.info("[CloudSync] Applied meeting \(id) — \(wasInsert ? "inserted" : "updated") — status \(meeting.status.rawValue)")
 
             case "segments":
                 let meetingId = record["meetingId"] as? String ?? ""
@@ -558,6 +565,9 @@ extension CloudSyncEngine: SyncTransportDelegate {
 
     func didSend(saved: [CKRecord], failed: [(record: CKRecord, error: CKError)]) {
         for savedRecord in saved {
+            if let parsed = parseRecordID(savedRecord.recordID) {
+                logger.info("[CloudSync] Uploaded \(parsed.table)/\(parsed.id) successfully")
+            }
             updateSystemFields(for: savedRecord)
         }
 
@@ -567,6 +577,7 @@ extension CloudSyncEngine: SyncTransportDelegate {
 
             switch ckError.code {
             case .serverRecordChanged:
+                logger.warning("[CloudSync] Upload conflict for \(recordID.recordName) — applying server version")
                 // Apply server version, then only re-enqueue if local data
                 // actually differs (prevents infinite sync loops)
                 if let serverRecord = ckError.serverRecord {
@@ -590,7 +601,7 @@ extension CloudSyncEngine: SyncTransportDelegate {
                 }
 
             case .zoneNotFound:
-                logger.warning("Zone not found during save, recreating...")
+                logger.warning("[CloudSync] Upload failed for \(recordID.recordName) — zone not found, recreating")
                 transport?.ensureZone(zoneID)
                 transport?.enqueueSave(recordID)
 
@@ -604,7 +615,7 @@ extension CloudSyncEngine: SyncTransportDelegate {
                 }
 
             default:
-                logger.error("Record save failed (\(ckError.code.rawValue)): \(ckError.localizedDescription)")
+                logger.error("[CloudSync] Upload failed for \(recordID.recordName) — code \(ckError.code.rawValue): \(ckError.localizedDescription)")
                 if let parsed = parseRecordID(recordID), parsed.table == "meetings" {
                     do {
                         try db.write { db in
