@@ -9,12 +9,19 @@ struct PopoverView: View {
     @ObservedObject private var backendManager = TranscriptionBackendManager.shared
     @ObservedObject private var llmStore = LLMProviderStore.shared
     @State private var lastError: String?
+    @State private var lastSegmentCount: Int = 0
+    @State private var lastSegmentTime: Date = .distantPast
+    @State private var now: Date = Date()
 
     private var isModelReady: Bool {
         switch backendManager.selectedBackend {
         case .whisper:  return modelManager.isWhisperReady
         case .parakeet: return backendManager.isParakeetReady
         }
+    }
+
+    private var transcriptStale: Bool {
+        session.segments.count > 0 && now.timeIntervalSince(lastSegmentTime) > 120
     }
 
     private var isModelLoading: Bool {
@@ -52,6 +59,18 @@ struct PopoverView: View {
                     .padding(.vertical, 6)
             }
 
+            if session.isRecording && transcriptStale {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("No new transcripts for 2 minutes — consider stopping the recording")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+            }
+
             if let error = lastError {
                 Text(error)
                     .font(.caption)
@@ -65,6 +84,21 @@ struct PopoverView: View {
                 .padding(12)
         }
         .frame(width: 400, height: 380)
+        .onReceive(Timer.publish(every: 15, on: .main, in: .common).autoconnect()) { tick in
+            if session.isRecording { now = tick }
+        }
+        .onChange(of: session.segments.count) { count in
+            if count > lastSegmentCount {
+                lastSegmentCount = count
+                lastSegmentTime = Date()
+            }
+        }
+        .onChange(of: session.isRecording) { recording in
+            if recording {
+                lastSegmentCount = 0
+                lastSegmentTime = Date()
+            }
+        }
         .sheet(isPresented: $permissions.showOnboardingSheet) {
             OnboardingView()
         }
