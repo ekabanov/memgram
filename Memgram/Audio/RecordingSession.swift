@@ -95,7 +95,10 @@ final class RecordingSession: ObservableObject {
     // MARK: - Recording
 
     func start(calendarContext: CalendarContext? = nil) async throws {
-        guard !isRecording else { return }
+        if isRecording {
+            log.warning("Starting new recording while another is active — stopping current recording first")
+            await stop()
+        }
 
         let title = calendarContext?.eventTitle ?? "Untitled Meeting"
         let meeting = try MeetingStore.shared.createMeeting(
