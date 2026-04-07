@@ -1,6 +1,8 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 
 struct BugReportView: View {
@@ -127,6 +129,18 @@ struct BugReportView: View {
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let url = panel.url else { return }
         try? data.write(to: url)
+        #elseif os(iOS)
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("memgram-logs-\(formattedDate()).json")
+        try? data.write(to: tempURL)
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first,
+              let root = window.rootViewController else { return }
+        let activityVC = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
+        // Present on the topmost view controller (handles sheets)
+        var presenter = root
+        while let presented = presenter.presentedViewController { presenter = presented }
+        presenter.present(activityVC, animated: true)
         #endif
     }
 

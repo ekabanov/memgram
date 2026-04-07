@@ -32,6 +32,11 @@ targets:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
+    preBuildScripts:
+      - script: |
+          echo "let buildTimestamp = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" > "${SRCROOT}/Memgram/Utilities/BuildTimestamp.generated.swift"
+        name: Generate Build Timestamp
+        basedOnDependencyAnalysis: false
     sources:
       - path: Memgram
         excludes:
@@ -190,6 +195,11 @@ targets:
     type: application
     platform: watchOS
     deploymentTarget: "10.0"
+    preBuildScripts:
+      - script: |
+          echo "let buildTimestamp = \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" > "${SRCROOT}/MemgramWatch/BuildTimestamp.generated.swift"
+        name: Generate Build Timestamp
+        basedOnDependencyAnalysis: false
     sources:
       - path: MemgramWatch
     resources:

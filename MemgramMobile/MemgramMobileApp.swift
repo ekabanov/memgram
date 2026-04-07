@@ -43,7 +43,7 @@ struct MemgramMobileApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
-        log.info("Memgram Mobile launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
+        log.info("Memgram Mobile launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") built \(buildTimestamp)")
         CloudSyncEngine.shared.start()
         log.info("CloudSync started")
 

@@ -13,6 +13,7 @@
 		0B16A0702A486EC342E0D718 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278D238861836CB5BDF0154A /* Notifications.swift */; };
 		0B4A45336C12AFF1B2CB2090 /* MeetingEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */; };
 		0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */; };
+		0FA2ED6297C757A7C5508400 /* BuildTimestamp.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDF5D4912770EF4569E63126 /* BuildTimestamp.generated.swift */; };
 		0FB5B1262EC050D38DAE6023 /* MobileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE635A9AA521A55210C62EB6 /* MobileSettingsView.swift */; };
 		10AA69F25C879C0DAA688347 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3A335CC4E14196465F8F057 /* AppDelegate.swift */; };
 		11BD4CC9D7AF62BE3C5BC62C /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = F7F968E28E3536B2BD9133D2 /* GRDB */; };
@@ -44,6 +45,7 @@
 		537C46FEEB97EC11C3502F9F /* MobileAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4971E41907B7402C709746FD /* MobileAudioRecorder.swift */; };
 		561FAEAA0824CF18E001FD00 /* LiveTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B565F886405D70876367BB2D /* LiveTranscriptView.swift */; };
 		579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
+		59B732CE810AECA03F4E1EA8 /* BuildTimestamp.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8BA9DAA53EBC3F1589B15 /* BuildTimestamp.generated.swift */; };
 		68CC120C94C930131B47651F /* AudioChunkUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5334E3AF08B770900274F14 /* AudioChunkUploader.swift */; };
 		697082341F362921D9038502 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		6A969FF46620FB9A2ED8A4A3 /* WatchRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B482E61B5508E0AC4D9425ED /* WatchRecordingView.swift */; };
@@ -59,6 +61,7 @@
 		84971C3AB07B6DBEA10A8413 /* MemgramMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC77AA47521EA95C3BBC8E8A /* MemgramMobileApp.swift */; };
 		88756ABD2C04E7905CDA378D /* MeetingEmbedding.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4FCB50E4B4D9A279C8EE717 /* MeetingEmbedding.swift */; };
 		8D315E70057D74A40EBC0637 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EC92B47E69E0FA8C25194099 /* Assets.xcassets */; };
+		8E09EE0C5B732C77E3905347 /* BuildTimestamp.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8BA9DAA53EBC3F1589B15 /* BuildTimestamp.generated.swift */; };
 		8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98AF2D313FD0669F68D81F39 /* BugReportView.swift */; };
 		9D108EA69EE6EB15AB53428C /* ClaudeProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269098F6F8AD2D7EAE48AC4C /* ClaudeProvider.swift */; };
 		A014CBA98A79D45243C72F8D /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */; };
@@ -194,6 +197,7 @@
 		77D919650FC3167304940F8D /* MemgramWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemgramWatchApp.swift; sourceTree = "<group>"; };
 		783B23A1DCCC5939D86A51EF /* TestSyncEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSyncEnvironment.swift; sourceTree = "<group>"; };
 		78F963FAD214383E6C348061 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		7FB8BA9DAA53EBC3F1589B15 /* BuildTimestamp.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTimestamp.generated.swift; sourceTree = "<group>"; };
 		8009E920FB91831616BDC1FD /* SummaryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryEngine.swift; sourceTree = "<group>"; };
 		83DC277FA3CCE61CC4DE0038 /* TranscriptionBackendManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionBackendManager.swift; sourceTree = "<group>"; };
 		8855497AAD103E0546ABADB5 /* GeminiProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiProvider.swift; sourceTree = "<group>"; };
@@ -245,6 +249,7 @@
 		F7E0494BDFF299FE51811E28 /* TranscriberProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriberProtocol.swift; sourceTree = "<group>"; };
 		F884A263AF447AADEB507CEB /* MemgramMobile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MemgramMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD6CF342BB0459F5A34F2B93 /* Meeting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Meeting.swift; sourceTree = "<group>"; };
+		FDF5D4912770EF4569E63126 /* BuildTimestamp.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTimestamp.generated.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -463,6 +468,7 @@
 			isa = PBXGroup;
 			children = (
 				39857EC942E8388EC18A787D /* Assets.xcassets */,
+				FDF5D4912770EF4569E63126 /* BuildTimestamp.generated.swift */,
 				5126F4EB711D849DE1E0FB0E /* Info.plist */,
 				46C54E0B901503DFE74C72D6 /* Log.swift */,
 				77D919650FC3167304940F8D /* MemgramWatchApp.swift */,
@@ -497,6 +503,7 @@
 			isa = PBXGroup;
 			children = (
 				3F9518923B9FA68D6694C5AD /* AudioConverter.swift */,
+				7FB8BA9DAA53EBC3F1589B15 /* BuildTimestamp.generated.swift */,
 				AF09BEF692E4C86B766A5C7A /* Log.swift */,
 				278D238861836CB5BDF0154A /* Notifications.swift */,
 			);
@@ -623,6 +630,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1E761F9671DAFE1CEAFF2274 /* Build configuration list for PBXNativeTarget "Memgram" */;
 			buildPhases = (
+				EFC32CF4658671DBD6087BC2 /* Generate Build Timestamp */,
 				F6FFDC712DA4AD1FD0C356FE /* Sources */,
 				424A42FEA04D9E4B2F0917E0 /* Resources */,
 				EAF3F068D2033FF0AE46F646 /* Frameworks */,
@@ -647,6 +655,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A54C49D8CFD081E63B627028 /* Build configuration list for PBXNativeTarget "MemgramWatch" */;
 			buildPhases = (
+				4AC29121FD00071E368DFC51 /* Generate Build Timestamp */,
 				CEDEA45B4C4CCB845A46F3ED /* Sources */,
 				C07AB87CED39AF0D49076B82 /* Resources */,
 			);
@@ -758,6 +767,47 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		4AC29121FD00071E368DFC51 /* Generate Build Timestamp */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Timestamp";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo \"let buildTimestamp = \\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\\"\" > \"${SRCROOT}/MemgramWatch/BuildTimestamp.generated.swift\"\n";
+		};
+		EFC32CF4658671DBD6087BC2 /* Generate Build Timestamp */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Timestamp";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo \"let buildTimestamp = \\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\\"\" > \"${SRCROOT}/Memgram/Utilities/BuildTimestamp.generated.swift\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		C75D23F2AF7F8BA499F83BFD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -784,6 +834,7 @@
 				ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */,
 				A78334D6F02DDD71C60E956E /* BugReportSubmitter.swift in Sources */,
 				8EB8E5CA2F54C806F5AAD82E /* BugReportView.swift in Sources */,
+				59B732CE810AECA03F4E1EA8 /* BuildTimestamp.generated.swift in Sources */,
 				4C4D6B6A217A75C13CCBABB2 /* CKSyncTransport.swift in Sources */,
 				C7371E546701757DA40B291F /* CalendarContext.swift in Sources */,
 				488ED3BD2EDEA6E11715C7E4 /* CalendarManager.swift in Sources */,
@@ -812,6 +863,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0FA2ED6297C757A7C5508400 /* BuildTimestamp.generated.swift in Sources */,
 				BB4902998324745590014C08 /* Log.swift in Sources */,
 				AEB4A0B204DEF76B384B1B62 /* MemgramWatchApp.swift in Sources */,
 				D13DB41166E75B5527836089 /* WatchAudioRecorder.swift in Sources */,
@@ -833,6 +885,7 @@
 				A5FAF5B5110002A277AA27F3 /* BugReportPayload.swift in Sources */,
 				579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */,
 				BC578E3DA71EB07461ADF16E /* BugReportView.swift in Sources */,
+				8E09EE0C5B732C77E3905347 /* BuildTimestamp.generated.swift in Sources */,
 				6FC0F7631B0D6F6D7BC048FB /* CKSyncTransport.swift in Sources */,
 				17BA5069D133932973FC32C9 /* CalendarContext.swift in Sources */,
 				697082341F362921D9038502 /* CalendarManager.swift in Sources */,

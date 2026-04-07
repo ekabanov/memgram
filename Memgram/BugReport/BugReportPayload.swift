@@ -8,6 +8,7 @@ import EventKit
 struct BugReportPayload: Codable {
     let schemaVersion: Int
     let appVersion: String
+    let buildDate: String
     let macosVersion: String
     let hardwareModel: String
     let physicalMemoryGB: Int
@@ -76,8 +77,9 @@ final class BugReportPayloadBuilder {
         }.value
 
         return BugReportPayload(
-            schemaVersion: 1,
+            schemaVersion: 2,
             appVersion: "\(version) (\(build))",
+            buildDate: buildTimestamp,
             macosVersion: osVersion,
             hardwareModel: hardwareModel,
             physicalMemoryGB: ramGB,

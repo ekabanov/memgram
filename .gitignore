@@ -35,6 +35,9 @@ docs/superpowers/
 # Mobile build artifacts
 build-mobile/
 
+# Generated build timestamp (regenerated every build)
+**/BuildTimestamp.generated.swift
+
 # Bug report config (contains GitHub token — never commit)
 Memgram/BugReport/BugReportConfig.swift
 build/
