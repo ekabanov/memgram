@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import AppKit
 import OSLog
+import UserNotifications
 
 /// Owns and coordinates all audio components for a single recording session.
 @MainActor
@@ -33,6 +34,9 @@ final class RecordingSession: ObservableObject {
     #endif
 
     private var currentMeetingId: String?
+    private var staleTranscriptTimer: Timer?
+    private var lastSegmentDate: Date = .distantPast
+    private var staleNotificationSent = false
 
     private init() {
         #if os(macOS)
@@ -168,6 +172,8 @@ final class RecordingSession: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] segment in
                 self?.segments.append(segment)          // UI update stays on main
+                self?.lastSegmentDate = Date()
+                self?.staleNotificationSent = false
                 let id = meetingId
                 Task.detached(priority: .utility) { [log = self?.log] in    // DB write off main
                     do { try MeetingStore.shared.appendSegment(segment, toMeeting: id) }
@@ -176,9 +182,13 @@ final class RecordingSession: ObservableObject {
             }
 
         isRecording = true
+        lastSegmentDate = Date()
+        staleNotificationSent = false
+        startStaleTranscriptTimer()
     }
 
     func stop() async {
+        stopStaleTranscriptTimer()
         guard isRecording else { return }
 
         let meetingId = currentMeetingId
@@ -271,5 +281,37 @@ final class RecordingSession: ObservableObject {
                 finalize()
             }
         }
+    }
+
+    // MARK: - Stale Transcript Notification
+
+    private func startStaleTranscriptTimer() {
+        staleTranscriptTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.checkStaleTranscript()
+            }
+        }
+    }
+
+    private func stopStaleTranscriptTimer() {
+        staleTranscriptTimer?.invalidate()
+        staleTranscriptTimer = nil
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["stale-transcript"])
+    }
+
+    private func checkStaleTranscript() {
+        guard isRecording, !segments.isEmpty, !staleNotificationSent else { return }
+        guard Date().timeIntervalSince(lastSegmentDate) > 120 else { return }
+
+        staleNotificationSent = true
+        log.warning("No new transcripts for 2 minutes — sending notification")
+
+        let content = UNMutableNotificationContent()
+        content.title = "Recording may be stalled"
+        content.body = "No new transcripts for 2 minutes. Consider stopping the recording."
+        content.sound = .default
+
+        let request = UNNotificationRequest(identifier: "stale-transcript", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
     }
 }
