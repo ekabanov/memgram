@@ -196,8 +196,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startUpcomingPulseAnimation(button: button)
 
         case .recording:
-            button.image = micWithRedDot()
-            button.contentTintColor = nil
+            setRecordingIcon(button: button, filled: true)
+            button.contentTintColor = .systemRed
+            startRecordingBlinkAnimation(button: button)
 
         case .processing:
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
@@ -220,35 +221,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pulseTimer?.fire()
     }
 
-    /// Compose a template mic icon with a small red recording dot in the top-right corner.
-    private func micWithRedDot() -> NSImage {
+    private var recordingIconFilled = true
+
+    private func setRecordingIcon(button: NSStatusBarButton, filled: Bool) {
+        let name = filled ? "mic.fill" : "mic"
         let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        guard let mic = NSImage(systemSymbolName: "mic", accessibilityDescription: "Memgram recording")?
-            .withSymbolConfiguration(config) else {
-            return NSImage(systemSymbolName: "mic", accessibilityDescription: "Memgram recording")!
-        }
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: "Memgram recording")?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        button.image = image
+    }
 
-        let size = mic.size
-        let dotRadius: CGFloat = 3.0
-        let padding: CGFloat = 0.5
-
-        let composite = NSImage(size: size, flipped: false) { rect in
-            // Draw the mic as a template (system appearance)
-            mic.draw(in: rect)
-            // Draw a red dot in the top-right corner
-            let dotRect = NSRect(
-                x: rect.maxX - dotRadius * 2 - padding,
-                y: rect.maxY - dotRadius * 2 - padding,
-                width: dotRadius * 2,
-                height: dotRadius * 2
-            )
-            NSColor.systemRed.setFill()
-            NSBezierPath(ovalIn: dotRect).fill()
-            return true
+    private func startRecordingBlinkAnimation(button: NSStatusBarButton) {
+        recordingIconFilled = true
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self, weak button] _ in
+            guard let self, let button else { return }
+            self.recordingIconFilled.toggle()
+            self.setRecordingIcon(button: button, filled: self.recordingIconFilled)
         }
-        // Not a template — the red dot must keep its color
-        composite.isTemplate = false
-        return composite
     }
 
     // MARK: - Main Window
