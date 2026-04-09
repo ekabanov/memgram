@@ -6,10 +6,16 @@ final class TranscriptionBackendManager: ObservableObject {
     static let shared = TranscriptionBackendManager()
 
     private let backendKey = "transcriptionBackend"
+    private let diarizationKey = "isDiarizationEnabled"
 
     /// The backend the user has selected (persisted in UserDefaults).
     @Published var selectedBackend: TranscriptionBackend {
         didSet { UserDefaults.standard.set(selectedBackend.rawValue, forKey: backendKey) }
+    }
+
+    /// Whether speaker diarization is enabled. Defaults to false.
+    @Published var isDiarizationEnabled: Bool {
+        didSet { UserDefaults.standard.set(isDiarizationEnabled, forKey: diarizationKey) }
     }
 
     /// True while Parakeet model is downloading or loading.
@@ -27,5 +33,6 @@ final class TranscriptionBackendManager: ObservableObject {
     private init() {
         let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""
         selectedBackend = TranscriptionBackend(rawValue: saved) ?? .parakeet
+        isDiarizationEnabled = UserDefaults.standard.bool(forKey: diarizationKey)
     }
 }

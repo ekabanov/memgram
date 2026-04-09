@@ -65,7 +65,7 @@ final class RecordingSession: ObservableObject {
             }
         }
         #if os(macOS)
-        if #available(macOS 14.0, *) {
+        if #available(macOS 14.0, *), TranscriptionBackendManager.shared.isDiarizationEnabled {
             Task {
                 do { try await speakerDiarizer.prepare() }
                 catch { log.error("Diarizer preload failed: \(error.localizedDescription)") }
@@ -166,7 +166,10 @@ final class RecordingSession: ObservableObject {
             .sink { [weak self] chunk in
                 self?.transcriptionEngine.transcribe(chunk)
                 #if os(macOS)
-                if #available(macOS 14.0, *) { self?.speakerDiarizer.append(chunk) }
+                if #available(macOS 14.0, *),
+                   TranscriptionBackendManager.shared.isDiarizationEnabled {
+                    self?.speakerDiarizer.append(chunk)
+                }
                 #endif
             }
 
@@ -226,25 +229,27 @@ final class RecordingSession: ObservableObject {
 
                 #if os(macOS)
                 if #available(macOS 14.0, *) {
-                    try? MeetingStore.shared.updateStatus(id, status: .diarizing)
-                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                    defer { try? MeetingStore.shared.updateStatus(id, status: .done) }
-                    let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
-                    if !labelMap.isEmpty {
-                        for i in self.segments.indices {
-                            if let label = labelMap[self.segments[i].id.uuidString] {
-                                self.segments[i].speaker = label
-                            }
-                        }
-                        for segment in self.segments {
-                            if let label = labelMap[segment.id.uuidString] {
-                                try? MeetingStore.shared.updateSegmentSpeaker(
-                                    id: segment.id.uuidString, speaker: label)
-                            }
-                        }
-                        self.log.info("Diarization complete — updated \(labelMap.count) segment labels")
+                    if TranscriptionBackendManager.shared.isDiarizationEnabled {
+                        try? MeetingStore.shared.updateStatus(id, status: .diarizing)
                         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                        let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
+                        if !labelMap.isEmpty {
+                            for i in self.segments.indices {
+                                if let label = labelMap[self.segments[i].id.uuidString] {
+                                    self.segments[i].speaker = label
+                                }
+                            }
+                            for segment in self.segments {
+                                if let label = labelMap[segment.id.uuidString] {
+                                    try? MeetingStore.shared.updateSegmentSpeaker(
+                                        id: segment.id.uuidString, speaker: label)
+                                }
+                            }
+                            self.log.info("Diarization complete — updated \(labelMap.count) segment labels")
+                            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                        }
                     }
+                    try? MeetingStore.shared.updateStatus(id, status: .done)
                 }
                 #endif
 

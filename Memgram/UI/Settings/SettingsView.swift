@@ -246,6 +246,13 @@ struct RecordingSettingsTab: View {
             }
             .opacity(backendManager.selectedBackend == .whisper ? 1 : 0.4)
 
+            Section("Speaker Diarization") {
+                Toggle("Identify speakers", isOn: $backendManager.isDiarizationEnabled)
+                Text("Assigns speaker labels (Room 1, Remote 1, etc.) to transcript segments. Disable if labels are inaccurate or distracting.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Your Voice") {
                 // enrollmentVersion read here so SwiftUI re-renders when it changes
                 let _ = enrollmentVersion

@@ -54,17 +54,21 @@ final class SummaryEngine: ObservableObject {
             log.warning("Meeting not found: \(meetingId)")
             return
         }
-        // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings)
+        let diarizationEnabled = TranscriptionBackendManager.shared.isDiarizationEnabled
+
+        // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings).
+        // When diarization is disabled, strip speaker prefixes so the LLM receives plain text.
         let transcript: String
         if let raw = meeting.rawTranscript, !raw.isEmpty {
-            transcript = raw
+            transcript = diarizationEnabled ? raw : Self.stripSpeakerLabels(raw)
         } else {
             let segs = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
             guard !segs.isEmpty else {
                 log.warning("No transcript or segments found — skipping")
                 return
             }
-            transcript = segs.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
+            transcript = segs.map { diarizationEnabled ? "\($0.speaker): \($0.text)" : $0.text }
+                .joined(separator: "\n")
             log.warning("rawTranscript missing — rebuilt from \(segs.count) DB segments")
         }
 
@@ -257,25 +261,44 @@ final class SummaryEngine: ObservableObject {
         return (result, header)
     }
 
+    /// Remove "SpeakerName: " prefixes from every line so the LLM receives
+    /// clean text without any speaker attribution.
+    private static func stripSpeakerLabels(_ transcript: String) -> String {
+        let pattern = try? NSRegularExpression(pattern: #"^[^\n:]+: "#, options: .anchorsMatchLines)
+        let range = NSRange(transcript.startIndex..., in: transcript)
+        return pattern?.stringByReplacingMatches(in: transcript, range: range, withTemplate: "") ?? transcript
+    }
+
     private func summarizeShort(transcript: String, calendarContext: CalendarContext?,
                                  provider: any LLMProvider,
                                  onChunk: ((String) -> Void)? = nil) async throws -> String {
-        let (normTranscript, speakerHeader) = Self.normaliseSpeakerLabels(transcript)
+        let diarizationEnabled = TranscriptionBackendManager.shared.isDiarizationEnabled
+        let (normTranscript, speakerHeader) = diarizationEnabled
+            ? Self.normaliseSpeakerLabels(transcript)
+            : (transcript, "")
         var contextBlock = ""
         if let ctx = calendarContext {
-            contextBlock = """
-            Calendar event metadata:
-            \(ctx.promptBlock())
+            if diarizationEnabled {
+                contextBlock = """
+                Calendar event metadata:
+                \(ctx.promptBlock())
 
-            Speaker resolution rules (apply in order):
-            1. Any speaker who says their own name or is addressed by name → use that name.
-            2. If the speaker key below maps a speaker to a name (via voice enrollment) → use that name.
-            3. If the number of distinct speakers equals the number of scheduled attendees, \
-            assign the remaining unidentified speakers to the remaining attendee names by \
-            elimination — there is exactly one valid assignment.
-            4. If none of the above apply, use the Speaker A/B/C label from the key.
+                Speaker resolution rules (apply in order):
+                1. Any speaker who says their own name or is addressed by name → use that name.
+                2. If the speaker key below maps a speaker to a name (via voice enrollment) → use that name.
+                3. If the number of distinct speakers equals the number of scheduled attendees, \
+                assign the remaining unidentified speakers to the remaining attendee names by \
+                elimination — there is exactly one valid assignment.
+                4. If none of the above apply, use the Speaker A/B/C label from the key.
 
-            """
+                """
+            } else {
+                contextBlock = """
+                Calendar event metadata:
+                \(ctx.promptBlock())
+
+                """
+            }
         }
         let user = """
         \(contextBlock)\(speakerHeader)Analyze the meeting transcript below and produce a structured summary in \
@@ -293,8 +316,7 @@ final class SummaryEngine: ObservableObject {
         For each major topic discussed, provide a subsection:
         ### [Topic name]
         Summarize the discussion thoroughly — include specific arguments, data \
-        points, examples, and context mentioned. Do not compress away nuance. \
-        Note who raised key points where identifiable.
+        points, examples, and context mentioned. Do not compress away nuance.
 
         ## Open questions and follow-ups
         List unresolved questions, items explicitly deferred, topics needing \
@@ -308,7 +330,6 @@ final class SummaryEngine: ObservableObject {
         "None identified" for that section rather than omitting it.
         - Exclude small talk, greetings, and filler unless they directly affect \
         a decision or action.
-        - When uncertain about speaker identity, write "[Unidentified speaker]."
 
         Transcript:
 
@@ -354,9 +375,12 @@ final class SummaryEngine: ObservableObject {
         let windows = chunkByCharCount(segments, maxChars: 70_000)
         log.info("Chunked \(segments.count) segments into \(windows.count) windows")
 
+        let diarizationEnabled = TranscriptionBackendManager.shared.isDiarizationEnabled
         var chunkSummaries: [String] = []
         for window in windows {
-            let chunkTranscript = window.map { "\($0.speaker): \($0.text)" }.joined(separator: "\n")
+            let chunkTranscript = window
+                .map { diarizationEnabled ? "\($0.speaker): \($0.text)" : $0.text }
+                .joined(separator: "\n")
             let summary = try await summarizeShort(transcript: chunkTranscript, calendarContext: calendarContext, provider: provider)
             chunkSummaries.append(summary)
         }
