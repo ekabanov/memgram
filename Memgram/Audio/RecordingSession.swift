@@ -28,10 +28,6 @@ final class RecordingSession: ObservableObject {
     private var finalizationCancellable: AnyCancellable?
     private var backendCancellable: AnyCancellable?
 
-    #if os(macOS)
-    @available(macOS 14.0, *)
-    private lazy var speakerDiarizer = SpeakerDiarizer()
-    #endif
 
     private var currentMeetingId: String?
     private var staleTranscriptTimer: Timer?
@@ -64,14 +60,6 @@ final class RecordingSession: ObservableObject {
                 log.error("Transcription model preload failed: \(error.localizedDescription)")
             }
         }
-        #if os(macOS)
-        if #available(macOS 14.0, *), TranscriptionBackendManager.shared.isDiarizationEnabled {
-            Task {
-                do { try await speakerDiarizer.prepare() }
-                catch { log.error("Diarizer preload failed: \(error.localizedDescription)") }
-            }
-        }
-        #endif
     }
 
     // MARK: - Recovery
@@ -114,9 +102,6 @@ final class RecordingSession: ObservableObject {
 
         transcriptionEngine.reset()
         segments = []
-        #if os(macOS)
-        if #available(macOS 14.0, *) { speakerDiarizer.reset() }
-        #endif
 
         let mic = MicrophoneCapture()
         let sys = makeSystemAudioCapture()
@@ -165,12 +150,6 @@ final class RecordingSession: ObservableObject {
         chunkCancellable = mixer.chunkPublisher
             .sink { [weak self] chunk in
                 self?.transcriptionEngine.transcribe(chunk)
-                #if os(macOS)
-                if #available(macOS 14.0, *),
-                   TranscriptionBackendManager.shared.isDiarizationEnabled {
-                    self?.speakerDiarizer.append(chunk)
-                }
-                #endif
             }
 
         let meetingId = meeting.id
@@ -229,32 +208,12 @@ final class RecordingSession: ObservableObject {
 
                 #if os(macOS)
                 if #available(macOS 14.0, *) {
-                    if TranscriptionBackendManager.shared.isDiarizationEnabled {
-                        try? MeetingStore.shared.updateStatus(id, status: .diarizing)
-                        NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                        let labelMap = await self.speakerDiarizer.runAndResolve(segments: self.segments)
-                        if !labelMap.isEmpty {
-                            for i in self.segments.indices {
-                                if let label = labelMap[self.segments[i].id.uuidString] {
-                                    self.segments[i].speaker = label
-                                }
-                            }
-                            for segment in self.segments {
-                                if let label = labelMap[segment.id.uuidString] {
-                                    try? MeetingStore.shared.updateSegmentSpeaker(
-                                        id: segment.id.uuidString, speaker: label)
-                                }
-                            }
-                            self.log.info("Diarization complete — updated \(labelMap.count) segment labels")
-                            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                        }
-                    }
                     try? MeetingStore.shared.updateStatus(id, status: .done)
                 }
                 #endif
 
                 let rawTranscript = self.segments
-                    .map { "\($0.speaker): \($0.text)" }
+                    .map(\.text)
                     .joined(separator: "\n")
                 self.log.info("Finalising meeting \(id) — \(self.segments.count) segments, \(rawTranscript.count) chars")
                 do { try MeetingStore.shared.finalizeMeeting(id, endedAt: Date(), rawTranscript: rawTranscript) }

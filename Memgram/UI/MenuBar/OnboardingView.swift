@@ -9,7 +9,6 @@ struct OnboardingView: View {
         case welcome
         case microphone
         case systemAudio
-        case enrollVoice
         case done
     }
 
@@ -45,12 +44,6 @@ struct OnboardingView: View {
                 description: systemAudioDescription,
                 note: systemAudioNote
             )
-        case .enrollVoice:
-            EnrollVoiceStepView(onComplete: {
-                step = .done
-            }, onSkip: {
-                step = .done
-            })
         case .done:
             DoneStepView()
         }
@@ -95,25 +88,18 @@ struct OnboardingView: View {
         case .welcome:      return 0
         case .microphone:   return 1
         case .systemAudio:  return 2
-        case .enrollVoice:  return 3
-        case .done:         return 4
+        case .done:         return 3
         }
     }
 
     private var navigationButtons: some View {
-        Group {
-            if step == .enrollVoice {
-                EmptyView()
-            } else {
-                HStack(spacing: 8) {
-                    if step != .welcome {
-                        Button("Back") { goBack() }
-                            .buttonStyle(.plain)
-                    }
-                    Button(nextButtonTitle) { goNext() }
-                        .buttonStyle(.borderedProminent)
-                }
+        HStack(spacing: 8) {
+            if step != .welcome {
+                Button("Back") { goBack() }
+                    .buttonStyle(.plain)
             }
+            Button(nextButtonTitle) { goNext() }
+                .buttonStyle(.borderedProminent)
         }
     }
 
@@ -122,7 +108,6 @@ struct OnboardingView: View {
         case .welcome:      return "Get Started"
         case .microphone:   return "Allow Microphone"
         case .systemAudio:  return "Allow System Audio"
-        case .enrollVoice:  return "Done"
         case .done:         return "Done"
         }
     }
@@ -141,10 +126,11 @@ struct OnboardingView: View {
         case .systemAudio:
             Task {
                 _ = await permissions.requestSystemAudioPermission()
-                await MainActor.run { step = .enrollVoice }
+                await MainActor.run {
+                    permissions.markOnboardingComplete()
+                    step = .done
+                }
             }
-        case .enrollVoice:
-            permissions.markOnboardingComplete()
         case .done:
             permissions.markOnboardingComplete()
         }
@@ -155,8 +141,7 @@ struct OnboardingView: View {
         case .welcome:      break
         case .microphone:   step = .welcome
         case .systemAudio:  step = .microphone
-        case .enrollVoice:  step = .systemAudio
-        case .done:         step = .enrollVoice
+        case .done:         step = .systemAudio
         }
     }
 }

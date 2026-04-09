@@ -216,9 +216,6 @@ private struct APIKeyConfigView: View {
 struct RecordingSettingsTab: View {
     @ObservedObject private var backendManager = TranscriptionBackendManager.shared
     @ObservedObject private var whisperManager = WhisperModelManager.shared
-    @State private var showEnrollSheet = false
-    @State private var enrollmentVersion = 0  // bump to refresh status display
-
     var body: some View {
         Form {
             Section("Transcription Engine") {
@@ -245,44 +242,6 @@ struct RecordingSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
             .opacity(backendManager.selectedBackend == .whisper ? 1 : 0.4)
-
-            Section("Speaker Diarization") {
-                Toggle("Identify speakers", isOn: $backendManager.isDiarizationEnabled)
-                Text("Assigns speaker labels (Room 1, Remote 1, etc.) to transcript segments. Disable if labels are inaccurate or distracting.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Section("Your Voice") {
-                // enrollmentVersion read here so SwiftUI re-renders when it changes
-                let _ = enrollmentVersion
-                if SpeakerEnrollmentStore.shared.hasEnrollment {
-                    LabeledContent("Enrolled as") {
-                        Text(SpeakerEnrollmentStore.shared.enrolledName ?? "Unknown")
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        Button("Update Voice Sample") { showEnrollSheet = true }
-                        Spacer()
-                        Button("Remove", role: .destructive) {
-                            SpeakerEnrollmentStore.shared.clear()
-                            enrollmentVersion += 1
-                        }
-                    }
-                } else {
-                    Text("No voice enrolled. Speakers will be labelled Speaker A, B, etc.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button("Enroll Your Voice") { showEnrollSheet = true }
-                        .buttonStyle(.bordered)
-                }
-            }
-            .sheet(isPresented: $showEnrollSheet) {
-                VoiceEnrollmentSheet(onDone: {
-                    showEnrollSheet = false
-                    enrollmentVersion += 1
-                })
-            }
         }
         .formStyle(.grouped)
     }

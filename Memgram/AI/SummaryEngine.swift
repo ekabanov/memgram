@@ -54,21 +54,18 @@ final class SummaryEngine: ObservableObject {
             log.warning("Meeting not found: \(meetingId)")
             return
         }
-        let diarizationEnabled = TranscriptionBackendManager.shared.isDiarizationEnabled
-
         // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings).
-        // When diarization is disabled, strip speaker prefixes so the LLM receives plain text.
+        // Strip any legacy speaker prefixes so the LLM receives plain text.
         let transcript: String
         if let raw = meeting.rawTranscript, !raw.isEmpty {
-            transcript = diarizationEnabled ? raw : Self.stripSpeakerLabels(raw)
+            transcript = Self.stripSpeakerLabels(raw)
         } else {
             let segs = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
             guard !segs.isEmpty else {
                 log.warning("No transcript or segments found — skipping")
                 return
             }
-            transcript = segs.map { diarizationEnabled ? "\($0.speaker): \($0.text)" : $0.text }
-                .joined(separator: "\n")
+            transcript = segs.map(\.text).joined(separator: "\n")
             log.warning("rawTranscript missing — rebuilt from \(segs.count) DB segments")
         }
 
@@ -217,52 +214,9 @@ final class SummaryEngine: ObservableObject {
         }
     }
 
-    /// Replace diarizer-generated speaker labels (Room 1, Remote 1, You, Remote, …)
-    /// with anonymous letters (Speaker A, Speaker B, …) and return the normalised
-    /// transcript plus a header describing the mapping.
-    /// The LLM never sees the raw diarizer labels, avoiding the conflict between
-    /// "only use what's in the transcript" and "resolve labels to real names".
-    private static func normaliseSpeakerLabels(_ transcript: String) -> (text: String, header: String) {
-        // Match labels like "Room 1", "Remote 2", "You", "Remote" at line start
-        let pattern = try? NSRegularExpression(pattern: #"^(Room \d+|Remote \d+|You|Remote)(?=:)"#,
-                                               options: .anchorsMatchLines)
-        var mapping: [String: String] = [:]
-        let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        var index = 0
-
-        // First pass: collect unique labels in order of first appearance
-        let range = NSRange(transcript.startIndex..., in: transcript)
-        pattern?.enumerateMatches(in: transcript, range: range) { match, _, _ in
-            guard let match, let r = Range(match.range, in: transcript) else { return }
-            let label = String(transcript[r])
-            if mapping[label] == nil, index < letters.count {
-                mapping[label] = "Speaker \(letters[letters.index(letters.startIndex, offsetBy: index)])"
-                index += 1
-            }
-        }
-        guard !mapping.isEmpty else { return (transcript, "") }
-
-        // Second pass: replace
-        var result = transcript
-        for (label, anon) in mapping {
-            result = result.replacingOccurrences(of: "\(label):", with: "\(anon):")
-        }
-
-        // Build header for the prompt
-        let mapLines = mapping.sorted { $0.value < $1.value }
-            .map { "  \($0.value): originally labelled '\($0.key)' by the diarizer" }
-            .joined(separator: "\n")
-        let header = """
-        Speaker key (resolve to real names using context — introductions, how people \
-        address each other, or the attendee list above):
-        \(mapLines)
-
-        """
-        return (result, header)
-    }
-
     /// Remove "SpeakerName: " prefixes from every line so the LLM receives
     /// clean text without any speaker attribution.
+    /// Handles legacy transcripts that were saved with "Speaker: text" format.
     private static func stripSpeakerLabels(_ transcript: String) -> String {
         let pattern = try? NSRegularExpression(pattern: #"^[^\n:]+: "#, options: .anchorsMatchLines)
         let range = NSRange(transcript.startIndex..., in: transcript)
@@ -272,36 +226,16 @@ final class SummaryEngine: ObservableObject {
     private func summarizeShort(transcript: String, calendarContext: CalendarContext?,
                                  provider: any LLMProvider,
                                  onChunk: ((String) -> Void)? = nil) async throws -> String {
-        let diarizationEnabled = TranscriptionBackendManager.shared.isDiarizationEnabled
-        let (normTranscript, speakerHeader) = diarizationEnabled
-            ? Self.normaliseSpeakerLabels(transcript)
-            : (transcript, "")
         var contextBlock = ""
         if let ctx = calendarContext {
-            if diarizationEnabled {
-                contextBlock = """
-                Calendar event metadata:
-                \(ctx.promptBlock())
+            contextBlock = """
+            Calendar event metadata:
+            \(ctx.promptBlock())
 
-                Speaker resolution rules (apply in order):
-                1. Any speaker who says their own name or is addressed by name → use that name.
-                2. If the speaker key below maps a speaker to a name (via voice enrollment) → use that name.
-                3. If the number of distinct speakers equals the number of scheduled attendees, \
-                assign the remaining unidentified speakers to the remaining attendee names by \
-                elimination — there is exactly one valid assignment.
-                4. If none of the above apply, use the Speaker A/B/C label from the key.
-
-                """
-            } else {
-                contextBlock = """
-                Calendar event metadata:
-                \(ctx.promptBlock())
-
-                """
-            }
+            """
         }
         let user = """
-        \(contextBlock)\(speakerHeader)Analyze the meeting transcript below and produce a structured summary in \
+        \(contextBlock)Analyze the meeting transcript below and produce a structured summary in \
         Markdown format. Follow these steps internally before writing:
 
         1. Identify all distinct topics/agenda items discussed.
@@ -333,7 +267,7 @@ final class SummaryEngine: ObservableObject {
 
         Transcript:
 
-        \(normTranscript)
+        \(transcript)
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
@@ -375,12 +309,9 @@ final class SummaryEngine: ObservableObject {
         let windows = chunkByCharCount(segments, maxChars: 70_000)
         log.info("Chunked \(segments.count) segments into \(windows.count) windows")
 
-        let diarizationEnabled = TranscriptionBackendManager.shared.isDiarizationEnabled
         var chunkSummaries: [String] = []
         for window in windows {
-            let chunkTranscript = window
-                .map { diarizationEnabled ? "\($0.speaker): \($0.text)" : $0.text }
-                .joined(separator: "\n")
+            let chunkTranscript = window.map(\.text).joined(separator: "\n")
             let summary = try await summarizeShort(transcript: chunkTranscript, calendarContext: calendarContext, provider: provider)
             chunkSummaries.append(summary)
         }

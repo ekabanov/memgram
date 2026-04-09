@@ -54,12 +54,6 @@ struct CalendarContext: Codable, Equatable {
         if let notes, !notes.isEmpty {
             lines.append("Event Notes: \(notes)")
         }
-        if !attendees.isEmpty {
-            lines.append("Scheduled Attendees: \(attendees.joined(separator: ", "))")
-        }
-        if let organizer {
-            lines.append("Organizer: \(organizer)")
-        }
         return lines.joined(separator: "\n")
     }
 }
