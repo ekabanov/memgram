@@ -40,6 +40,9 @@ final class WhisperModelManager: ObservableObject {
     /// True once the model is fully loaded and CoreML warm-up is complete.
     @Published var isWhisperReady: Bool = false
 
+    /// Non-nil when the last load attempt failed.
+    @Published var loadError: String?
+
     /// Model chosen automatically based on available RAM. Always multilingual.
     var selectedModel: WhisperModel { autoSelectedModel }
 

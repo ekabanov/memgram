@@ -186,6 +186,25 @@ struct PopoverView: View {
                 subtitle: "\(modelManager.selectedModel.sizeMB) MB · first run only",
                 progress: nil
             )
+        } else if let err = modelManager.loadError, backendManager.selectedBackend == .whisper {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: "exclamationmark.circle")
+                        .foregroundStyle(.red)
+                    Text("Whisper load failed")
+                        .font(.caption.bold())
+                }
+                Text(err)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+                Button("Retry") { session.preloadTranscriptionModel() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal)
         }
         if backendManager.isLoading {
             downloadProgressCard(

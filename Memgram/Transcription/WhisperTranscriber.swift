@@ -17,16 +17,28 @@ final class WhisperTranscriber: TranscriberProtocol {
         }
         let modelName = await MainActor.run { WhisperModelManager.shared.selectedModel.whisperKitName }
         log.info("Loading WhisperKit model: \(modelName)")
-        await MainActor.run { WhisperModelManager.shared.isWhisperDownloading = true }
-        let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
-        self.whisperKit = wk
-        log.info("WhisperKit loaded — triggering CoreML warm-up")
-        let silence = [Float](repeating: 0, count: 16000)
-        _ = try? await wk.transcribe(audioArray: silence)
-        log.info("WhisperKit ready — model: \(modelName)")
         await MainActor.run {
-            WhisperModelManager.shared.isWhisperDownloading = false
-            WhisperModelManager.shared.isWhisperReady = true
+            WhisperModelManager.shared.isWhisperDownloading = true
+            WhisperModelManager.shared.loadError = nil
+        }
+        do {
+            let wk = try await WhisperKit(model: modelName, verbose: false, logLevel: .none)
+            self.whisperKit = wk
+            log.info("WhisperKit loaded — triggering CoreML warm-up")
+            let silence = [Float](repeating: 0, count: 16000)
+            _ = try? await wk.transcribe(audioArray: silence)
+            log.info("WhisperKit ready — model: \(modelName)")
+            await MainActor.run {
+                WhisperModelManager.shared.isWhisperDownloading = false
+                WhisperModelManager.shared.isWhisperReady = true
+            }
+        } catch {
+            log.error("WhisperKit load failed: \(error.localizedDescription)")
+            await MainActor.run {
+                WhisperModelManager.shared.isWhisperDownloading = false
+                WhisperModelManager.shared.loadError = error.localizedDescription
+            }
+            throw error
         }
     }
 
