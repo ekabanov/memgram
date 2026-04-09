@@ -197,7 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         case .recording:
             setRecordingIcon(button: button, filled: true)
-            button.contentTintColor = .systemRed
+            button.contentTintColor = nil
             startRecordingBlinkAnimation(button: button)
 
         case .processing:
