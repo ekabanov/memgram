@@ -267,18 +267,32 @@ final class RecordingSession: ObservableObject {
     }
 
     private func checkStaleTranscript() {
-        guard isRecording, !segments.isEmpty, !staleNotificationSent else { return }
-        guard Date().timeIntervalSince(lastSegmentDate) > 120 else { return }
+        guard isRecording, !segments.isEmpty else { return }
+        let silenceSeconds = Date().timeIntervalSince(lastSegmentDate)
 
-        staleNotificationSent = true
-        log.warning("No new transcripts for 2 minutes — sending notification")
+        // Auto-stop after 10 minutes of no new transcripts
+        if silenceSeconds > 600 {
+            log.warning("No new transcripts for 10 minutes — auto-stopping recording")
+            let content = UNMutableNotificationContent()
+            content.title = "Recording auto-stopped"
+            content.body = "No new transcripts for 10 minutes. The meeting has been saved."
+            content.sound = .default
+            let request = UNNotificationRequest(identifier: "stale-transcript", content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+            Task { await stop() }
+            return
+        }
 
-        let content = UNMutableNotificationContent()
-        content.title = "Recording may be stalled"
-        content.body = "No new transcripts for 2 minutes. Consider stopping the recording."
-        content.sound = .default
-
-        let request = UNNotificationRequest(identifier: "stale-transcript", content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+        // Warn at 2 minutes
+        if silenceSeconds > 120 && !staleNotificationSent {
+            staleNotificationSent = true
+            log.warning("No new transcripts for 2 minutes — sending notification")
+            let content = UNMutableNotificationContent()
+            content.title = "Recording may be stalled"
+            content.body = "No new transcripts for 2 minutes. Consider stopping the recording."
+            content.sound = .default
+            let request = UNNotificationRequest(identifier: "stale-transcript", content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        }
     }
 }
