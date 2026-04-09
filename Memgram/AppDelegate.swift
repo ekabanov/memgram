@@ -196,13 +196,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startUpcomingPulseAnimation(button: button)
 
         case .recording:
-            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            let image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Memgram recording")?
-                .withSymbolConfiguration(config)
-            image?.isTemplate = true
-            button.image = image
-            button.contentTintColor = .systemRed
-            startRecordingPulseAnimation(button: button)
+            button.image = micWithRedDot()
+            button.contentTintColor = nil
 
         case .processing:
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
@@ -225,15 +220,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pulseTimer?.fire()
     }
 
-    private func startRecordingPulseAnimation(button: NSStatusBarButton) {
-        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak button] _ in
-            guard let button else { return }
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.5
-                button.animator().alphaValue = button.alphaValue < 0.5 ? 1.0 : 0.3
-            }
+    /// Compose a template mic icon with a small red recording dot in the top-right corner.
+    private func micWithRedDot() -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        guard let mic = NSImage(systemSymbolName: "mic", accessibilityDescription: "Memgram recording")?
+            .withSymbolConfiguration(config) else {
+            return NSImage(systemSymbolName: "mic", accessibilityDescription: "Memgram recording")!
         }
-        pulseTimer?.fire()
+
+        let size = mic.size
+        let dotRadius: CGFloat = 3.0
+        let padding: CGFloat = 0.5
+
+        let composite = NSImage(size: size, flipped: false) { rect in
+            // Draw the mic as a template (system appearance)
+            mic.draw(in: rect)
+            // Draw a red dot in the top-right corner
+            let dotRect = NSRect(
+                x: rect.maxX - dotRadius * 2 - padding,
+                y: rect.maxY - dotRadius * 2 - padding,
+                width: dotRadius * 2,
+                height: dotRadius * 2
+            )
+            NSColor.systemRed.setFill()
+            NSBezierPath(ovalIn: dotRect).fill()
+            return true
+        }
+        // Not a template — the red dot must keep its color
+        composite.isTemplate = false
+        return composite
     }
 
     // MARK: - Main Window
