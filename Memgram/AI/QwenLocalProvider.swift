@@ -18,14 +18,14 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     static var modelID: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
         if ram >= 48 { return "mlx-community/Qwen3.5-27B-4bit" }
-        if ram >= 24 { return "mlx-community/Qwen3.5-9B-MLX-4bit" }
+        if ram >= 16 { return "mlx-community/Qwen3.5-9B-MLX-4bit" }
         return "mlx-community/Qwen3.5-4B-MLX-4bit"
     }
 
     var name: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
         if ram >= 48 { return "Qwen 3.5 27B (local)" }
-        if ram >= 24 { return "Qwen 3.5 9B (local)" }
+        if ram >= 16 { return "Qwen 3.5 9B (local)" }
         return "Qwen 3.5 4B (local)"
     }
 
