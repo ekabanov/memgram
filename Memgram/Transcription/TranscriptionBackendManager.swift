@@ -20,6 +20,11 @@ final class TranscriptionBackendManager: ObservableObject {
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""
-        selectedBackend = TranscriptionBackend(rawValue: saved) ?? .parakeet
+        if let explicit = TranscriptionBackend(rawValue: saved) {
+            selectedBackend = explicit
+        } else {
+            // Default: Whisper on machines with enough RAM, Parakeet on low-RAM devices
+            selectedBackend = WhisperModelManager.ramGB >= 8 ? .whisper : .parakeet
+        }
     }
 }

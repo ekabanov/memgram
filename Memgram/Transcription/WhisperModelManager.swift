@@ -51,17 +51,11 @@ final class WhisperModelManager: ObservableObject {
         Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
     }
 
-    /// Automatically pick the best model the hardware can comfortably run.
-    ///
-    /// Thresholds (Apple Silicon Mac line-up: 8 / 16 / 24 / 32 GB+):
-    ///  < 8 GB  → Small multilingual (244 MB) — safe fallback
-    ///  8 GB    → Large v3 Turbo Q (632 MB) — fits easily, excellent quality
-    ///  ≥ 16 GB → Large v3 (~1.5 GB) — full precision, best quality
+    /// Always use Large v3 Turbo (632 MB) — best quality/speed trade-off.
+    /// Machines with < 8 GB RAM should use Parakeet instead (handled by
+    /// TranscriptionBackendManager default selection).
     var autoSelectedModel: WhisperModel {
-        let ram = Self.ramGB
-        if ram >= 16 { return .largeV3Full }
-        if ram >= 8  { return .largeV3Turbo }
-        return .small  // multilingual small — smallEn retired
+        .largeV3Turbo
     }
 
     private init() {}
