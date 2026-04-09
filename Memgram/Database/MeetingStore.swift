@@ -132,45 +132,7 @@ final class MeetingStore {
         sync?.enqueueSave(table: "meetings", id: meetingId)
     }
 
-    func renameSpeaker(_ oldName: String, to newName: String, inMeeting meetingId: String) throws {
-        try db.write { db in
-            try db.execute(
-                sql: "UPDATE segments SET speaker = ? WHERE meeting_id = ? AND speaker = ?",
-                arguments: [newName, meetingId, oldName]
-            )
-        }
-        sync?.enqueueSaveSegments(meetingId: meetingId)
-    }
 
-    func renameSpeakerGlobally(_ oldName: String, to newName: String) throws {
-        try db.write { db in
-            try db.execute(
-                sql: "UPDATE segments SET speaker = ? WHERE speaker = ?",
-                arguments: [newName, oldName]
-            )
-        }
-        if let sync = sync {
-            do {
-                let segments = try db.read { db in
-                    try MeetingSegment.filter(Column("speaker") == newName).fetchAll(db)
-                }
-                for seg in segments {
-                    sync.enqueueSave(table: "segments", id: seg.id)
-                }
-            } catch {}
-        }
-    }
-
-    /// Update the speaker label on a single transcript segment after diarization.
-    func updateSegmentSpeaker(id: String, speaker: String) throws {
-        try db.write { db in
-            try db.execute(
-                sql: "UPDATE segments SET speaker = ? WHERE id = ?",
-                arguments: [speaker, id]
-            )
-        }
-        sync?.enqueueSave(table: "segments", id: id)
-    }
 
     /// Discards a meeting that is currently recording (e.g. on crash recovery).
     /// Use `deleteMeeting` to remove a completed meeting from history.

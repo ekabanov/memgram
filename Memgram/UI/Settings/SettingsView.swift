@@ -247,20 +247,6 @@ struct RecordingSettingsTab: View {
     }
 }
 
-// MARK: - Voice Enrollment Sheet
-
-private struct VoiceEnrollmentSheet: View {
-    let onDone: () -> Void
-
-    var body: some View {
-        EnrollVoiceStepView(
-            onComplete: onDone,
-            onSkip: onDone
-        )
-        .frame(width: 480, height: 360)
-    }
-}
-
 // MARK: - Calendar Settings
 
 struct CalendarSettingsView: View {

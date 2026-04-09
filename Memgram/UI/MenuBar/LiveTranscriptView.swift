@@ -29,20 +29,11 @@ struct LiveTranscriptView: View {
 private struct SegmentRow: View {
     let segment: TranscriptSegment
 
-    private var speakerColor: Color {
-        segment.channel == .microphone ? .blue : .secondary
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Text(segment.speaker)
-                    .font(.caption.bold())
-                    .foregroundColor(speakerColor)
-                Text(formatTime(segment.startSeconds))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundColor(Color(NSColor.tertiaryLabelColor))
-            }
+            Text(formatTime(segment.startSeconds))
+                .font(.caption2.monospacedDigit())
+                .foregroundColor(Color(NSColor.tertiaryLabelColor))
             Text(segment.text)
                 .font(.body)
                 .foregroundColor(.primary)

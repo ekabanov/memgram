@@ -196,15 +196,6 @@ struct PopoverView: View {
                 progress: nil
             )
         }
-        if backendManager.isDiarizerLoading {
-            downloadProgressCard(
-                icon: "arrow.down.circle",
-                iconColor: .teal,
-                title: "Setting up Diarizer",
-                subtitle: "~100 MB · speaker identification · first run only",
-                progress: nil
-            )
-        }
         #if canImport(MLXLLM)
         if #available(macOS 14, *) {
             QwenDownloadCard()

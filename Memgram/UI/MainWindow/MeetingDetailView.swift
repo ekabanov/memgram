@@ -272,11 +272,7 @@ struct MeetingDetailView: View {
                 ForEach(filteredSegments) { segment in
                     SegmentRowView(
                         segment: segment,
-                        meetingStartedAt: meeting?.startedAt ?? Date(),
-                        onSpeakerRenamed: {
-                            load()
-                            NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
-                        }
+                        meetingStartedAt: meeting?.startedAt ?? Date()
                     )
                     Divider()
                 }
@@ -369,7 +365,7 @@ struct MeetingDetailView: View {
     private func copyTranscriptText() {
         let lines: [String] = segments.map { seg in
             let ts = formatTimestamp(seg.startSeconds)
-            return "\(seg.speaker) [\(ts)]: \(seg.text)"
+            return "[\(ts)] \(seg.text)"
         }
         let pasteStr = lines.isEmpty ? "(no transcript)" : lines.joined(separator: "\n")
         NSPasteboard.general.clearContents()
@@ -458,8 +454,7 @@ struct MeetingDetailView: View {
         let q = localQuery.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return segments }
         return segments.filter {
-            $0.text.localizedCaseInsensitiveContains(q) ||
-            $0.speaker.localizedCaseInsensitiveContains(q)
+            $0.text.localizedCaseInsensitiveContains(q)
         }
     }
 
