@@ -161,18 +161,34 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
 
         let task = Task<Void, Error> {
             let config = ModelConfiguration(id: Self.modelID, defaultPrompt: "Hello")
-            let container = try await LLMModelFactory.shared.loadContainer(
-                configuration: config
-            ) { [weak self] progress in
-                let frac = progress.fractionCompleted
-                Task { @MainActor [weak self] in
-                    // Only advance — never go backwards. Multi-shard downloads fire
-                    // concurrent callbacks that can arrive out of order.
-                    guard let self, frac > self.downloadProgress else { return }
-                    self.downloadProgress = frac
+            let container: ModelContainer
+            do {
+                container = try await LLMModelFactory.shared.loadContainer(
+                    configuration: config
+                ) { [weak self] progress in
+                    let frac = progress.fractionCompleted
+                    Task { @MainActor [weak self] in
+                        // Only advance — never go backwards. Multi-shard downloads fire
+                        // concurrent callbacks that can arrive out of order.
+                        guard let self, frac > self.downloadProgress else { return }
+                        self.downloadProgress = frac
+                    }
+                    if Int(frac * 100) % 10 == 0 {
+                        self?.log.debug("Download progress: \(Int(frac * 100))%")
+                    }
                 }
-                if Int(frac * 100) % 10 == 0 {
-                    self?.log.debug("Download progress: \(Int(frac * 100))%")
+            } catch {
+                // HubApi may fail (e.g. HTTP 503) even when model is cached on disk.
+                // Fall back to loading directly from the local cache directory.
+                let localDir = config.modelDirectory()
+                let hasWeights = FileManager.default.fileExists(
+                    atPath: localDir.appendingPathComponent("config.json").path)
+                if hasWeights {
+                    self.log.warning("Remote load failed (\(error)) — loading from local cache: \(localDir.path)")
+                    let localConfig = ModelConfiguration(directory: localDir, defaultPrompt: "Hello")
+                    container = try await LLMModelFactory.shared.loadContainer(configuration: localConfig)
+                } else {
+                    throw error  // model genuinely not downloaded
                 }
             }
             await MainActor.run { [weak self] in
