@@ -196,8 +196,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startUpcomingPulseAnimation(button: button)
 
         case .recording:
-            setRecordingIcon(button: button, red: true)
-            startRecordingBlinkAnimation(button: button)
+            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            let image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Memgram recording")?
+                .withSymbolConfiguration(config)
+            image?.isTemplate = true
+            button.image = image
+            button.contentTintColor = .systemRed
+            startRecordingPulseAnimation(button: button)
 
         case .processing:
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
@@ -220,32 +225,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         pulseTimer?.fire()
     }
 
-    private var blinkIsRed = true
-
-    private func setRecordingIcon(button: NSStatusBarButton, red: Bool) {
-        if red {
-            let paletteConfig = NSImage.SymbolConfiguration(paletteColors: [.systemRed])
-            let sizeConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            let image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Memgram recording")?
-                .withSymbolConfiguration(sizeConfig.applying(paletteConfig))
-            button.image = image
-        } else {
-            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-            let image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Memgram recording")?
-                .withSymbolConfiguration(config)
-            image?.isTemplate = true
-            button.image = image
+    private func startRecordingPulseAnimation(button: NSStatusBarButton) {
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak button] _ in
+            guard let button else { return }
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.5
+                button.animator().alphaValue = button.alphaValue < 0.5 ? 1.0 : 0.3
+            }
         }
-        button.contentTintColor = nil
-    }
-
-    private func startRecordingBlinkAnimation(button: NSStatusBarButton) {
-        blinkIsRed = true
-        pulseTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self, weak button] _ in
-            guard let self, let button else { return }
-            self.blinkIsRed.toggle()
-            self.setRecordingIcon(button: button, red: self.blinkIsRed)
-        }
+        pulseTimer?.fire()
     }
 
     // MARK: - Main Window
