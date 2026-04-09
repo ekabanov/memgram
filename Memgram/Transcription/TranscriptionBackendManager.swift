@@ -20,6 +20,11 @@ final class TranscriptionBackendManager: ObservableObject {
 
     private init() {
         let saved = UserDefaults.standard.string(forKey: backendKey) ?? ""
-        selectedBackend = TranscriptionBackend(rawValue: saved) ?? .whisper
+        if let explicit = TranscriptionBackend(rawValue: saved) {
+            selectedBackend = explicit
+        } else {
+            // Whisper Large v3 Turbo needs headroom — fall back to Parakeet on 8GB machines
+            selectedBackend = WhisperModelManager.ramGB >= 12 ? .whisper : .parakeet
+        }
     }
 }
