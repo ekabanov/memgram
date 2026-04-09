@@ -176,6 +176,23 @@ final class MeetingStore {
         }
     }
 
+    /// Full-text search across all transcript segments. Returns matching meeting IDs
+    /// ordered by relevance (most matches first).
+    func searchTranscripts(_ query: String) throws -> [(meetingId: String, matchCount: Int)] {
+        let sanitised = query.replacingOccurrences(of: "\"", with: "\"\"")
+        return try db.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT s.meeting_id, COUNT(*) as cnt
+                FROM segments s
+                JOIN segments_fts fts ON fts.rowid = s.rowid
+                WHERE segments_fts MATCH ?
+                GROUP BY s.meeting_id
+                ORDER BY cnt DESC
+                """, arguments: ["\"\(sanitised)\""])
+            return rows.map { ($0["meeting_id"] as String, $0["cnt"] as Int) }
+        }
+    }
+
     func deleteMeeting(_ id: String) throws {
         if let sync = sync {
             let segments = try db.read { db in

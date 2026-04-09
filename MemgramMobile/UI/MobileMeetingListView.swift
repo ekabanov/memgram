@@ -5,13 +5,15 @@ private let log = Logger.make("UI")
 
 struct MobileMeetingListView: View {
     @State private var meetings: [Meeting] = []
+    @State private var searchText = ""
+    @State private var searchMatchIds: Set<String>?  // nil = no search active
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 SyncStatusBanner()
                 List {
-                    ForEach(groupedMeetings, id: \.key) { date, group in
+                    ForEach(displayedMeetings, id: \.key) { date, group in
                         Section(header: Text(sectionTitle(for: date))) {
                             ForEach(group, id: \.id) { meeting in
                                 NavigationLink(value: meeting.id) {
@@ -23,6 +25,10 @@ struct MobileMeetingListView: View {
                 }
             }
             .navigationTitle("Meetings")
+            .searchable(text: $searchText, prompt: "Search transcripts")
+            .onChange(of: searchText) { query in
+                updateSearch(query)
+            }
             .navigationDestination(for: String.self) { meetingId in
                 MobileMeetingDetailView(meetingId: meetingId)
             }
@@ -35,15 +41,33 @@ struct MobileMeetingListView: View {
                 loadMeetings()
             }
             .overlay {
-                if meetings.isEmpty {
+                if meetings.isEmpty && searchText.isEmpty {
                     ContentUnavailableView(
                         "No Meetings",
                         systemImage: "waveform.badge.mic",
                         description: Text("Meetings recorded on your Mac will appear here.")
                     )
+                } else if displayedMeetings.isEmpty && !searchText.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 }
             }
         }
+    }
+
+    /// Grouped meetings filtered by search. Falls back to title match when FTS has no results.
+    private var displayedMeetings: [(key: Date, value: [Meeting])] {
+        guard let matchIds = searchMatchIds else { return groupedMeetings }
+        let filtered = meetings.filter { matchIds.contains($0.id) || $0.title.localizedCaseInsensitiveContains(searchText) }
+        let cal = Calendar.current
+        let grouped = Dictionary(grouping: filtered) { cal.startOfDay(for: $0.startedAt) }
+        return grouped.sorted { $0.key > $1.key }
+    }
+
+    private func updateSearch(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { searchMatchIds = nil; return }
+        let results = (try? MeetingStore.shared.searchTranscripts(trimmed)) ?? []
+        searchMatchIds = Set(results.map(\.meetingId))
     }
 
     private var groupedMeetings: [(key: Date, value: [Meeting])] {

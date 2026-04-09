@@ -151,15 +151,9 @@ private struct SegmentRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(segment.speaker)
-                    .font(.caption.bold())
-                    .foregroundStyle(segment.channel == "microphone" ? .blue : .purple)
-                Spacer()
-                Text(formatTimestamp(segment.startSeconds))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
+            Text(formatTimestamp(segment.startSeconds))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             Text(segment.text)
                 .font(.body)
         }
