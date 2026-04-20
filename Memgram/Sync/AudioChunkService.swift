@@ -16,6 +16,21 @@ final class AudioChunkService {
 
     static let recordType = "AudioChunk"
 
+    /// Find chunks stuck in "processing" status and reset them to "pending".
+    /// Called on wake from sleep to recover chunks claimed before the Mac slept.
+    func resetStuckProcessingChunks() async throws -> Int {
+        let predicate = NSPredicate(format: "status == %@", "processing")
+        let query = CKQuery(recordType: Self.recordType, predicate: predicate)
+        let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
+        let stuck = try results.map { try $0.1.get() }
+        guard !stuck.isEmpty else { return 0 }
+        for record in stuck {
+            record["status"] = "pending" as CKRecordValue
+            try await database.modifyRecords(saving: [record], deleting: [])
+        }
+        return stuck.count
+    }
+
     /// Create a CKRecord for an audio chunk with a CKAsset.
     func makeChunkRecord(meetingId: String, chunkIndex: Int, offsetSeconds: Double, audioFileURL: URL) -> CKRecord {
         let recordID = CKRecord.ID(recordName: "audiochunk_\(meetingId)_\(chunkIndex)", zoneID: zoneID)
