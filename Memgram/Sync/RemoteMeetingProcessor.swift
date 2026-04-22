@@ -6,6 +6,9 @@ import OSLog
 
 /// Watches CloudKit for audio chunks uploaded by iPhone, transcribes them,
 /// and triggers summarization when a meeting is complete.
+///
+/// Handles multi-Mac scenarios: if Mac A claims chunks then sleeps, Mac B
+/// recovers them after a staleness timeout and takes over processing.
 @MainActor
 final class RemoteMeetingProcessor {
     static let shared = RemoteMeetingProcessor()
@@ -14,14 +17,18 @@ final class RemoteMeetingProcessor {
     private let transcriptionEngine = TranscriptionEngine()
     private var pollTimer: Timer?
     private var isProcessing = false
-    /// Meeting IDs that had audio chunks processed in this session.
-    /// Only these meetings are eligible for finalization — prevents
-    /// RemoteMeetingProcessor from touching locally-recorded Mac meetings.
-    private var processedMeetingIds: Set<String> = []
 
     private init() {}
 
     private var modelReady = false
+
+    /// Staleness threshold: chunks "processing" for longer than this are
+    /// assumed abandoned by another Mac and reset to "pending".
+    private let chunkStaleTimeout: TimeInterval = 2 * 60  // 2 minutes
+
+    /// Meetings in .transcribing with no unfinished chunks for longer than
+    /// this are auto-finalized with whatever transcript exists.
+    private let meetingStaleTimeout: TimeInterval = 5 * 60  // 5 minutes
 
     func start() {
         guard pollTimer == nil else { return }  // prevent double-start
@@ -31,13 +38,13 @@ final class RemoteMeetingProcessor {
             Task { @MainActor in await self?.pollForChunks() }
         }
 
-        // On wake from sleep, immediately poll and recover stuck chunks
+        // On wake from sleep, immediately recover and poll
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.log.info("Mac woke from sleep — polling for missed chunks")
-                await self?.recoverStuckChunks()
+                self?.log.info("Mac woke from sleep — recovering stuck chunks")
+                await self?.recoverStuckChunks(olderThan: 0)  // reset ALL processing chunks on wake
                 await self?.pollForChunks()
             }
         }
@@ -75,6 +82,9 @@ final class RemoteMeetingProcessor {
         defer { isProcessing = false }
 
         do {
+            // Recover chunks stuck in "processing" by another Mac that went away
+            await recoverStuckChunks(olderThan: chunkStaleTimeout)
+
             let chunks = try await AudioChunkService.shared.fetchAllPendingChunks()
             if !chunks.isEmpty {
                 log.info("Found \(chunks.count) pending audio chunks")
@@ -119,17 +129,15 @@ final class RemoteMeetingProcessor {
             // Notify UI so Mac transcript view refreshes as segments arrive
             NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
             try await AudioChunkService.shared.markDoneAndDelete(recordID: record.recordID)
-            processedMeetingIds.insert(meetingId)
             log.info("Chunk \(chunkIndex) processed and deleted")
         } catch {
             log.error("Failed to process chunk \(chunkIndex): \(error)")
         }
     }
 
-    /// Reset chunks stuck in "processing" (claimed before sleep but never finished).
-    private func recoverStuckChunks() async {
+    private func recoverStuckChunks(olderThan maxAge: TimeInterval) async {
         do {
-            let count = try await AudioChunkService.shared.resetStuckProcessingChunks()
+            let count = try await AudioChunkService.shared.resetStuckProcessingChunks(olderThan: maxAge)
             if count > 0 {
                 log.warning("Reset \(count) chunks stuck in 'processing' back to 'pending'")
             }
@@ -141,30 +149,33 @@ final class RemoteMeetingProcessor {
     private func checkForCompletedMeetings() async {
         let meetings = (try? MeetingStore.shared.fetchAll()) ?? []
 
-        // Recover meetings stuck in .transcribing for > 15 minutes with no pending chunks.
-        // This handles the case where the Mac was asleep and missed the processing window.
-        let staleTimeout: TimeInterval = 15 * 60
-        for meeting in meetings where meeting.status == .transcribing
-                                  && Date().timeIntervalSince(meeting.startedAt) > staleTimeout
-                                  && !processedMeetingIds.contains(meeting.id) {
+        for meeting in meetings where meeting.status == .transcribing {
             do {
-                let pending = try await AudioChunkService.shared.fetchPendingChunks(meetingId: meeting.id)
-                guard pending.isEmpty else { continue }
-                log.warning("Meeting \(meeting.id) stuck in .transcribing for >15min with no pending chunks — finalizing")
-                processedMeetingIds.insert(meeting.id)  // allow finalization below
-            } catch {
-                log.error("Failed to check stale meeting \(meeting.id): \(error)")
-            }
-        }
+                // Check for ANY unfinished chunks (pending OR processing)
+                let unfinished = try await AudioChunkService.shared.fetchUnfinishedChunks(meetingId: meeting.id)
+                if !unfinished.isEmpty {
+                    // Still has chunks being worked on — skip
+                    continue
+                }
 
-        // Check meetings we processed this session (including just-recovered stale ones)
-        for meeting in meetings where meeting.status == .transcribing
-                                  && processedMeetingIds.contains(meeting.id) {
-            do {
-                let pending = try await AudioChunkService.shared.fetchPendingChunks(meetingId: meeting.id)
-                guard pending.isEmpty else { continue }
+                // No unfinished chunks. Either all were processed, or the meeting
+                // has been stuck with no chunks at all for a while.
+                // Guard: for meetings we didn't process any chunks for, require the
+                // stale timeout before finalizing (prevents touching Mac-recorded meetings).
+                let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meeting.id)) ?? []
+                let hasRemoteSegments = !segments.isEmpty
+                let isStale = Date().timeIntervalSince(meeting.startedAt) > meetingStaleTimeout
 
-                // Claim finalization — update status to .done atomically so only one Mac summarizes
+                guard hasRemoteSegments || isStale else { continue }
+
+                if !hasRemoteSegments && isStale {
+                    log.warning("Meeting \(meeting.id) stuck in .transcribing for >\(Int(meetingStaleTimeout/60))min with no segments — marking interrupted")
+                    try MeetingStore.shared.updateStatus(meeting.id, status: .interrupted)
+                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                    continue
+                }
+
+                // Claim finalization — update status to .done atomically
                 try MeetingStore.shared.updateStatus(meeting.id, status: .done)
                 // Re-fetch to confirm we won (another Mac may have also written .done)
                 guard let current = try? MeetingStore.shared.fetchMeeting(meeting.id),
@@ -174,7 +185,6 @@ final class RemoteMeetingProcessor {
                 }
 
                 log.info("Meeting \(meeting.id) — all chunks processed, finalizing")
-                let segments = (try? MeetingStore.shared.fetchSegments(forMeeting: meeting.id)) ?? []
                 let rawTranscript = segments
                     .sorted { $0.startSeconds < $1.startSeconds }
                     .map(\.text)

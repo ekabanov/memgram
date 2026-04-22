@@ -16,10 +16,17 @@ final class AudioChunkService {
 
     static let recordType = "AudioChunk"
 
-    /// Find chunks stuck in "processing" status and reset them to "pending".
-    /// Called on wake from sleep to recover chunks claimed before the Mac slept.
-    func resetStuckProcessingChunks() async throws -> Int {
-        let predicate = NSPredicate(format: "status == %@", "processing")
+    /// Find chunks stuck in "processing" and reset them to "pending".
+    /// - Parameter maxAge: Only reset chunks that have been "processing" longer than this.
+    ///   Pass 0 to reset all (e.g., on wake from sleep).
+    func resetStuckProcessingChunks(olderThan maxAge: TimeInterval = 0) async throws -> Int {
+        let predicate: NSPredicate
+        if maxAge > 0 {
+            let cutoff = Date().addingTimeInterval(-maxAge)
+            predicate = NSPredicate(format: "status == %@ AND modificationDate < %@", "processing", cutoff as NSDate)
+        } else {
+            predicate = NSPredicate(format: "status == %@", "processing")
+        }
         let query = CKQuery(recordType: Self.recordType, predicate: predicate)
         let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
         let stuck = try results.map { try $0.1.get() }
@@ -29,6 +36,16 @@ final class AudioChunkService {
             try await database.modifyRecords(saving: [record], deleting: [])
         }
         return stuck.count
+    }
+
+    /// Fetch all unfinished chunks (pending OR processing) for a meeting.
+    /// Used to check whether a meeting is truly done — no chunks in any state.
+    func fetchUnfinishedChunks(meetingId: String) async throws -> [CKRecord] {
+        let predicate = NSPredicate(format: "meetingId == %@ AND (status == %@ OR status == %@)",
+                                    meetingId, "pending", "processing")
+        let query = CKQuery(recordType: Self.recordType, predicate: predicate)
+        let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
+        return try results.map { try $0.1.get() }
     }
 
     /// Create a CKRecord for an audio chunk with a CKAsset.
