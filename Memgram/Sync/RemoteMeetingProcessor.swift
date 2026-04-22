@@ -38,13 +38,20 @@ final class RemoteMeetingProcessor {
             Task { @MainActor in await self?.pollForChunks() }
         }
 
+        // On startup, recover anything left over from a previous session
+        Task {
+            log.info("Startup recovery — resetting stuck chunks and checking stale meetings")
+            await recoverStuckChunks(olderThan: 0)
+            await pollForChunks()
+        }
+
         // On wake from sleep, immediately recover and poll
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.log.info("Mac woke from sleep — recovering stuck chunks")
-                await self?.recoverStuckChunks(olderThan: 0)  // reset ALL processing chunks on wake
+                await self?.recoverStuckChunks(olderThan: 0)
                 await self?.pollForChunks()
             }
         }
