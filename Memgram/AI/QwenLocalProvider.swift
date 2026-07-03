@@ -11,20 +11,24 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     static let shared = QwenLocalProvider()
     /// Auto-selects the model based on available RAM.
     ///
-    /// Peak memory usage measured in production (model weights + KV cache + activations):
-    ///  < 24 GB → 4B 4bit  (~5 GB peak)  — safe on 8 GB machines
-    ///  24–47 GB → 9B 4bit  (~12 GB peak) — fits on 24/32 GB machines
-    ///  ≥ 48 GB → 27B 4bit (~44 GB peak) — requires 48 GB+
+    /// Qwen 3.6 only ships 27B (dense) and 35B-A3B (MoE) — there is no small
+    /// 3.6 model, so the lower tiers stay on Qwen 3.5.
+    ///
+    /// Peak memory usage (model weights + KV cache + activations):
+    ///  < 16 GB → 3.5 4B 4bit      (~5 GB peak)  — safe on 8 GB machines
+    ///  16–47 GB → 3.5 9B 4bit     (~12 GB peak) — fits on 16/24/32 GB machines
+    ///  ≥ 48 GB → 3.6 35B-A3B 4bit (~20 GB weights, 3B active → fast decode,
+    ///            lower activation footprint than the previous dense 27B)
     static var modelID: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 48 { return "mlx-community/Qwen3.5-27B-4bit" }
+        if ram >= 48 { return "mlx-community/Qwen3.6-35B-A3B-4bit" }
         if ram >= 16 { return "mlx-community/Qwen3.5-9B-MLX-4bit" }
         return "mlx-community/Qwen3.5-4B-MLX-4bit"
     }
 
     var name: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 48 { return "Qwen 3.5 27B (local)" }
+        if ram >= 48 { return "Qwen 3.6 35B (local)" }
         if ram >= 16 { return "Qwen 3.5 9B (local)" }
         return "Qwen 3.5 4B (local)"
     }
@@ -32,8 +36,8 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     /// Approximate download size label shown in the popover during model download.
     static var downloadSizeLabel: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 48 { return "~14 GB" }
-        if ram >= 24 { return "~4.5 GB" }
+        if ram >= 48 { return "~20 GB" }
+        if ram >= 16 { return "~4.5 GB" }
         return "~2.2 GB"
     }
 
