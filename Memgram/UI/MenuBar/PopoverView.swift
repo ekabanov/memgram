@@ -38,6 +38,9 @@ struct PopoverView: View {
                 .padding(.bottom, 8)
 
             if session.isRecording && !session.segments.isEmpty {
+                // Model downloads keep running during a recording — keep their
+                // progress visible instead of hiding it behind the transcript.
+                downloadCards
                 Divider()
                 LiveTranscriptView(segments: session.segments)
                     .frame(maxHeight: 180)
