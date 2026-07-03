@@ -1,5 +1,8 @@
 import SwiftUI
 import MarkdownUI
+import OSLog
+
+private let log = Logger.make("UI")
 
 private let detailProgressTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -14,6 +17,8 @@ struct MobileMeetingDetailView: View {
     @State private var lastSegmentArrivedAt: Date?
     @State private var now: Date = Date()
     @State private var viewAppearedAt: Date = Date()
+    @State private var isExportingPDF = false
+    @State private var exportedPDF: ExportedPDF?
 
     private var recordingFinishedAt: Date {
         (UserDefaults.standard.object(forKey: "uploadFinishedAt_\(meetingId)") as? Date) ?? viewAppearedAt
@@ -45,13 +50,25 @@ struct MobileMeetingDetailView: View {
         .navigationTitle(meeting?.title ?? "Meeting")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
                 if let meeting, let summary = meeting.summary, !summary.isEmpty {
+                    if isExportingPDF {
+                        ProgressView()
+                    } else {
+                        Button {
+                            exportPDF()
+                        } label: {
+                            Label("Export PDF", systemImage: "doc.richtext")
+                        }
+                    }
                     ShareLink(item: summary,
                               subject: Text(meeting.title),
                               message: Text("Meeting notes from Memgram"))
                 }
             }
+        }
+        .sheet(item: $exportedPDF) { pdf in
+            ActivityShareSheet(items: [pdf.url])
         }
         .onAppear {
             viewAppearedAt = Date()
@@ -123,6 +140,23 @@ struct MobileMeetingDetailView: View {
         }
     }
 
+    private func exportPDF() {
+        guard let meeting else { return }
+        isExportingPDF = true
+        Task { @MainActor in
+            defer { isExportingPDF = false }
+            do {
+                let data = try MobilePDFExporter.export(meeting: meeting)
+                let url = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(MobilePDFExporter.suggestedFilename(for: meeting))
+                try data.write(to: url, options: .atomic)
+                exportedPDF = ExportedPDF(url: url)
+            } catch {
+                log.error("PDF export failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     private func loadMeeting() {
         meeting = try? MeetingStore.shared.fetchMeeting(meetingId)
         let fetched = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
@@ -144,6 +178,21 @@ struct MobileMeetingDetailView: View {
         }
         return gracePeriodElapsed && noRecentSegments
     }
+}
+
+private struct ExportedPDF: Identifiable {
+    let url: URL
+    var id: String { url.path }
+}
+
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct SegmentRow: View {
