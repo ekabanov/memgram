@@ -14,13 +14,16 @@ final class MicrophoneCapture {
     func start() throws {
         let inputNode = engine.inputNode
 
-        // Echo cancellation: with speakers (no headphones), the mic picks up the
-        // system audio it is playing — the bleed makes mic/system energies nearly
-        // equal, defeating selectDominantChannel's threshold and smearing the
-        // averaged signal with a room-delayed echo. Apple's voice processing
+        // Echo cancellation (OPT-IN, default off): with speakers, the mic picks up
+        // the system audio it is playing — the bleed makes mic/system energies
+        // nearly equal, defeating selectDominantChannel's threshold and smearing
+        // the averaged signal with a room-delayed echo. Apple's voice processing
         // subtracts the rendered output from the mic signal at the source.
+        // Default OFF because the voice-processing unit always ducks "other
+        // audio" somewhat — even with duckingLevel .min — and the "other audio"
+        // is the meeting the user is listening to (audibly quieter playback).
         // Fail soft: worst case we record exactly as before.
-        if UserDefaults.standard.object(forKey: "echoCancellationEnabled") as? Bool ?? true {
+        if UserDefaults.standard.bool(forKey: "echoCancellationEnabled") {
             do {
                 try inputNode.setVoiceProcessingEnabled(true)
                 if #available(macOS 14.0, *) {

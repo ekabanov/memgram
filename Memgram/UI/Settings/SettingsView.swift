@@ -216,7 +216,7 @@ private struct APIKeyConfigView: View {
 struct RecordingSettingsTab: View {
     @ObservedObject private var backendManager = TranscriptionBackendManager.shared
     @ObservedObject private var whisperManager = WhisperModelManager.shared
-    @AppStorage("echoCancellationEnabled") private var echoCancellation = true
+    @AppStorage("echoCancellationEnabled") private var echoCancellation = false
     @AppStorage("globalHotkeyEnabled") private var globalHotkeyEnabled = true
     var body: some View {
         Form {
@@ -247,7 +247,7 @@ struct RecordingSettingsTab: View {
 
             Section("Microphone") {
                 Toggle("Echo cancellation", isOn: $echoCancellation)
-                Text("Removes meeting audio played through your speakers from the microphone signal. Turn off if your microphone sounds distorted. Takes effect on the next recording.")
+                Text("Removes meeting audio played through your speakers from the microphone signal. Try this if transcripts get garbled when using speakers without headphones. Note: macOS makes other audio slightly quieter while it's active. Takes effect on the next recording.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
