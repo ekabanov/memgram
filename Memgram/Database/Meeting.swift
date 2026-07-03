@@ -9,7 +9,22 @@ enum SyncStatus: String, Codable, DatabaseValueConvertible {
 }
 
 enum MeetingStatus: String, Codable, DatabaseValueConvertible {
-    case recording, transcribing, diarizing, done, interrupted, error
+    case recording, transcribing, done, interrupted, error
+
+    /// Tolerant decoding: unknown/legacy status values (e.g. "diarizing" written
+    /// by pre-rollback app builds and still present in synced CloudKit records)
+    /// decode as .interrupted instead of failing — a throwing decode would be
+    /// indistinguishable from DB corruption upstream.
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = MeetingStatus(rawValue: raw) ?? .interrupted
+    }
+
+    /// Same fallback for GRDB's direct column decoding path.
+    static func fromDatabaseValue(_ dbValue: DatabaseValue) -> MeetingStatus? {
+        guard let raw = String.fromDatabaseValue(dbValue) else { return nil }
+        return MeetingStatus(rawValue: raw) ?? .interrupted
+    }
 }
 
 struct Meeting: Codable, FetchableRecord, PersistableRecord {

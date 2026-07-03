@@ -167,7 +167,7 @@ private struct StatusBadge: View {
         case .recording:
             Label("Recording", systemImage: "mic.fill")
                 .font(.caption2).foregroundStyle(.red)
-        case .transcribing, .diarizing:
+        case .transcribing:
             Label("Processing", systemImage: "hourglass")
                 .font(.caption2).foregroundStyle(.orange)
         case .interrupted:

@@ -218,6 +218,14 @@ final class AppDatabase {
             """)
         }
 
+        migrator.registerMigration("v5_remove_diarizing") { db in
+            // .diarizing was retired when diarization was rolled back (2026-04-09).
+            // Map legacy rows to .interrupted so the enum case can be deleted.
+            // (MeetingStatus also decodes unknown values as .interrupted as a
+            // safety net for records synced from old app builds.)
+            try db.execute(sql: "UPDATE meetings SET status = 'interrupted' WHERE status = 'diarizing'")
+        }
+
         // Detect if v4 was just applied so AppDelegate can clear CloudKit sync state
         let appliedBefore = Set((try? dbQueue.read { try migrator.appliedIdentifiers($0) }) ?? [])
         try migrator.migrate(dbQueue)

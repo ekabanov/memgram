@@ -232,11 +232,11 @@ struct MeetingRowView: View {
 
     private var statusColor: Color {
         switch meeting.status {
-        case .recording:                return .red
-        case .transcribing, .diarizing: return .orange
-        case .done:                     return .green
-        case .interrupted:              return .secondary
-        case .error:                    return Color.red.opacity(0.5)
+        case .recording:    return .red
+        case .transcribing: return .orange
+        case .done:         return .green
+        case .interrupted:  return .secondary
+        case .error:        return Color.red.opacity(0.5)
         }
     }
 
@@ -246,7 +246,6 @@ struct MeetingRowView: View {
         switch meeting.status {
         case .recording:    return "\(time) · Recording…"
         case .transcribing: return "\(time) · Transcribing…"
-        case .diarizing:    return "\(time) · Identifying speakers…"
         case .interrupted:  return "\(time) · Interrupted"
         case .error:        return "\(time) · Error"
         case .done:

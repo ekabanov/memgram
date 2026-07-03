@@ -71,7 +71,8 @@ Speaker diarization + voice enrollment were fully implemented (dual-Sortformer `
 
 Remnants kept for backwards compatibility — do not remove:
 - `speaker` column in the `segments` table (no longer displayed or used); transcribers still tag segments `You`/`Remote` by channel.
-- `MeetingStatus.diarizing` enum case (old records may carry it; `MeetingListView` still renders an "Identifying speakers…" subtitle, and crash recovery treats it as interruptible). Nothing sets it anymore.
+
+The `MeetingStatus.diarizing` enum case was fully retired: migration `"v5_remove_diarizing"` maps legacy rows to `interrupted`, and `MeetingStatus` decodes unknown raw values (e.g. `"diarizing"` synced from old app builds) as `.interrupted` via tolerant `init(from:)`/`fromDatabaseValue` fallbacks — never let an unknown status value throw, a failing decode is indistinguishable from DB corruption.
 
 ## Package Dependencies
 
@@ -114,7 +115,7 @@ Remnants kept for backwards compatibility — do not remove:
 - **Record IDs:** `"{table}_{uuid}"` format (e.g. `meetings_ABC-123`)
 - **`SyncTransport` protocol** (`Memgram/Sync/SyncTransport.swift`) — abstraction over `CKSyncEngine`. Production: `CKSyncTransport` created in `start()`. Tests: `FakeSyncTransport` injected via `init(db:transport:)`.
 - **`SyncStatus` enum** — `pendingUpload`, `placeholder`, `synced`, `failed`. Stored as `sync_status` text column in `meetings` table. Set by `enqueueSave` (→ `pendingUpload`), `didSend` success (→ `synced`), `didSend` failure (→ `failed`), `applyRemoteRecord` (→ `synced`).
-- **`MeetingStatus` enum** — `recording`, `transcribing`, `diarizing`, `done`, `interrupted`, `error`. `diarizing` is a legacy case (nothing sets it since diarization was removed); `interrupted` set by crash recovery for meetings stuck in recording/transcribing/diarizing.
+- **`MeetingStatus` enum** — `recording`, `transcribing`, `done`, `interrupted`, `error`. `interrupted` set by crash recovery for stuck meetings; unknown/legacy raw values (e.g. `"diarizing"`) decode as `.interrupted`.
 - **Enqueue pattern:** Each `MeetingStore` write method calls `sync?.enqueueSave/enqueueDelete` after the GRDB write. No TransactionObserver.
 - **System fields:** Stored as `ck_system_fields` blob column (NSKeyedArchiver-encoded CKRecord metadata). Used to send updates as modifications, not creates.
 - **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings (`syncStatus = .placeholder`, `title = "Syncing…"`) to satisfy FK constraints.

@@ -434,7 +434,7 @@ final class CloudSyncEngine: ObservableObject {
                             // replace a local failure state. (A remote .done without
                             // a transcript is normalized to .interrupted before this
                             // comparison, so a bogus .done can't clobber anything.)
-                            let statusOrder: [MeetingStatus] = [.recording, .transcribing, .diarizing, .error, .interrupted, .done]
+                            let statusOrder: [MeetingStatus] = [.recording, .transcribing, .error, .interrupted, .done]
                             let existingRank = statusOrder.firstIndex(of: existing.status) ?? 0
                             let remoteRank  = statusOrder.firstIndex(of: meeting.status)  ?? 0
                             if existingRank > remoteRank { merged.status = existing.status }

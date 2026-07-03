@@ -27,7 +27,6 @@ struct MeetingStatusTests {
         let meeting = try env.meetingStore.createMeeting(title: "Test")
 
         try env.meetingStore.updateStatus(meeting.id, status: .transcribing)
-        try env.meetingStore.updateStatus(meeting.id, status: .diarizing)
         try env.meetingStore.updateStatus(meeting.id, status: .done)
 
         let finalMeeting = try env.meetingStore.fetchMeeting(meeting.id)!
@@ -73,12 +72,19 @@ struct MeetingStatusTests {
         #expect(interrupted.count == 1)
     }
 
-    @Test func interruptedMeetingsFindsDiarizing() throws {
+    @Test func legacyDiarizingStatusDecodesAsInterrupted() throws {
+        // "diarizing" was removed from MeetingStatus (diarization rolled back).
+        // Rows/records carrying the legacy value — e.g. synced from an old app
+        // build — must decode as .interrupted, not fail (a throwing decode is
+        // indistinguishable from DB corruption upstream).
         let env = try TestSyncEnvironment.makeLocal()
-        let meeting = try env.meetingStore.createMeeting(title: "Stuck")
-        try env.meetingStore.updateStatus(meeting.id, status: .diarizing)
-        let interrupted = try env.meetingStore.interruptedMeetings()
-        #expect(interrupted.count == 1)
+        let meeting = try env.meetingStore.createMeeting(title: "Legacy")
+        try env.db.write { db in
+            try db.execute(sql: "UPDATE meetings SET status = 'diarizing' WHERE id = ?",
+                           arguments: [meeting.id])
+        }
+        let fetched = try env.meetingStore.fetchMeeting(meeting.id)!
+        #expect(fetched.status == .interrupted)
     }
 
     @Test func interruptedMeetingsExcludesDone() throws {
