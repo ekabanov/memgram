@@ -72,6 +72,40 @@ struct MeetingStatusTests {
         #expect(interrupted.count == 1)
     }
 
+    // MARK: - Summary transcript annotation
+
+    @MainActor @Test func annotatedTranscriptMergesTurnsByChannel() throws {
+        func seg(_ speaker: String, _ text: String, _ start: Double) -> MeetingSegment {
+            MeetingSegment(id: UUID().uuidString, meetingId: "m", speaker: speaker,
+                           channel: speaker == "You" ? "microphone" : "system",
+                           startSeconds: start, endSeconds: start + 5, text: text)
+        }
+        let segments = [
+            seg("You", "Hi everyone.", 0),
+            seg("You", "Let's get started.", 5),
+            seg("Remote", "Sounds good.", 10),
+            seg("You", "First topic.", 15),
+        ]
+        let result = SummaryEngine.annotatedTranscript(from: segments)
+        #expect(result == """
+        Me: Hi everyone. Let's get started.
+        Remote: Sounds good.
+        Me: First topic.
+        """)
+    }
+
+    @MainActor @Test func annotatedTranscriptNilForSingleChannel() throws {
+        // iPhone recordings label everything "Remote" — a wall of identical
+        // labels carries no information and must fall back to plain text.
+        let segments = (0..<3).map { i in
+            MeetingSegment(id: UUID().uuidString, meetingId: "m", speaker: "Remote",
+                           channel: "microphone", startSeconds: Double(i * 10),
+                           endSeconds: Double(i * 10 + 10), text: "text \(i)")
+        }
+        #expect(SummaryEngine.annotatedTranscript(from: segments) == nil)
+        #expect(SummaryEngine.annotatedTranscript(from: []) == nil)
+    }
+
     @Test func legacyDiarizingStatusDecodesAsInterrupted() throws {
         // "diarizing" was removed from MeetingStatus (diarization rolled back).
         // Rows/records carrying the legacy value — e.g. synced from an old app

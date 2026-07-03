@@ -24,12 +24,29 @@ final class SummaryEngine: ObservableObject {
         - ONLY include information explicitly present in the transcript.
         - NEVER fabricate, infer, or assume details not stated.
         - If a section has no relevant content, write "None identified" and move on.
-        - Attribute statements, decisions, and tasks to specific speakers when \
-        identifiable from the transcript.
+        - Attribute statements, decisions, and tasks to a speaker only when the \
+        attribution is certain from the transcript or its speaker labels. When \
+        unsure who said something, describe WHAT was said without naming WHO — \
+        a missing attribution is fine, a wrong one is not.
         - Preserve the reasoning and context behind decisions, not just the outcomes.
         - Correct obvious transcription errors in proper nouns based on context — do not \
         annotate the corrections. When calendar event metadata is provided, use it to \
-        identify speakers and correct proper nouns.
+        correct proper nouns.
+        """
+
+    /// Prompt note explaining the channel-derived speaker labels. Only included
+    /// when the transcript actually carries them.
+    private static let speakerLabelNote = """
+        Speaker labels: lines starting with "Me:" were spoken by the person who \
+        recorded this meeting (captured through their microphone). Lines starting \
+        with "Remote:" are everything that came through the call audio — this may \
+        be SEVERAL different people. The Me/Remote split is reliable; treat it as \
+        ground truth. Within "Remote", attribute a statement to a named person \
+        only when the transcript itself makes the identity clear (a \
+        self-introduction, or someone being addressed by name right before \
+        answering); otherwise write "a remote participant". Refer to "Me" as \
+        "you" or by name if they introduce themselves. Never guess identities.
+
         """
 
     /// Summarise a meeting. Pass `overrideBackend` to use a specific backend without touching global state.
@@ -54,19 +71,28 @@ final class SummaryEngine: ObservableObject {
             log.warning("Meeting not found: \(meetingId)")
             return
         }
-        // Use rawTranscript if available; fall back to rebuilding from DB segments (older meetings).
-        // Strip any legacy speaker prefixes so the LLM receives plain text.
+        // Prefer a channel-annotated transcript built from segments: the
+        // You/Remote channel split (mic vs system audio) is physically grounded
+        // and lets the LLM attribute statements without guessing. Falls back to
+        // plain rawTranscript for meetings without both channels (e.g. iPhone
+        // recordings, where everything is one channel).
+        let segs = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
         let transcript: String
-        if let raw = meeting.rawTranscript, !raw.isEmpty {
+        let speakerNote: String?
+        if let annotated = Self.annotatedTranscript(from: segs) {
+            transcript = annotated
+            speakerNote = Self.speakerLabelNote
+        } else if let raw = meeting.rawTranscript, !raw.isEmpty {
+            // Strip any legacy speaker prefixes so the LLM receives plain text.
             transcript = Self.stripSpeakerLabels(raw)
-        } else {
-            let segs = (try? MeetingStore.shared.fetchSegments(forMeeting: meetingId)) ?? []
-            guard !segs.isEmpty else {
-                log.warning("No transcript or segments found — skipping")
-                return
-            }
+            speakerNote = nil
+        } else if !segs.isEmpty {
             transcript = segs.map(\.text).joined(separator: "\n")
+            speakerNote = nil
             log.warning("rawTranscript missing — rebuilt from \(segs.count) DB segments")
+        } else {
+            log.warning("No transcript or segments found — skipping")
+            return
         }
 
         let calendarCtx = meeting.calendarContext.flatMap { CalendarContext.fromJSON($0) }
@@ -106,6 +132,7 @@ final class SummaryEngine: ObservableObject {
                                                   provider: provider, onChunk: onChunk)
             } else {
                 summary = try await summarizeShort(transcript: transcript, calendarContext: calendarCtx,
+                                                   speakerNote: speakerNote,
                                                    provider: provider, onChunk: onChunk)
             }
             let cleanSummary = stripThinkingTags(summary)
@@ -214,6 +241,32 @@ final class SummaryEngine: ObservableObject {
         }
     }
 
+    /// Build a channel-annotated transcript: consecutive segments from the same
+    /// channel are merged into speaker turns ("Me:" = recording user's mic,
+    /// "Remote:" = call audio). Returns nil unless BOTH sides are present —
+    /// single-channel recordings (iPhone/Watch) carry no usable split, and a
+    /// wall of identical labels would only invite the LLM to over-attribute.
+    static func annotatedTranscript(from segments: [MeetingSegment]) -> String? {
+        let labels = Set(segments.map(\.speaker))
+        guard labels.contains("You"), labels.contains("Remote") else { return nil }
+
+        var turns: [(label: String, texts: [String])] = []
+        for seg in segments.sorted(by: { $0.startSeconds < $1.startSeconds }) {
+            let text = seg.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { continue }
+            let label = seg.speaker == "You" ? "Me" : "Remote"
+            if turns.last?.label == label {
+                turns[turns.count - 1].texts.append(text)
+            } else {
+                turns.append((label, [text]))
+            }
+        }
+        guard !turns.isEmpty else { return nil }
+        return turns
+            .map { "\($0.label): \($0.texts.joined(separator: " "))" }
+            .joined(separator: "\n")
+    }
+
     /// Remove "SpeakerName: " prefixes from every line so the LLM receives
     /// clean text without any speaker attribution.
     /// Handles legacy transcripts that were saved with "Speaker: text" format.
@@ -224,6 +277,7 @@ final class SummaryEngine: ObservableObject {
     }
 
     private func summarizeShort(transcript: String, calendarContext: CalendarContext?,
+                                 speakerNote: String? = nil,
                                  provider: any LLMProvider,
                                  onChunk: ((String) -> Void)? = nil) async throws -> String {
         var contextBlock = ""
@@ -233,6 +287,9 @@ final class SummaryEngine: ObservableObject {
             \(ctx.promptBlock())
 
             """
+        }
+        if let speakerNote {
+            contextBlock += speakerNote
         }
         let user = """
         \(contextBlock)Analyze the meeting transcript below and produce a structured summary in \
@@ -257,6 +314,8 @@ final class SummaryEngine: ObservableObject {
         further investigation, and any disagreements that were not resolved.
 
         ## Action items
+        List each task as a bullet: what needs to be done, who owns it (only if \
+        the owner is clear from the transcript), and any deadline mentioned.
 
         FORMATTING RULES:
         - Use concise but complete language — do not sacrifice detail for brevity.
@@ -289,10 +348,12 @@ final class SummaryEngine: ObservableObject {
 
         Merge these into comprehensive combined meeting notes in **Markdown format**. \
         Integrate information across segments — do not repeat the same point multiple times. \
-        Cover all significant topics and details.
+        Cover all significant topics and details. Keep speaker attributions exactly as \
+        stated in the segment notes — never merge statements from different speakers \
+        into one attribution, and never invent names.
 
-        Use these sections with ## headings: ## Participants, ## Topics Discussed (with ### subheadings \
-        per topic), ## Key Decisions, ## Action Items.
+        Use EXACTLY these sections: ## Key discussion topics (with ### subheadings \
+        per topic), ## Open questions and follow-ups, ## Action items.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
@@ -311,8 +372,19 @@ final class SummaryEngine: ObservableObject {
 
         var chunkSummaries: [String] = []
         for window in windows {
-            let chunkTranscript = window.map(\.text).joined(separator: "\n")
-            let summary = try await summarizeShort(transcript: chunkTranscript, calendarContext: calendarContext, provider: provider)
+            // Annotate each window with the channel-derived speaker turns when
+            // available, so attribution survives into the per-chunk notes.
+            let chunkTranscript: String
+            let note: String?
+            if let annotated = Self.annotatedTranscript(from: window) {
+                chunkTranscript = annotated
+                note = Self.speakerLabelNote
+            } else {
+                chunkTranscript = window.map(\.text).joined(separator: "\n")
+                note = nil
+            }
+            let summary = try await summarizeShort(transcript: chunkTranscript, calendarContext: calendarContext,
+                                                   speakerNote: note, provider: provider)
             chunkSummaries.append(summary)
         }
 

@@ -54,6 +54,8 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **SummaryEngine:** `@MainActor ObservableObject`. `activeMeetingIds: Set<String>` tracks in-progress jobs — observed by UI for spinners. `summarize()` runs LLM off main (awaits provider), saves to DB, then calls `generateTitle()`. Title generation runs AFTER `activeMeetingIds.remove()` so progress clears immediately.
 
+**Speaker attribution in prompts:** transcripts sent to the LLM are annotated with channel-derived turns — `Me:` (recording user's mic) / `Remote:` (call audio) via `annotatedTranscript(from:)`, with a prompt note explaining that "Remote" may be several people and names may only be used when the transcript itself reveals them. This is NOT the removed diarization: the binary channel split is physical ground truth. Single-channel recordings (iPhone/Watch, all segments "Remote") fall back to plain unannotated text — identical labels on every line carry no information and invite over-attribution, the failure mode that got diarization labels removed.
+
 **MeetingDetailView:** Summary rendered via `swift-markdown-ui` (`Markdown(summary).markdownTheme(.gitHub)`). Tab bar: Summary (default) | Transcript. Local transcript search with `filteredSegments`. Delete/Copy in header `⋯` menu.
 
 ## Transcription Backends
