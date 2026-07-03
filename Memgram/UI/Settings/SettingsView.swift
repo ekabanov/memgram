@@ -217,6 +217,7 @@ struct RecordingSettingsTab: View {
     @ObservedObject private var backendManager = TranscriptionBackendManager.shared
     @ObservedObject private var whisperManager = WhisperModelManager.shared
     @AppStorage("echoCancellationEnabled") private var echoCancellation = true
+    @AppStorage("globalHotkeyEnabled") private var globalHotkeyEnabled = true
     var body: some View {
         Form {
             Section("Transcription Engine") {
@@ -250,8 +251,26 @@ struct RecordingSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            #if os(macOS)
+            Section("Keyboard Shortcut") {
+                Toggle("Global shortcut ⌥⌘R to start/stop recording", isOn: $globalHotkeyEnabled)
+                Text("Start or stop a recording from anywhere — even when the menu bar icon is hidden.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            #endif
         }
         .formStyle(.grouped)
+        #if os(macOS)
+        .onChange(of: globalHotkeyEnabled) { enabled in
+            if enabled {
+                HotkeyManager.shared.register()
+            } else {
+                HotkeyManager.shared.unregister()
+            }
+        }
+        #endif
     }
 }
 
