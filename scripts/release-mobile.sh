@@ -51,6 +51,7 @@ xcodebuild archive \
     -configuration Release \
     -archivePath "$ARCHIVE_PATH" \
     -destination "generic/platform=iOS" \
+    -allowProvisioningUpdates \
     CODE_SIGN_STYLE=Automatic \
     DEVELOPMENT_TEAM="$TEAM_ID"
 
@@ -72,10 +73,14 @@ cat > "$BUILD_DIR/ExportOptions.plist" << EOF
 </plist>
 EOF
 
+# -allowProvisioningUpdates lets non-interactive xcodebuild use the Apple ID
+# account signed into Xcode — without it, "destination: upload" fails with
+# "exportArchive Failed to Use Accounts".
 xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
     -exportPath "$EXPORT_PATH" \
-    -exportOptionsPlist "$BUILD_DIR/ExportOptions.plist"
+    -exportOptionsPlist "$BUILD_DIR/ExportOptions.plist" \
+    -allowProvisioningUpdates
 
 echo ""
 echo "✅  Build v${VERSION} uploaded to App Store Connect."
