@@ -28,8 +28,13 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
         // CATapDescription.
         let tapDesc = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
         tapDesc.name = "MemgramSystemTap"
-        // isExclusive = false → spy tap (audio still plays through speakers)
-        tapDesc.isExclusive = false
+        // NOTE: do NOT touch `isExclusive` here. It does not mean "exclusive
+        // audio access" — it selects exclude-list semantics ("tap everything
+        // except `processes`"), which the global initializer already sets.
+        // Forcing it to false turns this into "tap only the listed processes"
+        // with an empty list — a tap of nothing, i.e. silent system audio.
+        // Audio keeps playing through the speakers regardless (that's
+        // `muteBehavior`, default .unmuted).
 
         // STEP 2: Create process tap, retry up to 3× on transient errors
         var tapStatus: OSStatus = noErr
