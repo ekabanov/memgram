@@ -33,9 +33,26 @@ xcodegen generate
 open Memgram.xcodeproj
 ```
 
-On first launch: grant microphone + system audio permissions, then complete the onboarding flow (system audio → voice enrollment → done). Qwen and WhisperKit models download automatically in the background if selected.
+On first launch: grant microphone + system audio permissions, then complete the onboarding flow. Qwen and WhisperKit models download automatically in the background if selected.
 
 To enable calendar integration: **Settings → Calendar** → toggle on → grant calendar access. Requires Google (or any other) calendar account added in **System Settings → Internet Accounts**.
+
+### Building without a paid Apple Developer account
+
+The project's iCloud (CloudKit) and Push Notifications entitlements can't be signed by free personal teams. To build locally with a free Apple ID:
+
+1. In `project.yml`, remove the `DEVELOPMENT_TEAM` lines and these entitlement keys from the Memgram target: `com.apple.developer.icloud-container-identifiers`, `com.apple.developer.icloud-services`, `com.apple.developer.aps-environment`.
+2. Run `xcodegen generate` and select your personal team in Xcode's Signing settings.
+
+The app detects the missing entitlement at runtime and degrades gracefully: recording, transcription, and AI summaries all work — only iCloud sync and iPhone-recording processing are disabled.
+
+### Bug reporting configuration (optional)
+
+`Memgram/BugReport/BugReportConfig.swift` ships with an empty GitHub token — the in-app bug reporter is disabled (Save Logs… still works). To enable it, paste a fine-grained PAT with **Issues: Read and write** on the report repo, and protect your copy from accidental commits:
+
+```bash
+git update-index --skip-worktree Memgram/BugReport/BugReportConfig.swift
+```
 
 ## Transcription
 

@@ -39,6 +39,5 @@ build-mobile/
 **/BuildTimestamp.generated.swift
 
 # Bug report config (contains GitHub token — never commit)
-Memgram/BugReport/BugReportConfig.swift
 build/
 typescript

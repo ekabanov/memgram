@@ -82,8 +82,11 @@ struct BugReportView: View {
                         Task { await submit() }
                     }
                     .keyboardShortcut(.return)
-                    .disabled(description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting || submittedURL != nil)
+                    .disabled(description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting || submittedURL != nil || BugReportConfig.githubToken.isEmpty)
                     .buttonStyle(.borderedProminent)
+                    .help(BugReportConfig.githubToken.isEmpty
+                          ? "Bug reporting is not configured in this build — use Save Logs… instead."
+                          : "")
                 }
             }
             .padding(20)

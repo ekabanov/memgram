@@ -8,12 +8,15 @@ final class BugReportSubmitter {
     }
 
     enum SubmissionError: LocalizedError {
+        case notConfigured
         case encodingFailed
         case httpError(Int)
         case invalidResponse
 
         var errorDescription: String? {
             switch self {
+            case .notConfigured:
+                return "Bug reporting is not configured in this build — use Save Logs… and attach the file to a GitHub issue instead."
             case .encodingFailed:
                 return "Failed to encode bug report payload."
             case .httpError(404):
@@ -35,6 +38,9 @@ final class BugReportSubmitter {
         description: String,
         steps: String
     ) async throws -> SubmissionResult {
+        guard !BugReportConfig.githubToken.isEmpty else {
+            throw SubmissionError.notConfigured
+        }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.keyEncodingStrategy = .convertToSnakeCase
