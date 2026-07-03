@@ -1,8 +1,10 @@
 import AVFoundation
 import Combine
+import OSLog
 
 final class MicrophoneCapture {
 
+    private let log = Logger.make("Audio")
     private let engine = AVAudioEngine()
     private let subject = PassthroughSubject<AVAudioPCMBuffer, Never>()
     private(set) var isRunning = false
@@ -32,10 +34,14 @@ final class MicrophoneCapture {
                     inputNode.voiceProcessingOtherAudioDuckingConfiguration =
                         .init(enableAdvancedDucking: false, duckingLevel: .min)
                 }
+                log.info("Echo cancellation ENGAGED (voice processing on, ducking minimised)")
             } catch {
                 // Some devices/route combinations reject voice processing.
                 try? inputNode.setVoiceProcessingEnabled(false)
+                log.warning("Echo cancellation requested but voice processing FAILED — continuing without: \(error)")
             }
+        } else {
+            log.info("Echo cancellation off (default)")
         }
 
         // Read the format AFTER configuring voice processing — enabling it

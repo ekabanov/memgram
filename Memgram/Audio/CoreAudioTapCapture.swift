@@ -13,6 +13,13 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
     private var ioProcID: AudioDeviceIOProcID?
     private let subject = PassthroughSubject<AVAudioPCMBuffer, Never>()
 
+    /// Set from the IOProc when the first buffer arrives; checked by a 5s
+    /// watchdog so "tap created successfully but produces zero data" (the
+    /// exact failure mode of the isExclusive regression) is visible in logs
+    /// instead of requiring someone to notice a flat level meter.
+    private final class FirstBufferFlag: @unchecked Sendable { var received = false }
+    private let firstBuffer = FirstBufferFlag()
+
     var bufferPublisher: AnyPublisher<AVAudioPCMBuffer, Never> {
         subject.eraseToAnyPublisher()
     }
@@ -111,6 +118,7 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
             pcmBuf.audioBufferList.pointee.mBuffers.mData!
                 .copyMemory(from: data, byteCount: Int(buf.mDataByteSize))
 
+            self.firstBuffer.received = true
             if let resampled = AudioConverter.resampleToMono16k(pcmBuf) {
                 subjectCapture.send(resampled)
             }
@@ -124,7 +132,20 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
         }
         self.ioProcID = procID
         AudioDeviceStart(aggregateDeviceID, procID)
-        log.info("CoreAudioTapCapture started")
+        log.info("CoreAudioTapCapture started — global tap, \(Int(nativeSampleRate))Hz \(nativeChannels)ch")
+
+        // Watchdog: a tap can be created successfully and still deliver zero
+        // data (misconfiguration, permission edge case). Note that "no data"
+        // is also normal when nothing is playing — hence warning, not error.
+        firstBuffer.received = false
+        DispatchQueue.global().asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self, self.ioProcID != nil else { return }
+            if self.firstBuffer.received {
+                log.info("System audio tap delivering data")
+            } else {
+                log.warning("System audio tap has produced NO data 5s after start — either nothing is playing, or system audio capture is broken")
+            }
+        }
     }
 
     func stop() async {

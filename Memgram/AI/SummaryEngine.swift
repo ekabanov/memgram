@@ -65,6 +65,7 @@ final class SummaryEngine: ObservableObject {
             #endif
         }
         lastError = nil
+        let summarizeStart = Date()
         log.info("Starting summarisation for \(meetingId)")
 
         guard let meeting = try? MeetingStore.shared.fetchMeeting(meetingId) else {
@@ -136,7 +137,8 @@ final class SummaryEngine: ObservableObject {
                                                    provider: provider, onChunk: onChunk)
             }
             let cleanSummary = stripThinkingTags(summary)
-            log.info("Summary generated (\(cleanSummary.count) chars) — saving")
+            let elapsed = Date().timeIntervalSince(summarizeStart)
+            log.info("Summary generated for \(meetingId) in \(String(format: "%.1f", elapsed))s via \(provider.name) (\(cleanSummary.count) chars) — saving")
             try MeetingStore.shared.saveSummary(meetingId: meetingId, summary: cleanSummary)
             // Clear active indicator NOW — before title generation which can take a long time
             activeMeetingIds.remove(meetingId)
@@ -148,7 +150,8 @@ final class SummaryEngine: ObservableObject {
             // Fire title generation in a separate task so summarize() returns immediately
             Task { await self.generateTitle(meetingId: meetingId, overrideBackend: overrideBackend) }
         } catch {
-            log.error("Failed to summarise meeting \(meetingId): \(error)")
+            let elapsed = Date().timeIntervalSince(summarizeStart)
+            log.error("Failed to summarise meeting \(meetingId) after \(String(format: "%.1f", elapsed))s via \(provider.name): \(error)")
             streamingText.removeValue(forKey: meetingId)
             await MainActor.run {
                 self.lastError = (meetingId: meetingId, message: error.localizedDescription)

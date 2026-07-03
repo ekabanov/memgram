@@ -189,6 +189,7 @@ final class RecordingSession: ObservableObject {
         lastSegmentDate = Date()
         staleNotificationSent = false
         startStaleTranscriptTimer()
+        log.info("Recording started — meeting \(meeting.id), system audio via \(String(describing: type(of: sys)))")
     }
 
     func stop() async {
@@ -213,6 +214,7 @@ final class RecordingSession: ObservableObject {
         sysLevel = 0
         silentSysAudioSeconds = 0
         isRecording = false
+        log.info("Recording stopped — meeting \(meetingId ?? "nil"), \(self.segments.count) segments so far")
 
         let tmpDir = FileManager.default.temporaryDirectory.appendingPathComponent("memgram")
         do { try FileManager.default.removeItem(at: tmpDir) }

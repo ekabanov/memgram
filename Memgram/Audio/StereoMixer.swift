@@ -1,5 +1,8 @@
 import AVFoundation
 import Combine
+import OSLog
+
+private let log = Logger.make("Audio")
 
 /// Receives mono 16kHz Float32 buffers from mic (Left) and system audio (Right),
 /// accumulates them into 10-second stereo chunks, and emits each chunk.
@@ -15,6 +18,7 @@ final class StereoMixer {
 
     private var micCancellable: AnyCancellable?
     private var sysCancellable: AnyCancellable?
+    private var chunkCounter = 0
     private let subject = PassthroughSubject<AVAudioPCMBuffer, Never>()
 
     // Published level values (0.0–1.0) for the UI meter — updated at 10Hz via timer
@@ -142,9 +146,31 @@ final class StereoMixer {
         micAccumulator.removeFirst(Self.framesPerChunk)
         lock.unlock()
 
+        logChunkHealth(mic: micSlice, sys: sysSlice)
+
         guard let chunk = buildStereoBuffer(left: micSlice, right: sysSlice) else { return }
         subject.send(chunk)
         saveChunkToDisk(chunk)
+    }
+
+    /// Per-chunk channel diagnostics. Makes "one channel is silently dead"
+    /// (e.g. the tap producing zeros while the mic picks up speaker bleed)
+    /// visible in logs instead of requiring someone to watch the level bars.
+    private func logChunkHealth(mic: [Float], sys: [Float]) {
+        let micRMS = rmsLevel(mic)
+        let sysRMS = rmsLevel(sys)
+        // One line every 3rd chunk (~30s) keeps volume low but trends visible.
+        chunkCounter += 1
+        if chunkCounter % 3 == 1 {
+            log.info("Chunk \(self.chunkCounter) levels — mic: \(String(format: "%.2f", micRMS)), system: \(String(format: "%.2f", sysRMS))")
+        }
+        // Escalate when the system channel is flat while the mic clearly has
+        // audio — the signature of a broken tap (or a speakers-only call being
+        // captured through the mic).
+        if sysRMS < 0.01 && micRMS > 0.2 {
+            log.warningThrottled(key: "sysChannelSilent", interval: 60,
+                "System channel silent while mic is active — if a call is playing, system audio capture is not working")
+        }
     }
 
     private func buildStereoBuffer(left: [Float], right: [Float]) -> AVAudioPCMBuffer? {

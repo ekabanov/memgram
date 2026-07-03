@@ -63,6 +63,9 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
 
     /// Wait until no other generation is running, then take the gate.
     private func acquireGeneration() async {
+        if generationInProgress {
+            log.info("Generation gate busy — queueing (\(self.generationWaiters.count) already waiting)")
+        }
         while generationInProgress {
             await withCheckedContinuation { generationWaiters.append($0) }
         }
@@ -131,6 +134,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                         throw QwenError.modelNotLoaded
                     }
                     await self.log.debug("stream() — starting token-by-token generation")
+                    let generationStart = Date()
                     let session = ChatSession(
                         container,
                         instructions: system,
@@ -168,7 +172,8 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                         // else: still buffering the think block
                     }
                     continuation.finish()
-                    await self.log.debug("stream() — generation complete")
+                    let elapsed = Date().timeIntervalSince(generationStart)
+                    await self.log.info("stream() — generation complete in \(String(format: "%.1f", elapsed))s (\(rawAccumulated.count) chars)")
                 } catch {
                     continuation.finish(throwing: error)
                 }

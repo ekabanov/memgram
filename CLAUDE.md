@@ -235,6 +235,10 @@ iPhone/Watch recordings upload 10s/30s raw-audio chunks as `AudioChunk` CKRecord
 - `CloudSyncEngine.container` is `lazy` — avoids `CKContainer` initialization (which requires CloudKit entitlement) in test instances that use `FakeSyncTransport`.
 - Do NOT call `engine.applyRemoteRecord()` or `engine.reEnqueueOrphanedRecords()` from tests — both are `fileprivate`. Route incoming records through `transport.receive(modifications:deletions:)`; trigger re-enqueue via `engine.enqueueSave(table:id:)` or `engine.start()`.
 
+## Logging
+
+Always `Logger.make(category)` (never `print()`). For errors fired by poll/retry loops, use `log.errorThrottled(key:)` / `warningThrottled(key:)` — logs first occurrence then at most once per interval with a suppressed-repeat count (the `___modTime` CloudKit error once produced hundreds of identical lines). Diagnostic invariants baked into the logs: tap no-data watchdog 5s after capture start, per-chunk mic/system RMS every ~30s plus a throttled "system channel silent while mic active" warning, AEC engaged/failed at recording start, paired summarisation start/finish lines with duration + provider, Qwen generation-gate queueing.
+
 ## Key Implementation Details
 
 - **SWIFT_STRICT_CONCURRENCY: minimal** — cross-actor accesses compile without errors.

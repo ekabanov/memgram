@@ -275,7 +275,9 @@ final class RemoteMeetingProcessor {
                 log.warning("Reset \(count) chunks stuck in 'processing' back to 'pending'")
             }
         } catch {
-            log.error("Failed to recover stuck chunks: \(error)")
+            // Fires on every 10s poll when it fails (e.g. a missing CloudKit
+            // schema index) — throttle so the log stays readable.
+            log.errorThrottled(key: "recoverStuckChunks", "Failed to recover stuck chunks: \(error)")
         }
     }
 
