@@ -29,7 +29,8 @@ final class RecordingSession: ObservableObject {
     private var backendCancellable: AnyCancellable?
 
 
-    private var currentMeetingId: String?
+    /// Read by RemoteMeetingProcessor to avoid hijacking a live/draining local recording.
+    private(set) var currentMeetingId: String?
     private var staleTranscriptTimer: Timer?
     private var lastSegmentDate: Date = .distantPast
     private var staleNotificationSent = false
@@ -64,8 +65,26 @@ final class RecordingSession: ObservableObject {
 
     // MARK: - Recovery
 
+    /// UserDefaults key holding the IDs of meetings recorded on THIS Mac.
+    /// The interrupted-recording alert must only offer recovery/discard for
+    /// local recordings — an iPhone meeting that is merely syncing through
+    /// would otherwise be discardable (deleting it everywhere) or recoverable
+    /// into a dead-end .interrupted state.
+    private static let localMeetingIdsKey = "locallyRecordedMeetingIds"
+
+    private func rememberLocalMeeting(_ id: String) {
+        var ids = UserDefaults.standard.stringArray(forKey: Self.localMeetingIdsKey) ?? []
+        ids.append(id)
+        if ids.count > 50 { ids.removeFirst(ids.count - 50) }
+        UserDefaults.standard.set(ids, forKey: Self.localMeetingIdsKey)
+    }
+
     func loadInterruptedMeetings() {
-        interruptedMeetings = (try? MeetingStore.shared.interruptedMeetings()) ?? []
+        let localIds = Set(UserDefaults.standard.stringArray(forKey: Self.localMeetingIdsKey) ?? [])
+        let stuck = (try? MeetingStore.shared.interruptedMeetings()) ?? []
+        // Meetings recorded before this list existed have no entry — leave them
+        // to RemoteMeetingProcessor's stale-meeting recovery rather than the alert.
+        interruptedMeetings = stuck.filter { localIds.contains($0.id) }
     }
 
     func recoverMeeting(_ meeting: Meeting) {
@@ -95,7 +114,7 @@ final class RecordingSession: ObservableObject {
             calendarContext: calendarContext
         )
         currentMeetingId = meeting.id
-
+        rememberLocalMeeting(meeting.id)
 
         // Notify the list immediately so the new meeting appears while recording
         NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
@@ -201,8 +220,16 @@ final class RecordingSession: ObservableObject {
 
         guard let id = meetingId else { return }
 
+        // Once-guard: the drain sink, the idle fast-path, and the 120s timeout can
+        // race on the main queue — without this, a meeting can be finalized (and
+        // summarized) twice. All paths run on the main actor, so a plain box works.
+        final class OnceFlag { var done = false }
+        let once = OnceFlag()
+
         let finalize = { [weak self] in
             guard let self else { return }
+            guard !once.done else { return }
+            once.done = true
             Task { @MainActor [weak self] in
                 guard let self else { return }
 
@@ -229,24 +256,28 @@ final class RecordingSession: ObservableObject {
             }
         }
 
+        // Subscribe BEFORE checking isIdle: if the queue drains between the check
+        // and the subscription, the publisher's event would be missed and the
+        // meeting would wait the full 120s timeout for no reason.
+        finalizationCancellable = transcriptionEngine.allChunksDonePublisher
+            .first()
+            .receive(on: DispatchQueue.main)
+            .sink { _ in finalize() }
+
         if transcriptionEngine.isIdle {
             self.log.info("Transcription already idle — finalising immediately")
             finalize()
         } else {
             self.log.info("Waiting for transcription queue to drain")
-            finalizationCancellable = transcriptionEngine.allChunksDonePublisher
-                .first()
-                .receive(on: DispatchQueue.main)
-                .sink { _ in finalize() }
+        }
 
-            // Safety net: if WhisperKit hangs and allChunksDonePublisher never fires,
-            // finalize after 120 seconds regardless.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
-                guard let self, self.finalizationCancellable != nil else { return }
-                self.log.warning("Transcription drain timed out — finalising anyway")
-                self.finalizationCancellable = nil
-                finalize()
-            }
+        // Safety net: if WhisperKit hangs and allChunksDonePublisher never fires,
+        // finalize after 120 seconds regardless. The once-guard makes this a no-op
+        // when a normal finalize already ran.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak self] in
+            guard let self, !once.done else { return }
+            self.log.warning("Transcription drain timed out — finalising anyway")
+            finalize()
         }
     }
 
@@ -267,7 +298,11 @@ final class RecordingSession: ObservableObject {
     }
 
     private func checkStaleTranscript() {
-        guard isRecording, !segments.isEmpty else { return }
+        // No !segments.isEmpty guard: a recording that never produces a single
+        // segment (muted mic, model failed to load) is exactly the pathological
+        // case the warning and auto-stop exist for. lastSegmentDate is seeded
+        // at recording start, so the silence clock is valid from the beginning.
+        guard isRecording else { return }
         let silenceSeconds = Date().timeIntervalSince(lastSegmentDate)
 
         // Auto-stop after 10 minutes of no new transcripts

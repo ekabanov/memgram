@@ -72,8 +72,8 @@ final class CKSyncTransport: NSObject, SyncTransport, CKSyncEngineDelegate {
 
         case .fetchedRecordZoneChanges(let fetchedChanges):
             // Sort meetings first so parent rows exist before segments/speakers
-            let sortedMods = fetchedChanges.modifications.sorted { a, _ in
-                a.record.recordType == "Meeting"
+            let sortedMods = fetchedChanges.modifications.sorted { a, b in
+                (a.record.recordType == "Meeting") && (b.record.recordType != "Meeting")
             }
             let modifications = sortedMods.map(\.record)
             let deletions = fetchedChanges.deletions.map(\.recordID)

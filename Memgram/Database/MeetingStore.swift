@@ -82,6 +82,20 @@ final class MeetingStore {
 
     func appendRemoteSegment(_ segment: MeetingSegment) throws {
         try db.write { db in
+            // The chunk pipeline can outrun CKSyncEngine: a chunk may be processed
+            // before its meeting record has synced. Create a placeholder meeting
+            // (same pattern as CloudSyncEngine.applyRemoteRecord) so the FK
+            // constraint doesn't silently destroy the transcript.
+            if try Meeting.fetchOne(db, key: segment.meetingId) == nil {
+                let placeholder = Meeting(
+                    id: segment.meetingId, title: "Syncing…", startedAt: Date(),
+                    endedAt: nil, durationSeconds: nil, status: .done,
+                    syncStatus: .placeholder,
+                    summary: nil, actionItems: nil, rawTranscript: nil,
+                    ckSystemFields: nil
+                )
+                try placeholder.insert(db)
+            }
             var seg = segment
             try seg.insert(db)
         }

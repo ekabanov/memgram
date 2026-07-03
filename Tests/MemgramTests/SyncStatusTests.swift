@@ -79,7 +79,7 @@ struct SyncStatusTests {
         #expect(fetched.syncStatus == .failed)
     }
 
-    @Test func serverRecordChangedAppliesRemoteAndReenqueues() throws {
+    @Test func serverRecordChangedAppliesRemoteWithoutReenqueueWhenIdentical() throws {
         let channel = FakeCloudKitChannel()
         let env = try TestSyncEnvironment.make(channel: channel)
         let meeting = try env.meetingStore.createMeeting(title: "Original")
@@ -101,7 +101,37 @@ struct SyncStatusTests {
         env.transport.flush()
 
         let fetched = try env.meetingStore.fetchMeeting(meeting.id)!
-        // After conflict, remote version is applied, then local re-enqueued
+        // Remote title wins; merged record now matches the server, so no
+        // re-enqueue happens (prevents infinite conflict loops) and the
+        // record settles as synced.
+        #expect(fetched.title == "Remote Title")
+        #expect(fetched.syncStatus == .synced)
+    }
+
+    @Test func serverRecordChangedReenqueuesWhenLocalDataDiffers() throws {
+        let channel = FakeCloudKitChannel()
+        let env = try TestSyncEnvironment.make(channel: channel)
+        let meeting = try env.meetingStore.createMeeting(title: "Original")
+
+        // First sync to establish the record in the channel
+        env.transport.flush()
+
+        // Simulate another device updating the title in the channel
+        let key = "meetings_\(meeting.id)"
+        if let serverRecord = channel.records[key] {
+            serverRecord["title"] = "Remote Title" as CKRecordValue
+        }
+
+        // Local gains a summary the server lacks, then conflicts on upload
+        try env.meetingStore.saveSummary(meetingId: meeting.id, summary: "Local summary")
+        channel.conflictingRecordIDs.insert(key)
+
+        // Flush — serverRecordChanged; local summary survives the merge,
+        // so the merged record differs from the server and is re-enqueued.
+        env.transport.flush()
+
+        let fetched = try env.meetingStore.fetchMeeting(meeting.id)!
+        #expect(fetched.summary == "Local summary")
         #expect(fetched.syncStatus == .pendingUpload)
     }
 
@@ -170,6 +200,54 @@ struct SyncStatusTests {
         let placeholder = try env.meetingStore.fetchMeeting(meetingId)!
         #expect(placeholder.syncStatus == .placeholder)
         #expect(placeholder.title == "Syncing\u{2026}")
+    }
+
+    @Test func appendRemoteSegmentCreatesPlaceholderForUnknownMeeting() throws {
+        // The chunk pipeline can deliver transcribed segments before the meeting
+        // record has synced. appendRemoteSegment must create a placeholder meeting
+        // instead of letting the FK constraint destroy the transcript.
+        let env = try TestSyncEnvironment.makeLocal()
+
+        let meetingId = UUID().uuidString
+        let segment = MeetingSegment(
+            id: UUID().uuidString,
+            meetingId: meetingId,
+            speaker: "Remote",
+            channel: "system",
+            startSeconds: 0,
+            endSeconds: 10,
+            text: "Hello from a chunk"
+        )
+
+        try env.meetingStore.appendRemoteSegment(segment)
+
+        let placeholder = try env.meetingStore.fetchMeeting(meetingId)!
+        #expect(placeholder.syncStatus == .placeholder)
+        let segments = try env.meetingStore.fetchSegments(forMeeting: meetingId)
+        #expect(segments.count == 1)
+        #expect(segments.first?.text == "Hello from a chunk")
+    }
+
+    @Test func appendRemoteSegmentUsesExistingMeeting() throws {
+        let env = try TestSyncEnvironment.makeLocal()
+        let meeting = try env.meetingStore.createMeeting(title: "Real Meeting")
+
+        let segment = MeetingSegment(
+            id: UUID().uuidString,
+            meetingId: meeting.id,
+            speaker: "You",
+            channel: "mic",
+            startSeconds: 0,
+            endSeconds: 5,
+            text: "Hi"
+        )
+        try env.meetingStore.appendRemoteSegment(segment)
+
+        // No placeholder overwrite — the real meeting is untouched
+        let fetched = try env.meetingStore.fetchMeeting(meeting.id)!
+        #expect(fetched.title == "Real Meeting")
+        #expect(fetched.syncStatus != .placeholder)
+        #expect(try env.meetingStore.fetchSegments(forMeeting: meeting.id).count == 1)
     }
 
     // MARK: - Startup recovery
