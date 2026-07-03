@@ -29,9 +29,11 @@ final class LLMProviderStore: ObservableObject {
     }
 
     // Cloud model choices. Empty string = use the default below.
-    static let defaultClaudeModel = "claude-opus-4-8"
-    static let defaultOpenAIModel = "gpt-5-mini"
-    static let defaultGeminiModel = "gemini-2.5-flash"
+    // Defaults are each vendor's recommended mainstream model (checked 2026-07):
+    // strong enough for long-transcript summaries, not the premium flagship tier.
+    static let defaultClaudeModel = "claude-sonnet-5"
+    static let defaultOpenAIModel = "gpt-5.5"
+    static let defaultGeminiModel = "gemini-3.5-flash"
 
     @Published var claudeModel: String {
         didSet { UserDefaults.standard.set(claudeModel, forKey: "claudeModel") }
