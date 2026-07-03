@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupStatusItem()
         setupPopover()
+        setupGlobalHotkey()
         showOnboardingIfNeeded()
         // Enable launch at login by default on first run
         if !UserDefaults.standard.bool(forKey: "didSetDefaultLaunchAtLogin") {
@@ -155,12 +156,77 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    @objc private func statusBarButtonClicked(_ sender: NSStatusBarButton) {
+    @MainActor @objc private func statusBarButtonClicked(_ sender: NSStatusBarButton) {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp {
-            openMainWindow()
+            showStatusItemMenu()
         } else {
             togglePopover(sender)
+        }
+    }
+
+    /// Right-click menu — lets users stop a recording even if the popover
+    /// misbehaves, and quit without opening the popover.
+    @MainActor private func showStatusItemMenu() {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let stopItem = NSMenuItem(title: "Stop Recording", action: #selector(stopRecordingFromMenu), keyEquivalent: "")
+        stopItem.target = self
+        stopItem.isEnabled = RecordingSession.shared.isRecording
+        menu.addItem(stopItem)
+
+        let openItem = NSMenuItem(title: "Open Memgram", action: #selector(openMainWindowFromMenu), keyEquivalent: "")
+        openItem.target = self
+        menu.addItem(openItem)
+
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(title: "Quit Memgram", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quitItem.target = NSApp
+        menu.addItem(quitItem)
+
+        // Temporarily attach the menu so performClick shows it, then detach
+        // so left-click keeps toggling the popover.
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    @objc private func stopRecordingFromMenu() {
+        Task { @MainActor in
+            await RecordingSession.shared.stop()
+        }
+    }
+
+    @objc private func openMainWindowFromMenu() {
+        openMainWindow()
+    }
+
+    // MARK: - Global Hotkey
+
+    private func setupGlobalHotkey() {
+        HotkeyManager.shared.onHotkey = { [weak self] in
+            self?.toggleRecording()
+        }
+        if UserDefaults.standard.object(forKey: "globalHotkeyEnabled") as? Bool ?? true {
+            HotkeyManager.shared.register()
+        }
+    }
+
+    /// Toggles recording from the global ⌥⌘R hotkey. Starting mirrors the
+    /// popover's buttons: attach the upcoming calendar event's context when
+    /// one is pending, otherwise start plain.
+    func toggleRecording() {
+        Task { @MainActor in
+            if RecordingSession.shared.isRecording {
+                await RecordingSession.shared.stop()
+            } else if let event = CalendarManager.shared.upcomingEvent {
+                let ctx = CalendarManager.shared.context(for: event)
+                try? await RecordingSession.shared.start(calendarContext: ctx)
+            } else {
+                try? await RecordingSession.shared.start()
+            }
         }
     }
 
