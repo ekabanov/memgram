@@ -48,12 +48,46 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     private var modelContainer: ModelContainer?
     private let log = Logger.make("AI")
     private var loadTask: Task<Void, Error>?
+
+    // MARK: - Generation gate
+    //
+    // MLX is not safe against concurrent GPU work on the same state: two
+    // generations at once, or unload()/clearCache() during a generation,
+    // aborts with a Metal "encoding in progress" assertion (app freeze in
+    // release). All generation and unload work is therefore serialized
+    // through this FIFO gate. State lives on the main actor (class is
+    // @MainActor), so no additional locking is needed.
+    private var generationInProgress = false
+    private var generationWaiters: [CheckedContinuation<Void, Never>] = []
+    private var unloadRequested = false
+
+    /// Wait until no other generation is running, then take the gate.
+    private func acquireGeneration() async {
+        while generationInProgress {
+            await withCheckedContinuation { generationWaiters.append($0) }
+        }
+        generationInProgress = true
+    }
+
+    /// Release the gate: wake the next waiter, or perform a deferred unload.
+    private func releaseGeneration() {
+        generationInProgress = false
+        if !generationWaiters.isEmpty {
+            generationWaiters.removeFirst().resume()
+        } else if unloadRequested {
+            unloadRequested = false
+            performUnload()
+        }
+    }
+
     private init() {}
 
     // MARK: - LLMProvider
 
     func complete(system: String, user: String) async throws -> String {
         log.debug("complete() called — model loaded: \(self.isLoaded)")
+        await acquireGeneration()
+        defer { releaseGeneration() }
         if modelContainer == nil {
             log.info("Model not loaded yet, loading")
             try await loadModel()
@@ -85,6 +119,9 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task.detached(priority: .userInitiated) {
+                // Serialize against other generations and unloads — concurrent
+                // MLX GPU work aborts with a Metal assertion.
+                await self.acquireGeneration()
                 do {
                     // Load model on main actor if not yet ready
                     if await self.modelContainer == nil {
@@ -135,6 +172,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                 } catch {
                     continuation.finish(throwing: error)
                 }
+                await self.releaseGeneration()
             }
         }
     }
@@ -220,7 +258,21 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     }
 
     /// Release the loaded model from memory. The next summarisation will reload it.
+    /// Deferred automatically if a generation is running — freeing MLX buffers
+    /// mid-generation aborts with a Metal assertion.
     func unload() {
+        guard isLoaded else { return }
+        if generationInProgress {
+            log.info("Unload requested during generation — deferring")
+            unloadRequested = true
+            return
+        }
+        performUnload()
+    }
+
+    /// The actual unload. Callers must ensure no generation is in flight
+    /// (either the gate is free, or the caller holds the gate).
+    private func performUnload() {
         guard isLoaded else { return }
         log.info("Unloading Qwen model to free memory")
         modelContainer = nil
@@ -245,13 +297,26 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     func preload() {
         log.info("preload() called")
         Task {
+            // Hold the generation gate for the whole load→verify→unload cycle.
+            // Without it, a summarization that starts mid-preload (e.g. the
+            // RemoteMeetingProcessor summary janitor at launch) shares the same
+            // loadTask and begins generating — and preload's unload then frees
+            // the MLX buffers mid-generation (Metal assertion, app freeze).
+            await acquireGeneration()
+            defer { releaseGeneration() }
             do {
                 // Download and load model weights, then immediately unload.
                 // This ensures model files are cached on disk so the first
                 // summarisation starts instantly without waiting for a download.
                 try await loadModel()
-                unload()
-                log.info("Preload complete — model files cached, memory freed until first summary")
+                if generationWaiters.isEmpty {
+                    performUnload()
+                    log.info("Preload complete — model files cached, memory freed until first summary")
+                } else {
+                    // A generation queued up behind us — keep the model loaded
+                    // instead of unloading just for it to reload seconds later.
+                    log.info("Preload complete — model kept loaded for a queued generation")
+                }
             } catch {
                 self.log.error("preload() failed: \(error)")
                 self.loadError = error.localizedDescription

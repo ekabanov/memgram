@@ -67,7 +67,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             CloudSyncEngine.shared.start()
             appLog.info("CloudSync started")
             RemoteMeetingProcessor.shared.start()
-            appLog.info("RemoteMeetingProcessor started")
         } else if !isTestRun {
             // Built without the iCloud entitlement (e.g. free Apple ID, see
             // README) — recording, transcription, and summaries work normally;
