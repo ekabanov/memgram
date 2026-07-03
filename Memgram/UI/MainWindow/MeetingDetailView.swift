@@ -17,7 +17,10 @@ struct MeetingDetailView: View {
     @State private var isEditingTitle = false
     @State private var selectedTab: DetailTab = .summary
     @ObservedObject private var summaryEngine = SummaryEngine.shared
-    @State private var selectedSummaryBackend: LLMBackend = .qwen  // always default to local Qwen
+    // Default to the globally selected backend — silently defaulting to Qwen
+    // meant "Regenerate" could kick off a ~20 GB local-model download while the
+    // user believed their configured cloud provider was being used.
+    @State private var selectedSummaryBackend: LLMBackend = LLMProviderStore.shared.selectedBackend
     @State private var showDeleteConfirm = false
     @State private var deleteError: String?
     @State private var copiedFeedback = false
@@ -305,7 +308,14 @@ struct MeetingDetailView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(isRegenerating)
-                    if isRegenerating { ProgressView().controlSize(.small) }
+                    if isRegenerating {
+                        ProgressView().controlSize(.small)
+                        #if canImport(MLXLLM)
+                        if selectedSummaryBackend == .qwen, #available(macOS 14, *) {
+                            QwenDownloadHint()
+                        }
+                        #endif
+                    }
                 }
                 Divider()
                 if let err = summaryEngine.lastError, err.meetingId == meetingId {
@@ -501,3 +511,21 @@ extension MarkdownUI.Theme {
 
 // MARK: - Action Item Row
 
+
+#if canImport(MLXLLM)
+/// Shows live download progress when a summary regeneration is waiting on the
+/// local Qwen model — without this, a first-time Qwen run looks like an
+/// indefinitely stuck "Generating…" while ~GBs download silently.
+@available(macOS 14.0, *)
+private struct QwenDownloadHint: View {
+    @ObservedObject private var qwen = QwenLocalProvider.shared
+
+    var body: some View {
+        if !qwen.isLoaded, qwen.downloadProgress > 0, qwen.downloadProgress < 0.999 {
+            Text("Downloading Qwen model… \(Int(qwen.downloadProgress * 100))% (\(QwenLocalProvider.downloadSizeLabel))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+#endif

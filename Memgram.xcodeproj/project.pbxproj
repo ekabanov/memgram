@@ -48,6 +48,7 @@
 		579FF57E75540E5285C3C795 /* BugReportSubmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */; };
 		57CAB13BB33289838E376489 /* Entitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = F349127BC029B85859DCC605 /* Entitlements.swift */; };
 		59B732CE810AECA03F4E1EA8 /* BuildTimestamp.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8BA9DAA53EBC3F1589B15 /* BuildTimestamp.generated.swift */; };
+		5D81CFADA3E52DA96FF3CC2B /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE7B8A3F2CE9CB0E28F1CD7 /* HotkeyManager.swift */; };
 		68CC120C94C930131B47651F /* AudioChunkUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5334E3AF08B770900274F14 /* AudioChunkUploader.swift */; };
 		697082341F362921D9038502 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9D739005F69BB4F709259E /* CalendarManager.swift */; };
 		6A969FF46620FB9A2ED8A4A3 /* WatchRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B482E61B5508E0AC4D9425ED /* WatchRecordingView.swift */; };
@@ -114,6 +115,7 @@
 		E4B55230921A2EE57B88184F /* AudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9518923B9FA68D6694C5AD /* AudioConverter.swift */; };
 		E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68AF4FE04CEE934AD0859852 /* LLMProviderStore.swift */; };
 		EB3912B89BCE84DFCE2A4302 /* AudioChannelUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20CD7E7BC404129F2D6EA7F /* AudioChannelUtils.swift */; };
+		EC8F9C52B23257ED4458BE4C /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE7B8A3F2CE9CB0E28F1CD7 /* HotkeyManager.swift */; };
 		ED80E2CBA63F035B0C98C093 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9272F36873A483ABC9FDCB0F /* SearchView.swift */; };
 		ED9FD1DBC27AA1CE94A0DA77 /* BugReportPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF3DB89F86056AA629771B7 /* BugReportPayload.swift */; };
 		EDDA21AB9D5F339D9FFD5522 /* CloudSyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F90A4BCF134066B32519EED /* CloudSyncEngine.swift */; };
@@ -229,6 +231,7 @@
 		C7D084A1DB5DED36613474FF /* MeetingDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetailView.swift; sourceTree = "<group>"; };
 		CA3D5ABE742AD2C028C70C5A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		CCD1DFEF8CD15CECEEC4A342 /* ParakeetTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTranscriber.swift; sourceTree = "<group>"; };
+		CCE7B8A3F2CE9CB0E28F1CD7 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		D4D989A419F160963B1D52B3 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
 		D5334E3AF08B770900274F14 /* AudioChunkUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChunkUploader.swift; sourceTree = "<group>"; };
 		D7CADF3A54BCED319651C9AC /* MeetingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingStore.swift; sourceTree = "<group>"; };
@@ -517,6 +520,7 @@
 				3F9518923B9FA68D6694C5AD /* AudioConverter.swift */,
 				7FB8BA9DAA53EBC3F1589B15 /* BuildTimestamp.generated.swift */,
 				F349127BC029B85859DCC605 /* Entitlements.swift */,
+				CCE7B8A3F2CE9CB0E28F1CD7 /* HotkeyManager.swift */,
 				AF09BEF692E4C86B766A5C7A /* Log.swift */,
 				278D238861836CB5BDF0154A /* Notifications.swift */,
 			);
@@ -851,6 +855,7 @@
 				1C4E24564A5C75F2F6D02270 /* CalendarNotificationService.swift in Sources */,
 				EDDA21AB9D5F339D9FFD5522 /* CloudSyncEngine.swift in Sources */,
 				7E9A225C552C6A35B5A204B6 /* Entitlements.swift in Sources */,
+				EC8F9C52B23257ED4458BE4C /* HotkeyManager.swift in Sources */,
 				072D6650B6ACD328FD896788 /* Log.swift in Sources */,
 				A577CA15E023D4D211055BB4 /* Meeting.swift in Sources */,
 				88756ABD2C04E7905CDA378D /* MeetingEmbedding.swift in Sources */,
@@ -910,6 +915,7 @@
 				A24CDC605E52AC049DE52718 /* EmbeddingEngine.swift in Sources */,
 				57CAB13BB33289838E376489 /* Entitlements.swift in Sources */,
 				2BC7E07D5B22256B343F7B2B /* GeminiProvider.swift in Sources */,
+				5D81CFADA3E52DA96FF3CC2B /* HotkeyManager.swift in Sources */,
 				E02E7D769872AE7D33A392F5 /* KeychainHelper.swift in Sources */,
 				DA1078AA334E0686E4F314F6 /* LLMProvider.swift in Sources */,
 				E7979AB5107E6E3875E0A4C9 /* LLMProviderStore.swift in Sources */,
