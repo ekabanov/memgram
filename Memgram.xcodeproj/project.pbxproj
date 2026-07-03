@@ -54,6 +54,7 @@
 		6A969FF46620FB9A2ED8A4A3 /* WatchRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B482E61B5508E0AC4D9425ED /* WatchRecordingView.swift */; };
 		6C5563781E68CCE7D430B4E4 /* MemgramWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 75C7EACFA298FDFF496AD296 /* MemgramWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6FC0F7631B0D6F6D7BC048FB /* CKSyncTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4007B892264ADA1825057EA /* CKSyncTransport.swift */; };
+		7622D929842D4843B7A7F1CA /* QwenModelDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F201F5B571C235B78E54DCB6 /* QwenModelDownloader.swift */; };
 		7A24B689C8C67C4F7F344DF8 /* FakeCloudKitChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5151CFE16EEA332BA6CAE82 /* FakeCloudKitChannel.swift */; };
 		7E9A225C552C6A35B5A204B6 /* Entitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = F349127BC029B85859DCC605 /* Entitlements.swift */; };
 		7FA883EF3295076E0BBDB8A2 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = F979AADA93C8B3A477894A87 /* WhisperKit */; };
@@ -246,6 +247,7 @@
 		EE635A9AA521A55210C62EB6 /* MobileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileSettingsView.swift; sourceTree = "<group>"; };
 		F0B16CE774DDB719F2117948 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		F0C0F49F38575AF2B3B189E8 /* BugReportSubmitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BugReportSubmitter.swift; sourceTree = "<group>"; };
+		F201F5B571C235B78E54DCB6 /* QwenModelDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QwenModelDownloader.swift; sourceTree = "<group>"; };
 		F20CD7E7BC404129F2D6EA7F /* AudioChannelUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioChannelUtils.swift; sourceTree = "<group>"; };
 		F2CDB101F9AC2F6A151940D8 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		F349127BC029B85859DCC605 /* Entitlements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Entitlements.swift; sourceTree = "<group>"; };
@@ -444,6 +446,7 @@
 				4027BDFC1678CD1A0C60FCFF /* OllamaProvider.swift */,
 				71AB52D12D1FC1DCF44AFC59 /* OpenAIProvider.swift */,
 				BA0CF0CE50B36F3D6C61BB4F /* QwenLocalProvider.swift */,
+				F201F5B571C235B78E54DCB6 /* QwenModelDownloader.swift */,
 				9B5DFF25E171256C015392B0 /* SearchEngine.swift */,
 				8009E920FB91831616BDC1FD /* SummaryEngine.swift */,
 			);
@@ -940,6 +943,7 @@
 				F973EEB4DDA39D0296CFFB55 /* PermissionsManager.swift in Sources */,
 				501FEB83850E856B56431C2B /* PopoverView.swift in Sources */,
 				0F238402098B87C6FF938D52 /* QwenLocalProvider.swift in Sources */,
+				7622D929842D4843B7A7F1CA /* QwenModelDownloader.swift in Sources */,
 				326375DB8B1B11A207382EDE /* RecordingSession.swift in Sources */,
 				FADCDA0A0090F756399BE4EC /* RemoteMeetingProcessor.swift in Sources */,
 				2B05E9CCC9148D5F3972A110 /* ScreenCaptureKitCapture.swift in Sources */,

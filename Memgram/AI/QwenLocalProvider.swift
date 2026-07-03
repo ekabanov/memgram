@@ -275,42 +275,44 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         }
 
         let task = Task<Void, Error> {
-            let config = ModelConfiguration(id: Self.modelID, defaultPrompt: "Hello")
+            // Download via our own resolve/-endpoint downloader (byte progress,
+            // Range resume, idle timeout) — the hub library's Xet transport
+            // stalls to zero on some networks. MLX then loads purely from disk.
+            let localDir = ModelConfiguration(id: Self.modelID, defaultPrompt: "Hello").modelDirectory()
+            let progressSink: @Sendable (Double) -> Void = { frac in
+                Task { @MainActor [weak self] in
+                    guard let self, frac > self.downloadProgress else { return }
+                    self.downloadProgress = min(frac, 0.999)
+                    self.lastProgressAt = Date()
+                    if self.downloadStalled {
+                        self.downloadStalled = false
+                        self.log.info("Qwen download resumed at \(Int(frac * 100))%")
+                    }
+                }
+            }
+
+            // A previously-completed model must load OFFLINE — no file-list
+            // round-trip. ensureModel runs only when the model was never fully
+            // downloaded or its files went missing.
+            let configPresent = FileManager.default.fileExists(
+                atPath: localDir.appendingPathComponent("config.json").path)
+            if firstDownload || !configPresent {
+                try await QwenModelDownloader.ensureModel(
+                    modelID: Self.modelID, into: localDir, progress: progressSink)
+            }
+
+            let localConfig = ModelConfiguration(directory: localDir, defaultPrompt: "Hello")
             let container: ModelContainer
             do {
-                container = try await LLMModelFactory.shared.loadContainer(
-                    configuration: config
-                ) { [weak self] progress in
-                    guard firstDownload else { return }  // cached-load verification noise
-                    let frac = progress.fractionCompleted
-                    Task { @MainActor [weak self] in
-                        // Only advance — never go backwards. Multi-shard downloads fire
-                        // concurrent callbacks that can arrive out of order.
-                        guard let self, frac > self.downloadProgress else { return }
-                        self.downloadProgress = frac
-                        self.lastProgressAt = Date()
-                        if self.downloadStalled {
-                            self.downloadStalled = false
-                            self.log.info("Qwen download resumed at \(Int(frac * 100))%")
-                        }
-                    }
-                    if Int(frac * 100) % 10 == 0 {
-                        self?.log.debug("Download progress: \(Int(frac * 100))%")
-                    }
-                }
+                container = try await LLMModelFactory.shared.loadContainer(configuration: localConfig)
             } catch {
-                // HubApi may fail (e.g. HTTP 503) even when model is cached on disk.
-                // Fall back to loading directly from the local cache directory.
-                let localDir = config.modelDirectory()
-                let hasWeights = FileManager.default.fileExists(
-                    atPath: localDir.appendingPathComponent("config.json").path)
-                if hasWeights {
-                    self.log.warning("Remote load failed (\(error)) — loading from local cache: \(localDir.path)")
-                    let localConfig = ModelConfiguration(directory: localDir, defaultPrompt: "Hello")
-                    container = try await LLMModelFactory.shared.loadContainer(configuration: localConfig)
-                } else {
-                    throw error  // model genuinely not downloaded
-                }
+                // Self-heal: a "completed" model with missing/corrupt files
+                // (manually cleared cache, interrupted move) — re-verify every
+                // file against the repo manifest and load again.
+                self.log.warning("Local model load failed (\(error)) — re-verifying files against the repo manifest")
+                try await QwenModelDownloader.ensureModel(
+                    modelID: Self.modelID, into: localDir, progress: progressSink)
+                container = try await LLMModelFactory.shared.loadContainer(configuration: localConfig)
             }
             await MainActor.run { [weak self] in
                 self?.modelContainer = container
