@@ -245,7 +245,8 @@ final class MeetingStore {
             try Meeting
                 .filter(Column("status") == MeetingStatus.recording.rawValue
                      || Column("status") == MeetingStatus.transcribing.rawValue
-                     || Column("status") == MeetingStatus.diarizing.rawValue)
+                     || Column("status") == MeetingStatus.diarizing.rawValue
+                     || Column("status") == MeetingStatus.error.rawValue)
                 .order(Column("started_at").desc)
                 .fetchAll(db)
         }

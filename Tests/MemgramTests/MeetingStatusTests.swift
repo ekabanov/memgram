@@ -89,6 +89,17 @@ struct MeetingStatusTests {
         #expect(interrupted.isEmpty)
     }
 
+    @Test func interruptedMeetingsFindsError() throws {
+        // .error is set when recording startup fails (e.g. system audio capture) —
+        // it must be surfaced for recovery instead of being invisible forever.
+        let env = try TestSyncEnvironment.makeLocal()
+        let meeting = try env.meetingStore.createMeeting(title: "Failed Start")
+        try env.meetingStore.updateStatus(meeting.id, status: .error)
+        let interrupted = try env.meetingStore.interruptedMeetings()
+        #expect(interrupted.count == 1)
+        #expect(interrupted[0].status == .error)
+    }
+
     // MARK: - Summary and title
 
     @Test func saveSummaryPersists() throws {

@@ -158,6 +158,33 @@ struct SyncStatusTests {
         #expect(fetched.syncStatus == .synced)
     }
 
+    @Test func remoteDoneOverridesLocalError() throws {
+        // If another Mac successfully finalized the meeting, its .done (with
+        // transcript) must replace a local failure state — .error outranking
+        // .done would block convergence forever.
+        let channel = FakeCloudKitChannel()
+        let env = try TestSyncEnvironment.make(channel: channel)
+        let meeting = try env.meetingStore.createMeeting(title: "Flaky Start")
+
+        // First sync so the local record has ckSystemFields (merge rank applies)
+        env.transport.flush()
+        try env.meetingStore.updateStatus(meeting.id, status: .error)
+
+        let zoneID = CKRecordZone.ID(zoneName: "MemgramZone")
+        let recordID = CKRecord.ID(recordName: "meetings_\(meeting.id)", zoneID: zoneID)
+        let record = CKRecord(recordType: "Meeting", recordID: recordID)
+        record["title"] = "Flaky Start" as CKRecordValue
+        record["startedAt"] = meeting.startedAt as CKRecordValue
+        record["status"] = "done" as CKRecordValue
+        record["rawTranscript"] = "Recovered transcript" as CKRecordValue
+
+        env.transport.receive(modifications: [record], deletions: [])
+
+        let fetched = try env.meetingStore.fetchMeeting(meeting.id)!
+        #expect(fetched.status == .done)
+        #expect(fetched.rawTranscript == "Recovered transcript")
+    }
+
     @Test func remoteRecordKeepsDoneWithTranscript() throws {
         let channel = FakeCloudKitChannel()
         let env = try TestSyncEnvironment.make(channel: channel)

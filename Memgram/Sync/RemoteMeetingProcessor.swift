@@ -21,7 +21,21 @@ final class RemoteMeetingProcessor {
 
     private init() {}
 
-    private var modelReady = false
+    /// Whether OUR engine currently holds a loaded model. The model is loaded
+    /// lazily when pending chunks appear and unloaded after an idle period —
+    /// keeping a second permanently-resident copy (RecordingSession has its own)
+    /// would double model memory on exactly the 8–12 GB Macs we protect.
+    private var modelLoaded = false
+
+    /// Consecutive chunk-less polls since the last processed chunk.
+    private var idlePolls = 0
+
+    /// Unload the model after this many consecutive chunk-less polls (~5 min).
+    private let unloadAfterIdlePolls = 30
+
+    /// Back off after a failed model load so a broken download isn't retried
+    /// on every 10s poll.
+    private var modelLoadBackoffUntil: Date?
 
     /// Staleness threshold: chunks "processing" for longer than this are
     /// assumed abandoned by another Mac and reset to "pending".
@@ -57,10 +71,15 @@ final class RemoteMeetingProcessor {
     private var summaryAttempts: [String: Int] = [:]
     private let maxSummaryAttempts = 2
 
+    /// Consecutive polls that found zero unfinished chunks, per meeting.
+    /// CloudKit query indexes lag writes by seconds, so a single empty reading
+    /// can miss tail chunks that were just uploaded — require two in a row
+    /// before fast-path finalizing.
+    private var emptyChunkPolls: [String: Int] = [:]
+
     func start() {
         guard pollTimer == nil else { return }  // prevent double-start
         log.info("RemoteMeetingProcessor started")
-        loadModelWithRetry()
         pollTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.pollForChunks() }
         }
@@ -89,24 +108,36 @@ final class RemoteMeetingProcessor {
         }
     }
 
-    /// Load WhisperKit model, retrying every 30 seconds on failure.
-    private func loadModelWithRetry() {
+    /// Lazily load the transcription model. Returns true when the model is
+    /// usable. Failures back off for 60s so a broken download isn't hammered
+    /// on every 10s poll; pending chunks simply wait for the next attempt.
+    private func ensureModelLoaded() async -> Bool {
+        if modelLoaded { return true }
+        if let backoff = modelLoadBackoffUntil, Date() < backoff { return false }
+
         let modelName = WhisperModelManager.shared.selectedModel.whisperKitName
-        Task {
-            for attempt in 1...10 {
-                do {
-                    try await transcriptionEngine.prepare(modelName: modelName)
-                    modelReady = true
-                    log.info("Remote transcription engine ready (attempt \(attempt))")
-                    return
-                } catch {
-                    log.error("Model load attempt \(attempt) failed: \(error)")
-                    if attempt < 10 {
-                        try? await Task.sleep(nanoseconds: 30_000_000_000)  // 30s between retries
-                    }
-                }
-            }
-            log.error("Model load failed after 10 attempts — remote processing disabled")
+        do {
+            try await transcriptionEngine.prepare(modelName: modelName)
+            modelLoaded = true
+            modelLoadBackoffUntil = nil
+            log.info("Remote transcription engine loaded on demand")
+            return true
+        } catch {
+            log.error("Remote model load failed — backing off 60s: \(error)")
+            modelLoadBackoffUntil = Date().addingTimeInterval(60)
+            return false
+        }
+    }
+
+    /// Free the model after a sustained idle period.
+    private func unloadModelIfIdle() {
+        guard modelLoaded else { return }
+        idlePolls += 1
+        if idlePolls >= unloadAfterIdlePolls {
+            log.info("No remote chunks for ~\(self.unloadAfterIdlePolls * 10)s — unloading transcription model")
+            transcriptionEngine.unload()
+            modelLoaded = false
+            idlePolls = 0
         }
     }
 
@@ -124,29 +155,31 @@ final class RemoteMeetingProcessor {
         isProcessing = true
         defer { isProcessing = false }
 
-        // Chunk transcription needs the model; finalization and summary recovery
-        // must run regardless — gating them on the model would leave meetings
-        // stuck if the model ever fails to load.
-        if modelReady {
-            do {
-                // Recover chunks stuck in "processing" by another Mac that went away
-                await recoverStuckChunks(olderThan: chunkStaleTimeout)
+        // Chunk transcription needs the model, which is loaded lazily when work
+        // appears and unloaded after ~5 idle minutes. Finalization and summary
+        // recovery run regardless — gating them on the model would leave
+        // meetings stuck if the model ever fails to load.
+        do {
+            // Recover chunks stuck in "processing" by another Mac that went away
+            await recoverStuckChunks(olderThan: chunkStaleTimeout)
 
-                let chunks = try await AudioChunkService.shared.fetchAllPendingChunks()
-                if !chunks.isEmpty {
-                    log.info("Found \(chunks.count) pending audio chunks")
-                    let grouped = Dictionary(grouping: chunks) { $0["meetingId"] as? String ?? "" }
-                    for (meetingId, meetingChunks) in grouped {
-                        guard !meetingId.isEmpty else { continue }
-                        let sorted = meetingChunks.sorted { ($0["chunkIndex"] as? Int ?? 0) < ($1["chunkIndex"] as? Int ?? 0) }
-                        for chunk in sorted {
-                            await processChunk(chunk, meetingId: meetingId)
-                        }
+            let chunks = try await AudioChunkService.shared.fetchAllPendingChunks()
+            if chunks.isEmpty {
+                unloadModelIfIdle()
+            } else if await ensureModelLoaded() {
+                idlePolls = 0
+                log.info("Found \(chunks.count) pending audio chunks")
+                let grouped = Dictionary(grouping: chunks) { $0["meetingId"] as? String ?? "" }
+                for (meetingId, meetingChunks) in grouped {
+                    guard !meetingId.isEmpty else { continue }
+                    let sorted = meetingChunks.sorted { ($0["chunkIndex"] as? Int ?? 0) < ($1["chunkIndex"] as? Int ?? 0) }
+                    for chunk in sorted {
+                        await processChunk(chunk, meetingId: meetingId)
                     }
                 }
-            } catch {
-                log.error("Poll failed: \(error)")
             }
+        } catch {
+            log.error("Poll failed: \(error)")
         }
 
         // Always check — finalization happens AFTER all chunks are processed
@@ -261,6 +294,7 @@ final class RemoteMeetingProcessor {
                     // Still has chunks being worked on — skip, but remember that
                     // this meeting is chunk-based for the fast-path below.
                     chunkMeetingIds.insert(meeting.id)
+                    emptyChunkPolls[meeting.id] = 0
                     continue
                 }
 
@@ -286,7 +320,17 @@ final class RemoteMeetingProcessor {
                 // chunk records for them). Anything else in .transcribing with
                 // segments could be another device's live recording that synced
                 // mid-drain — it must sit quiet for the stale timeout first.
-                guard chunkMeetingIds.contains(meeting.id) || isStale else { continue }
+                if chunkMeetingIds.contains(meeting.id) {
+                    // Guard against CloudKit query-index lag: require two
+                    // consecutive polls agreeing there are no unfinished chunks
+                    // before finalizing, or a tail chunk uploaded seconds ago
+                    // could be silently left out of the transcript.
+                    let polls = (emptyChunkPolls[meeting.id] ?? 0) + 1
+                    emptyChunkPolls[meeting.id] = polls
+                    guard polls >= 2 else { continue }
+                } else {
+                    guard isStale else { continue }
+                }
 
                 // Cross-Mac claim: only one Mac finalizes and summarizes.
                 guard await AudioChunkService.shared.claimFinalization(meetingId: meeting.id) else {
@@ -312,6 +356,7 @@ final class RemoteMeetingProcessor {
                 // Clean up any leftover "failed" chunk records for this meeting
                 await AudioChunkService.shared.deleteRemainingChunks(meetingId: meeting.id)
                 chunkMeetingIds.remove(meeting.id)
+                emptyChunkPolls[meeting.id] = nil
                 await SummaryEngine.shared.summarize(meetingId: meeting.id)
                 await EmbeddingEngine.shared.embed(meetingId: meeting.id)
                 log.info("Meeting \(meeting.id) — summarized and done")

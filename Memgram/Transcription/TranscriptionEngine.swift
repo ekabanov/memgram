@@ -75,6 +75,13 @@ final class TranscriptionEngine {
         isTranscribing = false
     }
 
+    /// Drop the loaded transcriber to free model memory. Unlike resetTranscriber(),
+    /// this does NOT touch the shared readiness flags — another engine instance
+    /// (e.g. RecordingSession's) may still hold a loaded model that drives the UI.
+    func unload() {
+        transcriber = nil
+    }
+
     /// Discard the loaded transcriber so the next prepare() call loads the active backend.
     func resetTranscriber() {
         transcriber = nil
