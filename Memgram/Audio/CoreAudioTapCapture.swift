@@ -21,17 +21,12 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
         teardownHard()
 
         // STEP 1: Create tap description.
-        // Try three strategies in order:
-        // A) Empty process list (Apple docs say this = all processes)
-        // B) kAudioObjectSystemObject as the "process" (system-wide mix)
-        // C) All enumerated audio process object IDs
-        let processIDs = Self.allAudioProcessObjectIDs()
-        // If no audio processes found yet, fall back to system object (captures all output)
-        let tapProcesses: [AudioObjectID] = processIDs.isEmpty
-            ? [AudioObjectID(kAudioObjectSystemObject)]
-            : processIDs
-        log.info("CoreAudioTapCapture: \(processIDs.count) audio processes — strategy: \(processIDs.isEmpty ? "system-fallback" : "process-list")")
-        let tapDesc = CATapDescription(stereoMixdownOfProcesses: tapProcesses)
+        // Global tap excluding nothing = ALL system audio, including processes
+        // that start playing AFTER recording begins (e.g. joining a call after
+        // hitting record). A static process list captured at start() would miss
+        // those, and kAudioObjectSystemObject is not a valid process object for
+        // CATapDescription.
+        let tapDesc = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
         tapDesc.name = "MemgramSystemTap"
         // isExclusive = false → spy tap (audio still plays through speakers)
         tapDesc.isExclusive = false
@@ -184,25 +179,6 @@ final class CoreAudioTapCapture: SystemAudioCaptureProvider {
         asbd.mFramesPerPacket = 1
         asbd.mBytesPerPacket = 8
         return asbd
-    }
-
-    /// Returns AudioObjectIDs for all currently running audio processes.
-    /// Passing these to CATapDescription ensures we capture from all of them.
-    private static func allAudioProcessObjectIDs() -> [AudioObjectID] {
-        var addr = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyProcessObjectList,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var size: UInt32 = 0
-        let sysObj = AudioObjectID(kAudioObjectSystemObject)
-        guard AudioObjectGetPropertyDataSize(sysObj, &addr, 0, nil, &size) == noErr,
-              size > 0 else { return [] }
-
-        let count = Int(size) / MemoryLayout<AudioObjectID>.size
-        var ids = [AudioObjectID](repeating: 0, count: count)
-        AudioObjectGetPropertyData(sysObj, &addr, 0, nil, &size, &ids)
-        return ids
     }
 
     // MARK: - Teardown

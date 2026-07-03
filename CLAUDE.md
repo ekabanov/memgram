@@ -42,7 +42,9 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
   SummaryEngine (background) → MeetingStore.saveSummary → meetingDidUpdate notification
 ```
 
-**System audio:** CoreAudioTapCapture on macOS 14.4+, ScreenCaptureKitCapture fallback. `kAudioObjectSystemObject` is NOT a valid process object for `CATapDescription` — always use `PermissionsManager.audioProcessObjectIDs()`.
+**System audio:** CoreAudioTapCapture on macOS 14.4+, ScreenCaptureKitCapture fallback. The tap is a **global tap** (`CATapDescription(stereoGlobalTapButExcludeProcesses: [])`) so processes that start playing after recording begins (e.g. joining a call late) are captured. Never use a static process list snapshot, and `kAudioObjectSystemObject` is NOT a valid process object for `CATapDescription` (`PermissionsManager.audioProcessObjectIDs()` exists for permission priming only).
+
+**Echo cancellation:** `MicrophoneCapture` enables Apple voice processing (`inputNode.setVoiceProcessingEnabled(true)`) with other-audio ducking disabled — without AEC, speaker playback bleeds into the mic, makes mic/system energies near-equal, and defeats `selectDominantChannel` (the averaged path mixes a room-delayed echo → garbled transcription). User-toggleable via `echoCancellationEnabled` (default true, Settings → Recording); fails soft to plain capture. Read the input format only AFTER configuring voice processing — enabling it changes the node's format. The mic privacy indicator (orange menu-bar pill) is unavoidable TCC UI; it shows "Xcode" for debug launches, "Memgram" in real ones.
 
 **Transcription:** Backend selectable in **Settings → Recording**. Default is Whisper Large v3 Turbo on Macs with ≥ 12 GB RAM, Parakeet (ANE) below that. WhisperKit auto-downloads models; model auto-selected by `WhisperModelManager.autoSelectedModel` based on RAM + `preferMultilingual` flag. Users only see English/Multilingual toggle — no model list. `TranscriptionBackendManager` tracks backend preference and Parakeet loading state.
 

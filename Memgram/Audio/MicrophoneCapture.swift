@@ -13,6 +13,30 @@ final class MicrophoneCapture {
 
     func start() throws {
         let inputNode = engine.inputNode
+
+        // Echo cancellation: with speakers (no headphones), the mic picks up the
+        // system audio it is playing — the bleed makes mic/system energies nearly
+        // equal, defeating selectDominantChannel's threshold and smearing the
+        // averaged signal with a room-delayed echo. Apple's voice processing
+        // subtracts the rendered output from the mic signal at the source.
+        // Fail soft: worst case we record exactly as before.
+        if UserDefaults.standard.object(forKey: "echoCancellationEnabled") as? Bool ?? true {
+            do {
+                try inputNode.setVoiceProcessingEnabled(true)
+                if #available(macOS 14.0, *) {
+                    // Never duck other audio — the "other audio" is the meeting
+                    // the user is listening to (and our system-audio tap source).
+                    inputNode.voiceProcessingOtherAudioDuckingConfiguration =
+                        .init(enableAdvancedDucking: false, duckingLevel: .min)
+                }
+            } catch {
+                // Some devices/route combinations reject voice processing.
+                try? inputNode.setVoiceProcessingEnabled(false)
+            }
+        }
+
+        // Read the format AFTER configuring voice processing — enabling it
+        // changes the input node's output format.
         let inputFormat = inputNode.outputFormat(forBus: 0)
 
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in

@@ -216,6 +216,7 @@ private struct APIKeyConfigView: View {
 struct RecordingSettingsTab: View {
     @ObservedObject private var backendManager = TranscriptionBackendManager.shared
     @ObservedObject private var whisperManager = WhisperModelManager.shared
+    @AppStorage("echoCancellationEnabled") private var echoCancellation = true
     var body: some View {
         Form {
             Section("Transcription Engine") {
@@ -242,6 +243,13 @@ struct RecordingSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
             .opacity(backendManager.selectedBackend == .whisper ? 1 : 0.4)
+
+            Section("Microphone") {
+                Toggle("Echo cancellation", isOn: $echoCancellation)
+                Text("Removes meeting audio played through your speakers from the microphone signal. Turn off if your microphone sounds distorted. Takes effect on the next recording.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
     }
