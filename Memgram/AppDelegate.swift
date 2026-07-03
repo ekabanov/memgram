@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #endif
 
         let isTestRun = ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil
-        if #available(macOS 14.0, *), !isTestRun {
+        if #available(macOS 14.0, *), !isTestRun, Entitlements.hasCloudKit {
             if AppDatabase.shared.needsCloudResync {
                 UserDefaults.standard.removeObject(forKey: "CKSyncEngineState")
                 appLog.info("Cleared CloudKit sync state after v4 schema migration")
@@ -67,6 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appLog.info("CloudSync started")
             RemoteMeetingProcessor.shared.start()
             appLog.info("RemoteMeetingProcessor started")
+        } else if !isTestRun {
+            // Built without the iCloud entitlement (e.g. free Apple ID, see
+            // README) — recording, transcription, and summaries work normally;
+            // sync and iPhone-chunk processing are skipped. Touching CKContainer
+            // without the entitlement would crash the process.
+            appLog.warning("CloudKit entitlement absent — iCloud sync disabled")
         }
 
         // Register for silent push notifications (CloudKit subscriptions)

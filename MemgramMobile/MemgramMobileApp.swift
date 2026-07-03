@@ -44,8 +44,12 @@ struct MemgramMobileApp: App {
 
     init() {
         log.info("Memgram Mobile launched — v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") built \(buildTimestamp)")
-        CloudSyncEngine.shared.start()
-        log.info("CloudSync started")
+        if Entitlements.hasCloudKit {
+            CloudSyncEngine.shared.start()
+            log.info("CloudSync started")
+        } else {
+            log.warning("CloudKit entitlement absent — iCloud sync disabled")
+        }
 
         if CalendarManager.shared.isEnabled {
             Task {
