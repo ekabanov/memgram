@@ -14,6 +14,20 @@ final class ClaudeProvider: LLMProvider {
         self.name   = "Claude (\(model))"
     }
 
+    struct Thinking: Encodable { let type: String }
+
+    /// Sonnet 5 (2026-06) turned adaptive thinking ON by default — a long
+    /// transcript then "thinks" for a minute before the first visible token,
+    /// which reads as a stuck summary. Notes generation is structured, not
+    /// multi-step reasoning, so turn it off. Exceptions: Fable/Mythos reject
+    /// an explicit "disabled" (thinking is always on there) and claude-3.x
+    /// predates the parameter — send nothing for those.
+    private var thinkingConfig: Thinking? {
+        let m = model.lowercased()
+        if m.contains("fable") || m.contains("mythos") || m.hasPrefix("claude-3") { return nil }
+        return Thinking(type: "disabled")
+    }
+
     func complete(system: String, user: String) async throws -> String {
         guard !apiKey.isEmpty else { throw LLMNotConfiguredError(provider: "Claude") }
 
@@ -23,6 +37,7 @@ final class ClaudeProvider: LLMProvider {
             let max_tokens: Int
             let system: String
             let messages: [Message]
+            let thinking: Thinking?
         }
         struct ContentBlock: Decodable { let type: String; let text: String? }
         struct Response: Decodable { let content: [ContentBlock] }
@@ -31,7 +46,8 @@ final class ClaudeProvider: LLMProvider {
             model: model,
             max_tokens: 8192,
             system: system,
-            messages: [Message(role: "user", content: user)]
+            messages: [Message(role: "user", content: user)],
+            thinking: thinkingConfig
         )
         let response: Response = try await post(body: body)
         // Skip non-text blocks (e.g. thinking) — take the first text block.
@@ -49,11 +65,13 @@ final class ClaudeProvider: LLMProvider {
                     struct Request: Encodable {
                         let model: String; let max_tokens: Int; let stream: Bool
                         let system: String; let messages: [Message]
+                        let thinking: Thinking?
                     }
                     let body = Request(
                         model: self.model, max_tokens: 8192, stream: true,
                         system: system,
-                        messages: [Message(role: "user", content: user)]
+                        messages: [Message(role: "user", content: user)],
+                        thinking: self.thinkingConfig
                     )
                     var request = URLRequest(
                         url: URL(string: "https://api.anthropic.com/v1/messages")!,

@@ -338,8 +338,24 @@ final class SummaryEngine: ObservableObject {
 
         \(transcript)
         """
+        return try await streamAndAccumulate(provider: provider, user: user, onChunk: onChunk)
+    }
+
+    /// Runs a streaming request, logging time-to-first-token — the number that
+    /// separates "provider is slow to respond" from "generation is slow", which
+    /// look identical in the UI ("summarising is stuck").
+    private func streamAndAccumulate(provider: any LLMProvider, user: String,
+                                     onChunk: ((String) -> Void)? = nil) async throws -> String {
+        let start = Date()
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
+            if accumulated.isEmpty {
+                let ttft = Date().timeIntervalSince(start)
+                log.info("First token after \(String(format: "%.1f", ttft))s from \(provider.name)")
+                if ttft > 20 {
+                    log.warning("Slow first token (\(String(format: "%.1f", ttft))s) — provider queueing or hidden reasoning phase")
+                }
+            }
             accumulated += chunk
             onChunk?(accumulated)
         }
@@ -367,12 +383,7 @@ final class SummaryEngine: ObservableObject {
         a topic resolved in a later segment supersedes the open question from \
         an earlier one.
         """
-        var accumulated = ""
-        for try await chunk in provider.stream(system: systemPrompt, user: user) {
-            accumulated += chunk
-            onChunk?(accumulated)
-        }
-        return accumulated
+        return try await streamAndAccumulate(provider: provider, user: user, onChunk: onChunk)
     }
 
     private func summarizeLong(meetingId: String, calendarContext: CalendarContext?,
@@ -383,7 +394,12 @@ final class SummaryEngine: ObservableObject {
         log.info("Chunked \(segments.count) segments into \(windows.count) windows")
 
         var chunkSummaries: [String] = []
-        for window in windows {
+        for (index, window) in windows.enumerated() {
+            // The window passes don't stream to the UI (their output is
+            // intermediate), so surface progress through streamingText instead —
+            // otherwise a long meeting looks stuck until the final merge starts.
+            streamingText[meetingId] = "_Summarising part \(index + 1) of \(windows.count)…_"
+            let windowStart = Date()
             // Annotate each window with the channel-derived speaker turns when
             // available, so attribution survives into the per-chunk notes.
             let chunkTranscript: String
@@ -398,6 +414,7 @@ final class SummaryEngine: ObservableObject {
             let summary = try await summarizeShort(transcript: chunkTranscript, calendarContext: calendarContext,
                                                    speakerNote: note, provider: provider)
             chunkSummaries.append(summary)
+            log.info("Window \(index + 1)/\(windows.count) summarised in \(String(format: "%.1f", Date().timeIntervalSince(windowStart)))s")
         }
 
         return try await summarizeFinal(chunkSummaries: chunkSummaries, provider: provider, onChunk: onChunk)
