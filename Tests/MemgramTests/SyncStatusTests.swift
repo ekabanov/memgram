@@ -79,6 +79,37 @@ struct SyncStatusTests {
         #expect(fetched.syncStatus == .failed)
     }
 
+    @Test func unknownItemOnSaveRecreatesInsteadOfDeleting() throws {
+        // The server losing a record we believe is synced (dev-env wipe,
+        // container reset) must NEVER delete local data — the record is
+        // re-uploaded as a fresh create. Regression test for a real data-loss
+        // incident: a freshly summarized meeting vanished from the list.
+        let channel = FakeCloudKitChannel()
+        let env = try TestSyncEnvironment.make(channel: channel)
+        let meeting = try env.meetingStore.createMeeting(title: "Precious")
+
+        // Sync once so the local record carries CKRecord system fields
+        env.transport.flush()
+        try env.meetingStore.saveSummary(meetingId: meeting.id, summary: "Important summary")
+
+        // Server "loses" the record: next save fails with unknownItem
+        channel.failNextSave = .unknownItem
+        env.transport.flush()
+
+        // Meeting must still exist locally, queued for a fresh upload
+        let fetched = try env.meetingStore.fetchMeeting(meeting.id)
+        #expect(fetched != nil)
+        #expect(fetched?.summary == "Important summary")
+        #expect(fetched?.syncStatus == .pendingUpload)
+        #expect(fetched?.ckSystemFields == nil)
+
+        // Next flush re-creates it on the server
+        env.transport.flush()
+        let resynced = try env.meetingStore.fetchMeeting(meeting.id)!
+        #expect(resynced.syncStatus == .synced)
+        #expect(channel.records["meetings_\(meeting.id)"] != nil)
+    }
+
     @Test func serverRecordChangedAppliesRemoteWithoutReenqueueWhenIdentical() throws {
         let channel = FakeCloudKitChannel()
         let env = try TestSyncEnvironment.make(channel: channel)

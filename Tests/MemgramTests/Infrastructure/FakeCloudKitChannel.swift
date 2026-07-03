@@ -130,7 +130,9 @@ final class FakeCloudKitChannel {
         let pushes = pendingPushes.filter { $0.target === target }
         pendingPushes.removeAll { $0.target === target }
         for push in pushes {
-            let reordered = push.records.sorted { a, _ in a.recordType != "Meeting" }
+            let reordered = push.records.sorted { a, b in
+                (a.recordType != "Meeting") && (b.recordType == "Meeting")
+            }
             target.receive(modifications: reordered, deletions: push.deletions)
         }
     }

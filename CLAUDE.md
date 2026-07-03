@@ -127,7 +127,7 @@ The `MeetingStatus.diarizing` enum case was fully retired: migration `"v5_remove
 - **State persistence:** `CKSyncEngine.State.Serialization` JSON-encoded in UserDefaults key `CKSyncEngineState`.
 - **Merge strategy:** Remote `ckSystemFields` always wins. `summary`, `rawTranscript`, and `actionItems` keep local value if non-nil.
 - **Placeholder watchdog:** If placeholder meetings are still present >5 minutes after sync start, a background fetch is triggered to retry.
-- **`unknownItem` error:** Treated as remote deletion — local record is deleted. Do not retry on this error.
+- **`unknownItem` on SAVE:** the server lost a record we believe is synced (dev-env wipe, container reset). NEVER delete local data for a failed save — system fields are cleared and the record is re-enqueued as a fresh create. (The old treat-as-remote-deletion logic destroyed local meetings.) Genuine remote deletions arrive only through the fetch path.
 - **`resetAndResync()`** — wipes the local DB and UserDefaults sync state, then re-downloads everything from CloudKit. Use only for full reset; all local-only data is lost.
 
 **Pitfalls:**

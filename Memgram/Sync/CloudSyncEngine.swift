@@ -289,6 +289,24 @@ final class CloudSyncEngine: ObservableObject {
         }
     }
 
+    /// Drop a record's stored CKRecord metadata so the next upload is sent as a
+    /// CREATE instead of a modify-with-stale-changeTag. Used when the server
+    /// reports it no longer has a record we believe is synced.
+    fileprivate func clearSystemFields(table: String, id: String) {
+        // Table names come from parseRecordID — restrict to the known set.
+        guard ["meetings", "segments", "speakers"].contains(table) else { return }
+        do {
+            try db.write { db in
+                try db.execute(
+                    sql: "UPDATE \(table) SET ck_system_fields = NULL WHERE id = ?",
+                    arguments: [id]
+                )
+            }
+        } catch {
+            logger.error("[CloudSync] Failed to clear system fields for \(table)/\(id): \(error)")
+        }
+    }
+
     // MARK: - Record ID Helpers
 
     fileprivate func makeRecordID(table: String, id: String) -> CKRecord.ID {
@@ -653,12 +671,17 @@ extension CloudSyncEngine: SyncTransportDelegate {
                 transport?.enqueueSave(recordID)
 
             case .unknownItem:
-                // The record was sent as a modify (has a changeTag) but CloudKit
-                // says it doesn't exist. Treat as remote deletion.
-                logger.warning("[CloudSync] Unknown item — treating as remote deletion: \(recordID.recordName)")
-                applyRemoteDeletion(recordID)
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .meetingDidUpdate, object: nil)
+                // The record was sent as a modify (has a changeTag) but the server
+                // says it doesn't exist — the server lost it (dev-environment wipe,
+                // out-of-band deletion, container reset). NEVER delete local data
+                // for a failed SAVE: genuine remote deletions arrive through the
+                // fetch path. Strip the stale system fields and re-upload as a
+                // fresh create instead. (The old treat-as-remote-deletion logic
+                // destroyed local meetings whenever the server lost records.)
+                logger.warning("[CloudSync] Unknown item on save — server lost \(recordID.recordName), re-uploading as create")
+                if let parsed = parseRecordID(recordID) {
+                    clearSystemFields(table: parsed.table, id: parsed.id)
+                    enqueueSave(table: parsed.table, id: parsed.id)
                 }
 
             default:
