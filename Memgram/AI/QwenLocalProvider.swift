@@ -15,20 +15,20 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     /// 3.6 model, so the lower tiers stay on Qwen 3.5.
     ///
     /// Peak memory usage (model weights + KV cache + activations):
-    ///  < 16 GB → 3.5 4B 4bit      (~5 GB peak)  — safe on 8 GB machines
-    ///  16–47 GB → 3.5 9B 4bit     (~12 GB peak) — fits on 16/24/32 GB machines
-    ///  ≥ 48 GB → 3.6 35B-A3B 4bit (~20 GB weights, 3B active → fast decode,
-    ///            lower activation footprint than the previous dense 27B)
+    ///  < 16 GB → 3.5 4B 4bit  (~5 GB peak)  — safe on 8 GB machines
+    ///  16–47 GB → 3.5 9B 4bit (~12 GB peak) — fits on 16/24/32 GB machines
+    ///  ≥ 48 GB → 3.6 27B 4bit (~16 GB weights, dense — best summary quality;
+    ///            preferred over 35B-A3B MoE after real-world comparison)
     static var modelID: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 48 { return "mlx-community/Qwen3.6-35B-A3B-4bit" }
+        if ram >= 48 { return "mlx-community/Qwen3.6-27B-4bit" }
         if ram >= 16 { return "mlx-community/Qwen3.5-9B-MLX-4bit" }
         return "mlx-community/Qwen3.5-4B-MLX-4bit"
     }
 
     var name: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 48 { return "Qwen 3.6 35B (local)" }
+        if ram >= 48 { return "Qwen 3.6 27B (local)" }
         if ram >= 16 { return "Qwen 3.5 9B (local)" }
         return "Qwen 3.5 4B (local)"
     }
@@ -36,14 +36,24 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     /// Approximate download size label shown in the popover during model download.
     static var downloadSizeLabel: String {
         let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        if ram >= 48 { return "~20 GB" }
+        if ram >= 48 { return "~16 GB" }
         if ram >= 16 { return "~4.5 GB" }
         return "~2.2 GB"
     }
 
     @Published var downloadProgress: Double = 0
+    /// True only while a GENUINE first-time download is running — cached
+    /// weight loads never set this, so the UI can't flash fake download cards.
+    @Published var isDownloading = false
     @Published var isLoaded = false
     @Published var loadError: String?
+
+    /// Persisted per model ID: has this model ever fully downloaded?
+    /// Keying by ID means a RAM-tier change shows real progress again.
+    private var hasCompletedDownload: Bool {
+        get { UserDefaults.standard.bool(forKey: "qwenDownloadCompleted_\(Self.modelID)") }
+        set { UserDefaults.standard.set(newValue, forKey: "qwenDownloadCompleted_\(Self.modelID)") }
+    }
 
     private var modelContainer: ModelContainer?
     private let log = Logger.make("AI")
@@ -83,7 +93,11 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         }
     }
 
-    private init() {}
+    private init() {
+        // A previously-downloaded model starts at 1.0 ("Ready") — reloading
+        // cached weights is not a download and must not animate a bar.
+        downloadProgress = hasCompletedDownload ? 1.0 : 0
+    }
 
     // MARK: - LLMProvider
 
@@ -204,7 +218,16 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
 
         log.info("Loading model: \(Self.modelID)")
         loadError = nil
-        downloadProgress = 0
+        // Progress is only published for a GENUINE first-time download.
+        // Reloading cached weights (the common case — the model is unloaded
+        // after every summary) also fires Hub progress callbacks as files are
+        // verified; publishing those made a fake "Downloading 0%→100%" card
+        // flash on every summarisation.
+        let firstDownload = !hasCompletedDownload
+        if firstDownload {
+            downloadProgress = 0
+            isDownloading = true
+        }
 
         let task = Task<Void, Error> {
             let config = ModelConfiguration(id: Self.modelID, defaultPrompt: "Hello")
@@ -213,6 +236,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                 container = try await LLMModelFactory.shared.loadContainer(
                     configuration: config
                 ) { [weak self] progress in
+                    guard firstDownload else { return }  // cached-load verification noise
                     let frac = progress.fractionCompleted
                     Task { @MainActor [weak self] in
                         // Only advance — never go backwards. Multi-shard downloads fire
@@ -242,6 +266,8 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                 self?.modelContainer = container
                 self?.isLoaded = true
                 self?.downloadProgress = 1.0
+                self?.isDownloading = false
+                self?.hasCompletedDownload = true
                 self?.loadTask = nil
             }
             self.log.info("Model loaded successfully")
@@ -251,12 +277,14 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
             try await task.value
         } catch is CancellationError {
             log.info("Download cancelled")
-            downloadProgress = 0
+            downloadProgress = hasCompletedDownload ? 1.0 : 0
+            isDownloading = false
             loadTask = nil
             // Don't set loadError — cancellation is intentional
         } catch {
             log.error("Model load failed: \(error)")
             loadError = error.localizedDescription
+            isDownloading = false
             loadTask = nil
             throw error
         }
@@ -294,7 +322,8 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         log.info("cancelDownload() called — cancelling in-flight load task")
         loadTask?.cancel()
         loadTask = nil
-        downloadProgress = 0
+        downloadProgress = hasCompletedDownload ? 1.0 : 0
+        isDownloading = false
         loadError = nil
         // isLoaded intentionally not reset — if model was already loaded, keep it
     }

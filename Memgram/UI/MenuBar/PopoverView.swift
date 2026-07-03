@@ -431,7 +431,7 @@ private struct QwenDownloadCard: View {
     @ObservedObject private var qwen = QwenLocalProvider.shared
 
     var body: some View {
-        let isDownloading = qwen.downloadProgress > 0 && qwen.downloadProgress < 1
+        let isDownloading = qwen.isDownloading
         let hasError = qwen.loadError != nil && !qwen.isLoaded
 
         if isDownloading || hasError {

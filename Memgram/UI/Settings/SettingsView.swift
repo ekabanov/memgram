@@ -108,7 +108,7 @@ private struct QwenConfigView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label(modelLabel, systemImage: "cpu")
                 .font(.headline)
-            Text("Runs entirely on your Mac using Apple MLX. Model auto-selected based on RAM (Qwen 3.5 4B / 9B, Qwen 3.6 35B). Requires Apple Silicon.")
+            Text("Runs entirely on your Mac using Apple MLX. Model auto-selected based on RAM (Qwen 3.5 4B / 9B, Qwen 3.6 27B). Requires Apple Silicon.")
                 .font(.body).foregroundColor(.secondary)
             #if canImport(MLXLLM)
             if #available(macOS 14, *) {
@@ -134,7 +134,7 @@ private struct QwenDownloadStatusView: View {
         if provider.isLoaded {
             Label("Model loaded and ready", systemImage: "checkmark.circle.fill")
                 .foregroundColor(.green)
-        } else if provider.downloadProgress > 0 && provider.downloadProgress < 1 {
+        } else if provider.isDownloading {
             VStack(alignment: .leading, spacing: 4) {
                 ProgressView(value: provider.downloadProgress)
                 Text("Downloading… \(Int(provider.downloadProgress * 100))%")
@@ -145,7 +145,7 @@ private struct QwenDownloadStatusView: View {
                 .foregroundColor(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                Label("Downloading model files…", systemImage: "arrow.down.circle")
+                Label("Not downloaded yet — downloads automatically on first use (\(QwenLocalProvider.downloadSizeLabel))", systemImage: "arrow.down.circle")
                     .foregroundColor(.secondary)
                 if let err = provider.loadError {
                     Text(err).font(.caption).foregroundColor(.red)

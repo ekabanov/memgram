@@ -521,7 +521,7 @@ private struct QwenDownloadHint: View {
     @ObservedObject private var qwen = QwenLocalProvider.shared
 
     var body: some View {
-        if !qwen.isLoaded, qwen.downloadProgress > 0, qwen.downloadProgress < 0.999 {
+        if qwen.isDownloading {
             Text("Downloading Qwen model… \(Int(qwen.downloadProgress * 100))% (\(QwenLocalProvider.downloadSizeLabel))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
