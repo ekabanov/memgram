@@ -137,8 +137,21 @@ private struct QwenDownloadStatusView: View {
         } else if provider.isDownloading {
             VStack(alignment: .leading, spacing: 4) {
                 ProgressView(value: provider.downloadProgress)
-                Text("Downloading… \(Int(provider.downloadProgress * 100))%")
-                    .font(.caption).foregroundColor(.secondary)
+                    .tint(provider.downloadStalled ? .orange : nil)
+                if provider.downloadStalled {
+                    HStack(spacing: 8) {
+                        Text("Stalled at \(Int(provider.downloadProgress * 100))% — no data received")
+                            .font(.caption).foregroundColor(.orange)
+                        Button("Retry") {
+                            provider.cancelDownload()
+                            provider.preload()
+                        }
+                        .controlSize(.mini)
+                    }
+                } else {
+                    Text("Downloading… \(Int(provider.downloadProgress * 100))%")
+                        .font(.caption).foregroundColor(.secondary)
+                }
             }
         } else if provider.downloadProgress >= 1 {
             Label("Ready — model loads on first summary", systemImage: "checkmark.circle")

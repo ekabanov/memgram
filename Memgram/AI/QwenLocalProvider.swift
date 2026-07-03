@@ -53,7 +53,44 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     @Published var loadError: String?
 
     private var lastProgressAt = Date()
+    private var lastDiskBytes: Int64 = 0
     private var stallWatchdog: Task<Void, Never>?
+
+    /// Expected on-disk size of the current tier's weights. Used to derive
+    /// progress from disk growth: HF's CDN often returns no Content-Length for
+    /// LFS/Xet shards, so HubApi's Progress only ticks when a WHOLE multi-GB
+    /// shard completes — the bar would sit at 0% for minutes, then leap.
+    private static var expectedDownloadBytes: Int64 {
+        let ram = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        if ram >= 48 { return 16_100_000_000 }
+        if ram >= 16 { return 4_500_000_000 }
+        return 2_200_000_000
+    }
+
+    /// Everywhere download bytes can land: the materialized model directory
+    /// (incl. its .cache metadata) and the hub client's staging cache
+    /// (<Caches>/huggingface/hub/models--org--name).
+    private static func downloadDirectories() -> [URL] {
+        var dirs = [ModelConfiguration(id: modelID, defaultPrompt: "Hello").modelDirectory()]
+        if let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            let hubName = "models--" + modelID.replacingOccurrences(of: "/", with: "--")
+            dirs.append(caches.appendingPathComponent("huggingface/hub/\(hubName)"))
+        }
+        return dirs
+    }
+
+    nonisolated private static func directoryBytes(_ url: URL) -> Int64 {
+        guard let enumerator = FileManager.default.enumerator(
+            at: url, includingPropertiesForKeys: [.totalFileAllocatedSizeKey],
+            options: [], errorHandler: nil
+        ) else { return 0 }
+        var total: Int64 = 0
+        for case let file as URL in enumerator {
+            total += Int64((try? file.resourceValues(forKeys: [.totalFileAllocatedSizeKey]))?
+                .totalFileAllocatedSize ?? 0)
+        }
+        return total
+    }
 
     /// Persisted per model ID: has this model ever fully downloaded?
     /// Keying by ID means a RAM-tier change shows real progress again.
@@ -344,21 +381,46 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         // isLoaded intentionally not reset — if model was already loaded, keep it
     }
 
-    /// Flags the download as stalled when no bytes arrive for 60s. HubApi has
-    /// no transfer timeout — a dead connection otherwise freezes the bar
-    /// forever with no signal to the user.
+    /// Drives progress from DISK GROWTH and flags genuine stalls.
+    ///
+    /// HubApi's Progress callback is useless mid-shard when the CDN sends no
+    /// Content-Length (common for LFS/Xet): it only ticks when a whole
+    /// multi-GB file completes. Bytes on disk are the ground truth — they
+    /// grow smoothly while the transfer is alive and freeze when it's dead.
     private func startStallWatchdog() {
         lastProgressAt = Date()
+        lastDiskBytes = 0
         downloadStalled = false
         stallWatchdog?.cancel()
         stallWatchdog = Task { @MainActor [weak self] in
             while let self, self.isDownloading, !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 15_000_000_000)
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
                 guard self.isDownloading else { break }
+
+                let dirs = Self.downloadDirectories()
+                let bytes = await Task.detached(priority: .utility) {
+                    dirs.map(Self.directoryBytes).reduce(0, +)
+                }.value
+
+                if bytes > self.lastDiskBytes {
+                    self.lastDiskBytes = bytes
+                    self.lastProgressAt = Date()
+                    if self.downloadStalled {
+                        self.downloadStalled = false
+                        self.log.info("Qwen download resumed (disk at \(bytes / 1_000_000) MB)")
+                    }
+                    // Never go backwards; cap below 1.0 — completion is set by
+                    // the load success path, not the estimate.
+                    let diskFrac = min(Double(bytes) / Double(Self.expectedDownloadBytes), 0.99)
+                    if diskFrac > self.downloadProgress {
+                        self.downloadProgress = diskFrac
+                    }
+                }
+
                 let quiet = Date().timeIntervalSince(self.lastProgressAt)
                 if quiet > 60 && !self.downloadStalled {
                     self.downloadStalled = true
-                    self.log.warning("Qwen download stalled — no progress for \(Int(quiet))s at \(Int(self.downloadProgress * 100))%")
+                    self.log.warning("Qwen download stalled — no disk growth for \(Int(quiet))s at \(Int(self.downloadProgress * 100))% (\(bytes / 1_000_000) MB on disk)")
                 }
             }
         }
