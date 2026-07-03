@@ -93,6 +93,7 @@ The `MeetingStatus.diarizing` enum case was fully retired: migration `"v5_remove
 - **`CalendarContext.swift`** — `Codable/Equatable` snapshot of an `EKEvent` (title, notes, attendees, organizer, start/end). Stored as JSON in `meetings.calendar_context`. `promptBlock()` formats it for LLM injection — **title, schedule, and notes only**; attendees/organizer are stored but deliberately excluded from the prompt (removed in `c8fa635`, they degraded summaries). Static `scheduledDateFormatter` to avoid repeated allocations.
 - **`CalendarManager.swift`** — `@MainActor ObservableObject` singleton. Wraps `EKEventStore`. Manages auth, upcoming event polling (60s timer + `EKEventStoreChanged`), calendar list, and `selectedCalendarIds` (UserDefaults, empty = all). `refreshUpcomingEvent()` excludes events whose `startDate` is >10 minutes in the past.
 - **`CalendarNotificationService.swift`** — `UNUserNotification` scheduling. Category `MEETING_START` with action `START_RECORDING`. `scheduleNotification(for:)` fires 60s before event. `cancelAll()` scoped to `"meeting-"` prefix only.
+- **`UserSettingsSync.swift`** (`Memgram/Sync/`) — syncs `selectedCalendarIds` across devices via a direct-CloudKit `UserSettings` record (fixed recordName `usersettings`, field `selectedCalendarKeys LIST<STRING>` — must be deployed to the prod CloudKit schema). `EKCalendar.calendarIdentifier` is NOT stable across devices, so stable `"sourceTitle|calendarTitle"` keys are synced instead; unresolvable keys are skipped, and a fully-unresolvable non-empty selection is not applied (would flip the device to "all"). Pushes are debounced 2s; applies bypass `setSelectedCalendars` to prevent echo loops.
 
 **Icon states:** `RecordingState` has a `.upcoming` case — purple `calendar.badge.clock` with a slow 2s pulse. Driven by `CalendarManager.$upcomingEvent` in `AppDelegate`. Reverts to `.idle` when `upcomingEvent` becomes nil (i.e. event started >10 min ago or was cancelled).
 
@@ -146,7 +147,7 @@ iPhone/Watch recordings upload 10s/30s raw-audio chunks as `AudioChunk` CKRecord
 - **Interrupted-recording alert:** only offered for meetings in UserDefaults `locallyRecordedMeetingIds` (recorded on THIS Mac) — discarding a syncing iPhone meeting would delete it everywhere.
 
 **Pitfalls:**
-- ⚠️ **CloudKit prod schema:** the `ProcessingClaim` record type and the AudioChunk `"failed"` status value auto-create in the Development environment on first run, but the **record type must be deployed to Production** in CloudKit Console before a TestFlight/App Store release (claims fail open until then, reverting to pre-claim behavior).
+- ⚠️ **CloudKit prod schema:** the `ProcessingClaim` and `UserSettings` record types and the AudioChunk `"failed"` status value auto-create in the Development environment on first run, but the **record types must be deployed to Production** in CloudKit Console before a TestFlight/App Store release (claims fail open until then, reverting to pre-claim behavior).
 - CKQuery results are paginated (~100 records) — always follow cursors (`fetchAll(matching:)` in `AudioChunkService`).
 - After a successful CAS save, the in-memory CKRecord's change tag is stale — use the record returned in the save results for any follow-up CAS save.
 
@@ -193,6 +194,7 @@ iPhone/Watch recordings upload 10s/30s raw-audio chunks as `AudioChunk` CKRecord
 - **Markdown parsing:** Line-by-line — `##`/`###` headings, `**bold**` (regex + NSFontManager), `` `code` `` (monospaced + background), `- `/`* ` bullets. Inline span regex is applied after building the base `NSMutableAttributedString` (not on HTML-escaped text).
 - **Output:** Single tall PDF page sized to content. Sufficient for sharing; PDF viewers handle tall pages correctly.
 - **MeetingDetailView integration:** "Export PDF…" (NSSavePanel) and "Share…" (NSSharingServicePicker) in the `⋯` menu, disabled when `summary == nil`. `isExporting` state shows a `ProgressView` spinner in place of the `⋯` button.
+- **iOS:** `MobilePDFExporter` (`MemgramMobile/Export/`) mirrors the Mac parser with UIKit (`UIGraphicsPDFRenderer`, bold via `UIFontDescriptor` traits); `MobileMeetingDetailView` exports to a temp file and presents a `UIActivityViewController` share sheet.
 
 ## LLM Streaming
 
