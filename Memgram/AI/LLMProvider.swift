@@ -9,9 +9,11 @@ enum LLMBackend: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    // "Default" would be wrong here: this name also appears in the per-meeting
+    // regenerate picker, where Qwen may NOT be the user's default engine.
     var displayName: String {
         switch self {
-        case .qwen:   return "Default (Qwen, local)"
+        case .qwen:   return "Qwen (local)"
         case .custom: return "Custom Server"
         case .claude: return "Claude"
         case .openai: return "OpenAI"
@@ -41,6 +43,63 @@ enum LLMBackend: String, CaseIterable, Identifiable {
         case .gemini:
             return !(KeychainHelper.load(key: "geminiAPIKey") ?? "").isEmpty
         }
+    }
+}
+
+/// Thrown before making a request when a cloud backend has no API key —
+/// beats the cryptic HTTP 401 the API would return for an empty key.
+struct LLMNotConfiguredError: LocalizedError {
+    let provider: String
+    var errorDescription: String? {
+        "\(provider) has no API key. Add one in Settings → AI."
+    }
+}
+
+/// A non-2xx response from a cloud LLM API, with the server's own error
+/// message extracted. Claude, OpenAI, and Gemini all use the same
+/// `{"error": {"message": …}}` envelope.
+struct LLMAPIError: LocalizedError {
+    let provider: String
+    let statusCode: Int
+    let message: String
+
+    var errorDescription: String? {
+        switch statusCode {
+        case 401, 403:
+            return "\(provider): API key rejected (HTTP \(statusCode)). Check the key in Settings → AI."
+        case 404:
+            return "\(provider): model not found — check the model name in Settings → AI. \(message)"
+        case 429:
+            return "\(provider): rate limited. Wait a moment and try again."
+        case 500...599:
+            return "\(provider) is having trouble (HTTP \(statusCode)). Try again shortly."
+        default:
+            return "\(provider): HTTP \(statusCode) — \(message)"
+        }
+    }
+
+    static func from(provider: String, statusCode: Int, data: Data) -> LLMAPIError {
+        struct Envelope: Decodable {
+            struct Err: Decodable { let message: String? }
+            let error: Err?
+        }
+        let message = (try? JSONDecoder().decode(Envelope.self, from: data))?.error?.message
+            ?? String(data: data.prefix(300), encoding: .utf8) ?? ""
+        return LLMAPIError(provider: provider, statusCode: statusCode, message: message)
+    }
+
+    /// For streaming paths: the error body arrives on the byte stream itself.
+    static func from(
+        provider: String, statusCode: Int, bytes: URLSession.AsyncBytes
+    ) async -> LLMAPIError {
+        var data = Data()
+        do {
+            for try await byte in bytes {
+                data.append(byte)
+                if data.count >= 4096 { break }
+            }
+        } catch { /* use whatever we got */ }
+        return from(provider: provider, statusCode: statusCode, data: data)
     }
 }
 

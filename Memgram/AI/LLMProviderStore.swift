@@ -28,11 +28,35 @@ final class LLMProviderStore: ObservableObject {
         didSet { UserDefaults.standard.set(customServerModel, forKey: "customServerModel") }
     }
 
+    // Cloud model choices. Empty string = use the default below.
+    static let defaultClaudeModel = "claude-opus-4-8"
+    static let defaultOpenAIModel = "gpt-5-mini"
+    static let defaultGeminiModel = "gemini-2.5-flash"
+
+    @Published var claudeModel: String {
+        didSet { UserDefaults.standard.set(claudeModel, forKey: "claudeModel") }
+    }
+    @Published var openaiModel: String {
+        didSet { UserDefaults.standard.set(openaiModel, forKey: "openaiModel") }
+    }
+    @Published var geminiModel: String {
+        didSet { UserDefaults.standard.set(geminiModel, forKey: "geminiModel") }
+    }
+
+    /// The model actually sent to the API — user's entry, or the default when blank.
+    static func effectiveModel(_ userValue: String, default defaultModel: String) -> String {
+        let trimmed = userValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? defaultModel : trimmed
+    }
+
     private init() {
         let saved = UserDefaults.standard.string(forKey: "llmBackend") ?? ""
         selectedBackend   = LLMBackend(rawValue: saved) ?? .qwen
         customServerURL   = UserDefaults.standard.string(forKey: "customServerURL") ?? "http://localhost:1234"
         customServerModel = UserDefaults.standard.string(forKey: "customServerModel") ?? "local-model"
+        claudeModel       = UserDefaults.standard.string(forKey: "claudeModel") ?? ""
+        openaiModel       = UserDefaults.standard.string(forKey: "openaiModel") ?? ""
+        geminiModel       = UserDefaults.standard.string(forKey: "geminiModel") ?? ""
         log.info("Loaded — backend: \(self.selectedBackend.displayName) (raw saved: \(saved))")
     }
 
@@ -69,11 +93,20 @@ final class LLMProviderStore: ObservableObject {
                 modelName: customServerModel
             )
         case .claude:
-            return ClaudeProvider(apiKey: KeychainHelper.load(key: "claudeAPIKey") ?? "")
+            return ClaudeProvider(
+                apiKey: KeychainHelper.load(key: "claudeAPIKey") ?? "",
+                model:  Self.effectiveModel(claudeModel, default: Self.defaultClaudeModel)
+            )
         case .openai:
-            return OpenAIProvider(apiKey: KeychainHelper.load(key: "openaiAPIKey") ?? "")
+            return OpenAIProvider(
+                apiKey: KeychainHelper.load(key: "openaiAPIKey") ?? "",
+                model:  Self.effectiveModel(openaiModel, default: Self.defaultOpenAIModel)
+            )
         case .gemini:
-            return GeminiProvider(apiKey: KeychainHelper.load(key: "geminiAPIKey") ?? "")
+            return GeminiProvider(
+                apiKey: KeychainHelper.load(key: "geminiAPIKey") ?? "",
+                model:  Self.effectiveModel(geminiModel, default: Self.defaultGeminiModel)
+            )
         }
     }
 

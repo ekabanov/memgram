@@ -35,21 +35,48 @@ struct AISettingsTab: View {
             Section("AI Engine") {
                 Picker("Engine", selection: $store.selectedBackend) {
                     ForEach(LLMBackend.allCases) { backend in
-                        Text(backend.displayName).tag(backend)
+                        Text("\(backend.displayName) — \(backend.badge)").tag(backend)
                     }
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
             }
 
-            Section(store.selectedBackend.displayName) {
+            Section {
                 switch store.selectedBackend {
                 case .qwen:   QwenConfigView()
                 case .custom: CustomServerConfigView()
-                case .claude: APIKeyConfigView(service: "claude", label: "Claude API Key", placeholder: "sk-ant-…")
-                case .openai: APIKeyConfigView(service: "openai", label: "OpenAI API Key", placeholder: "sk-…")
-                case .gemini: APIKeyConfigView(service: "gemini", label: "Gemini API Key", placeholder: "AIza…")
+                case .claude:
+                    CloudProviderConfigView(
+                        service: "claude", providerName: "Claude",
+                        keyPlaceholder: "sk-ant-…",
+                        keyURL: "https://console.anthropic.com/settings/keys",
+                        defaultModel: LLMProviderStore.defaultClaudeModel,
+                        model: $store.claudeModel
+                    )
+                case .openai:
+                    CloudProviderConfigView(
+                        service: "openai", providerName: "OpenAI",
+                        keyPlaceholder: "sk-…",
+                        keyURL: "https://platform.openai.com/api-keys",
+                        defaultModel: LLMProviderStore.defaultOpenAIModel,
+                        model: $store.openaiModel
+                    )
+                case .gemini:
+                    CloudProviderConfigView(
+                        service: "gemini", providerName: "Gemini",
+                        keyPlaceholder: "AIza…",
+                        keyURL: "https://aistudio.google.com/apikey",
+                        defaultModel: LLMProviderStore.defaultGeminiModel,
+                        model: $store.geminiModel
+                    )
                 }
+            } header: {
+                Text(store.selectedBackend.displayName)
+            } footer: {
+                Text("This engine is used for all new summaries. To redo a single meeting with a different engine, use the picker next to the Regenerate button in that meeting — it won't change this default.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             Section {
@@ -198,28 +225,55 @@ private struct CustomServerConfigView: View {
     }
 }
 
-private struct APIKeyConfigView: View {
-    let service: String
-    let label: String
-    let placeholder: String
+private struct CloudProviderConfigView: View {
+    let service: String        // Keychain key prefix, e.g. "claude" → "claudeAPIKey"
+    let providerName: String
+    let keyPlaceholder: String
+    let keyURL: String
+    let defaultModel: String
+    @Binding var model: String
     @State private var key: String
 
-    init(service: String, label: String, placeholder: String) {
-        self.service     = service
-        self.label       = label
-        self.placeholder = placeholder
+    init(service: String, providerName: String, keyPlaceholder: String,
+         keyURL: String, defaultModel: String, model: Binding<String>) {
+        self.service        = service
+        self.providerName   = providerName
+        self.keyPlaceholder = keyPlaceholder
+        self.keyURL         = keyURL
+        self.defaultModel   = defaultModel
+        self._model         = model
         _key = State(initialValue: KeychainHelper.load(key: "\(service)APIKey") ?? "")
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(label, systemImage: "key")
-                .font(.headline)
-            SecureField(placeholder, text: $key)
-                .textFieldStyle(.roundedBorder)
-                .onChange(of: key) { newValue in
-                    KeychainHelper.save(key: "\(service)APIKey", value: newValue)
+        VStack(alignment: .leading, spacing: 10) {
+            LabeledContent("API key") {
+                SecureField(keyPlaceholder, text: $key)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: key) { newValue in
+                        KeychainHelper.save(key: "\(service)APIKey",
+                                            value: newValue.trimmingCharacters(in: .whitespacesAndNewlines))
+                    }
+            }
+            HStack(spacing: 4) {
+                if key.isEmpty {
+                    Label("No key yet", systemImage: "key.slash")
+                        .font(.caption).foregroundColor(.orange)
+                } else {
+                    Label("Key saved in Keychain", systemImage: "checkmark.circle.fill")
+                        .font(.caption).foregroundColor(.green)
                 }
+                Spacer()
+                Link("Get a \(providerName) API key…", destination: URL(string: keyURL)!)
+                    .font(.caption)
+            }
+            LabeledContent("Model") {
+                TextField(defaultModel, text: $model)
+                    .textFieldStyle(.roundedBorder)
+            }
+            Text("Leave blank to use \(defaultModel).")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 }

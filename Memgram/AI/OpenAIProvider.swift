@@ -4,25 +4,32 @@ import OSLog
 private let log = Logger.make("AI")
 
 final class OpenAIProvider: LLMProvider {
-    let name = "OpenAI API"
+    let name: String
     private let apiKey: String
+    private let model: String
 
-    init(apiKey: String) { self.apiKey = apiKey }
+    init(apiKey: String, model: String = LLMProviderStore.defaultOpenAIModel) {
+        self.apiKey = apiKey
+        self.model  = model
+        self.name   = "OpenAI (\(model))"
+    }
 
     func complete(system: String, user: String) async throws -> String {
+        guard !apiKey.isEmpty else { throw LLMNotConfiguredError(provider: "OpenAI") }
+
         struct Message: Encodable { let role: String; let content: String }
         struct Request: Encodable {
             let model: String
             let messages: [Message]
         }
         struct Choice: Decodable {
-            struct Msg: Decodable { let content: String }
+            struct Msg: Decodable { let content: String? }
             let message: Msg
         }
         struct Response: Decodable { let choices: [Choice] }
 
         let body = Request(
-            model: "gpt-4o-mini",
+            model: model,
             messages: [
                 Message(role: "system", content: system),
                 Message(role: "user", content: user)
@@ -36,12 +43,15 @@ final class OpenAIProvider: LLMProvider {
         AsyncThrowingStream { continuation in
             Task {
                 do {
+                    guard !self.apiKey.isEmpty else {
+                        throw LLMNotConfiguredError(provider: "OpenAI")
+                    }
                     struct Message: Encodable { let role: String; let content: String }
                     struct Request: Encodable {
                         let model: String; let messages: [Message]; let stream: Bool
                     }
                     let body = Request(
-                        model: "gpt-4o-mini",
+                        model: self.model,
                         messages: [
                             Message(role: "system", content: system),
                             Message(role: "user",   content: user)
@@ -58,9 +68,14 @@ final class OpenAIProvider: LLMProvider {
                     request.httpBody = try JSONEncoder().encode(body)
 
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
-                    guard let http = response as? HTTPURLResponse,
-                          (200...299).contains(http.statusCode) else {
+                    guard let http = response as? HTTPURLResponse else {
                         throw URLError(.badServerResponse)
+                    }
+                    guard (200...299).contains(http.statusCode) else {
+                        let apiError = await LLMAPIError.from(
+                            provider: "OpenAI", statusCode: http.statusCode, bytes: bytes)
+                        log.error("OpenAI stream failed: \(apiError.localizedDescription)")
+                        throw apiError
                     }
 
                     struct Delta: Decodable { let content: String? }
@@ -85,6 +100,8 @@ final class OpenAIProvider: LLMProvider {
     }
 
     func embed(text: String) async throws -> [Float] {
+        guard !apiKey.isEmpty else { throw LLMNotConfiguredError(provider: "OpenAI") }
+
         struct Request: Encodable { let model: String; let input: String }
         struct EmbeddingData: Decodable { let embedding: [Float] }
         struct Response: Decodable { let data: [EmbeddingData] }
@@ -107,9 +124,9 @@ final class OpenAIProvider: LLMProvider {
             throw URLError(.badServerResponse)
         }
         guard (200...299).contains(http.statusCode) else {
-            let snippet = String(data: data.prefix(200), encoding: .utf8) ?? "(binary)"
-            log.error("← HTTP \(http.statusCode) from \(request.url?.host ?? "?"): \(snippet)")
-            throw URLError(.badServerResponse)
+            let apiError = LLMAPIError.from(provider: "OpenAI", statusCode: http.statusCode, data: data)
+            log.error("← \(apiError.localizedDescription)")
+            throw apiError
         }
         log.debug("← HTTP \(http.statusCode), \(data.count) bytes")
         do {

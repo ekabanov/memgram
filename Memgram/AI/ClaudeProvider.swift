@@ -4,13 +4,19 @@ import OSLog
 private let log = Logger.make("AI")
 
 final class ClaudeProvider: LLMProvider {
-    let name = "Claude API"
+    let name: String
     private let apiKey: String
-    private let model = "claude-sonnet-4-6"
+    private let model: String
 
-    init(apiKey: String) { self.apiKey = apiKey }
+    init(apiKey: String, model: String = LLMProviderStore.defaultClaudeModel) {
+        self.apiKey = apiKey
+        self.model  = model
+        self.name   = "Claude (\(model))"
+    }
 
     func complete(system: String, user: String) async throws -> String {
+        guard !apiKey.isEmpty else { throw LLMNotConfiguredError(provider: "Claude") }
+
         struct Message: Encodable { let role: String; let content: String }
         struct Request: Encodable {
             let model: String
@@ -18,30 +24,34 @@ final class ClaudeProvider: LLMProvider {
             let system: String
             let messages: [Message]
         }
-        struct ContentBlock: Decodable { let text: String }
+        struct ContentBlock: Decodable { let type: String; let text: String? }
         struct Response: Decodable { let content: [ContentBlock] }
 
         let body = Request(
             model: model,
-            max_tokens: 2048,
+            max_tokens: 8192,
             system: system,
             messages: [Message(role: "user", content: user)]
         )
         let response: Response = try await post(body: body)
-        return response.content.first?.text ?? ""
+        // Skip non-text blocks (e.g. thinking) — take the first text block.
+        return response.content.first(where: { $0.type == "text" })?.text ?? ""
     }
 
     func stream(system: String, user: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 do {
+                    guard !self.apiKey.isEmpty else {
+                        throw LLMNotConfiguredError(provider: "Claude")
+                    }
                     struct Message: Encodable { let role: String; let content: String }
                     struct Request: Encodable {
                         let model: String; let max_tokens: Int; let stream: Bool
                         let system: String; let messages: [Message]
                     }
                     let body = Request(
-                        model: self.model, max_tokens: 2048, stream: true,
+                        model: self.model, max_tokens: 8192, stream: true,
                         system: system,
                         messages: [Message(role: "user", content: user)]
                     )
@@ -56,9 +66,14 @@ final class ClaudeProvider: LLMProvider {
                     request.httpBody = try JSONEncoder().encode(body)
 
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
-                    guard let http = response as? HTTPURLResponse,
-                          (200...299).contains(http.statusCode) else {
+                    guard let http = response as? HTTPURLResponse else {
                         throw URLError(.badServerResponse)
+                    }
+                    guard (200...299).contains(http.statusCode) else {
+                        let apiError = await LLMAPIError.from(
+                            provider: "Claude", statusCode: http.statusCode, bytes: bytes)
+                        log.error("Claude stream failed: \(apiError.localizedDescription)")
+                        throw apiError
                     }
 
                     struct Delta: Decodable { let type: String; let text: String? }
@@ -102,9 +117,9 @@ final class ClaudeProvider: LLMProvider {
             throw URLError(.badServerResponse)
         }
         guard (200...299).contains(http.statusCode) else {
-            let snippet = String(data: data.prefix(200), encoding: .utf8) ?? "(binary)"
-            log.error("← HTTP \(http.statusCode) from \(request.url?.host ?? "?"): \(snippet)")
-            throw URLError(.badServerResponse)
+            let apiError = LLMAPIError.from(provider: "Claude", statusCode: http.statusCode, data: data)
+            log.error("← \(apiError.localizedDescription)")
+            throw apiError
         }
         log.debug("← HTTP \(http.statusCode), \(data.count) bytes")
         do {
