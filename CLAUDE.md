@@ -165,6 +165,7 @@ iPhone/Watch recordings upload 10s/30s raw-audio chunks as `AudioChunk` CKRecord
 **Pitfalls:**
 - `OSLogStore.local()` requires a private entitlement — always use `OSLogStore(scope: .currentProcessIdentifier)`.
 - `BugReportConfig.swift` must never be committed — it contains a live GitHub token.
+- Fine-grained PATs return **404 (not 403)** for repos outside their access grant. The token must explicitly list `memgram-bugs` under Repository access with Issues: Read and write — a valid-but-ungranted token fails every submission with 404.
 
 ## Automated Fix Pipeline
 

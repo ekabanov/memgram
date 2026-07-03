@@ -14,9 +14,18 @@ final class BugReportSubmitter {
 
         var errorDescription: String? {
             switch self {
-            case .encodingFailed:      return "Failed to encode bug report payload."
-            case .httpError(let code): return "GitHub returned HTTP \(code)."
-            case .invalidResponse:     return "Unexpected response from GitHub."
+            case .encodingFailed:
+                return "Failed to encode bug report payload."
+            case .httpError(404):
+                // Fine-grained PATs return 404 (not 403) for repositories outside
+                // their access grant — the most common misconfiguration.
+                return "GitHub returned HTTP 404 — the bug-report token has no access to the repository. Grant the fine-grained token access to \(BugReportConfig.repoOwner)/\(BugReportConfig.repoName) with Issues: Read and write."
+            case .httpError(401):
+                return "GitHub returned HTTP 401 — the bug-report token is invalid or expired. Generate a new fine-grained token and update BugReportConfig.swift."
+            case .httpError(let code):
+                return "GitHub returned HTTP \(code)."
+            case .invalidResponse:
+                return "Unexpected response from GitHub."
             }
         }
     }
