@@ -23,7 +23,7 @@ No linter. **Deployment target: macOS 14.0.**
 
 ## Architecture
 
-Memgram is a macOS menu bar app (`LSUIElement: true`) that records meetings, transcribes locally via Parakeet (default) or WhisperKit, performs speaker diarization, and generates AI summaries. All processing is offline.
+Memgram is a macOS menu bar app (`LSUIElement: true`) that records meetings, transcribes locally via WhisperKit or Parakeet, and generates AI summaries. All processing is offline.
 
 **Entry point:** `AppDelegate` via `MemgramApp.swift` (`@main`). Status bar item, popover, and main window owned by `AppDelegate`. Settings registered as `Settings { SettingsView() }` — use `SettingsLink` (not `sendAction`) to open them.
 
@@ -39,18 +39,16 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
          ↓ segmentPublisher (main thread)
   RecordingSession → segments[] + MeetingStore (Task.detached DB write)
          ↓ on finalization
-  SpeakerDiarizer (batch post-processing, two Sortformer instances)
-         ↓ speaker labels per segment
-  SummaryEngine (background) → normaliseSpeakerLabels() → MeetingStore.saveSummary → meetingDidUpdate notification
+  SummaryEngine (background) → MeetingStore.saveSummary → meetingDidUpdate notification
 ```
 
 **System audio:** CoreAudioTapCapture on macOS 14.4+, ScreenCaptureKitCapture fallback. `kAudioObjectSystemObject` is NOT a valid process object for `CATapDescription` — always use `PermissionsManager.audioProcessObjectIDs()`.
 
-**Transcription:** Backend selectable in **Settings → Recording**. Default is Parakeet (ANE). WhisperKit auto-downloads models; model auto-selected by `WhisperModelManager.autoSelectedModel` based on RAM + `preferMultilingual` flag. Users only see English/Multilingual toggle — no model list. `TranscriptionBackendManager` tracks backend preference and Parakeet/diarizer loading state.
+**Transcription:** Backend selectable in **Settings → Recording**. Default is Whisper Large v3 Turbo on Macs with ≥ 12 GB RAM, Parakeet (ANE) below that. WhisperKit auto-downloads models; model auto-selected by `WhisperModelManager.autoSelectedModel` based on RAM + `preferMultilingual` flag. Users only see English/Multilingual toggle — no model list. `TranscriptionBackendManager` tracks backend preference and Parakeet loading state.
 
 **LLM backends:** Qwen (local MLX via `mlx-swift-lm`), Custom Server (OpenAI-compatible — covers Ollama/LM Studio/vLLM), Claude, OpenAI, Gemini. `LLMProviderStore.currentProvider` delegates to `providerFor(selectedBackend)`. API keys in Keychain only. All backends stream tokens via `provider.stream()` — cloud providers use SSE, Qwen uses `ChatSession.streamResponse()`.
 
-**Qwen memory lifecycle:** `QwenLocalProvider.preload()` calls `loadModel()` then immediately `unload()` — this downloads and caches model files on disk, momentarily loads weights into memory to verify the model, then frees them. The download progress is reported through the standard `LLMModelFactory` callback so the popover shows a real byte-level progress bar. On `summarize()`, Qwen loads weights on demand; after the summary completes `SummaryEngine` calls `provider.unload()` which calls `MLX.Memory.clearCache()` to return GPU buffers to the OS. This keeps Qwen's ~44 GB peak footprint (27B) off RAM except during active use.
+**Qwen memory lifecycle:** `QwenLocalProvider.preload()` calls `loadModel()` then immediately `unload()` — this downloads and caches model files on disk, momentarily loads weights into memory to verify the model, then frees them. The download progress is reported through the standard `LLMModelFactory` callback so the popover shows a real byte-level progress bar. On `summarize()`, Qwen loads weights on demand; after the summary completes `SummaryEngine` calls `provider.unload()` which calls `MLX.Memory.clearCache()` to return GPU buffers to the OS. This keeps Qwen's peak footprint off RAM except during active use. Model tiers: Qwen 3.5 4B (< 16 GB RAM), Qwen 3.5 9B (16–47 GB), Qwen 3.6 35B-A3B MoE (≥ 48 GB, ~20 GB weights, 3B active). Qwen 3.6 ships no small models, so the lower tiers stay on 3.5.
 
 **SummaryEngine:** `@MainActor ObservableObject`. `activeMeetingIds: Set<String>` tracks in-progress jobs — observed by UI for spinners. `summarize()` runs LLM off main (awaits provider), saves to DB, then calls `generateTitle()`. Title generation runs AFTER `activeMeetingIds.remove()` so progress clears immediately.
 
@@ -60,29 +58,20 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 `TranscriberProtocol` abstracts over two backends selectable in Settings → Recording:
 
-- **`ParakeetTranscriber`** — FluidAudio ANE-based model. Default. No model download required; model is bundled or cached via FluidAudio. Lower latency than Whisper on Apple Silicon.
-- **`WhisperTranscriber`** — WhisperKit with Metal decoder + ANE encoder. Fallback; supports multilingual. Auto-downloads model on first use.
+- **`WhisperTranscriber`** — WhisperKit with Metal decoder + ANE encoder. Default on ≥ 12 GB RAM; supports multilingual. Auto-downloads model on first use.
+- **`ParakeetTranscriber`** — FluidAudio ANE-based model. Default on < 12 GB RAM. No model download required; model is bundled or cached via FluidAudio. Lower latency than Whisper on Apple Silicon.
 
 **`AudioChannelUtils.selectDominantChannel()`** — before feeding audio to the transcription backend, picks the louder of mic (L) and system (R) channels. Prevents transcription of both channels when only one has speech, which would double-transcribe echo.
 
-**`TranscriptionBackendManager`** — `@MainActor ObservableObject`. Persists backend choice in UserDefaults. Tracks loading state for Parakeet and diarizer (shown in Settings → Recording). Instantiates the active `TranscriberProtocol` implementation on demand.
+**`TranscriptionBackendManager`** — `@MainActor ObservableObject`. Persists backend choice in UserDefaults. Tracks loading state for Parakeet (shown in Settings → Recording). Instantiates the active `TranscriberProtocol` implementation on demand.
 
-## Speaker Diarization
+## Speaker Diarization (REMOVED 2026-04-09)
 
-`SpeakerDiarizer` (`Memgram/Diarization/`) runs batch post-processing after transcription drains. Requires macOS 14+.
+Speaker diarization + voice enrollment were fully implemented (dual-Sortformer `SpeakerDiarizer`, `SpeakerEnrollmentStore`, `enrollVoice` onboarding, `normaliseSpeakerLabels()` in `SummaryEngine`) and then **deliberately removed** — the `Room 1`/`Remote 1` labels and enrollment-based name resolution confused the LLM more than they helped. See commits `91efd0e` (disabled by default), `c8fa635` (stripped from LLM input), `fe18f1c` (files deleted). **Do not re-implement without an explicit request.**
 
-- **Two Sortformer instances** (FluidAudio): one for mic channel, one for system audio channel. Each returns speaker embeddings + time-coded segments independently.
-- **Echo suppression:** mic segments that occur during system-audio-dominant periods are attributed to the remote speaker rather than a local one. Prevents echo doubling in the speaker labels.
-- **Snapshot:** takes a 5-minute evenly-sampled snapshot of the recording for diarization (not the full audio). Keeps memory use bounded.
-- **Labels:** `Room 1`/`Room 2` for in-room speakers (mic channel), `Remote 1`/`Remote 2` for remote participants (system channel).
-- **`SpeakerEnrollmentStore`** — saves a display name + 5-second voice sample per enrolled speaker. During diarization, enrolled speaker embeddings are compared to detected clusters; best match replaces the generic label (e.g. `Room 1` → `Alice`).
-- **Onboarding:** `enrollVoice` step inserted between `systemAudio` and `done` for first-run voice enrollment.
-- **`normaliseSpeakerLabels()` in `SummaryEngine`** — pre-processes transcript before LLM call: maps `Room`/`Remote` labels to `Speaker A`/`B`/`C` etc., appends a mapping hint so the LLM can resolve real names from calendar attendees + enrollment data. Speaker resolution order injected into the prompt: (1) self-introduction/direct address, (2) voice enrollment match, (3) deductive elimination — if the number of distinct speakers equals the number of scheduled attendees, assign remaining unidentified speakers to remaining attendee names by elimination, (4) fall back to Speaker A/B/C label.
-
-**Pitfalls:**
-- Sortformer has a 4-speaker cap per channel (2 local + 2 remote max).
-- There is no persistent diarizer state between meetings — enrolled voice samples must be re-fed to the diarizer for each meeting at diarization time. Do not cache diarizer instances across meetings.
-- Audio must be fully drained before `SpeakerDiarizer` runs — do not call it mid-recording.
+Remnants kept for backwards compatibility — do not remove:
+- `speaker` column in the `segments` table (no longer displayed or used); transcribers still tag segments `You`/`Remote` by channel.
+- `MeetingStatus.diarizing` enum case (old records may carry it; `MeetingListView` still renders an "Identifying speakers…" subtitle, and crash recovery treats it as interruptible). Nothing sets it anymore.
 
 ## Package Dependencies
 
@@ -90,7 +79,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 |---------|---------|---------|
 | GRDB | 6.x | SQLite (WAL, FTS5, `PRAGMA foreign_keys = ON`) |
 | WhisperKit | 0.9+ | Transcription (Metal decoder + ANE encoder) |
-| FluidAudio | main | Parakeet transcription (ANE) + Sortformer speaker diarization |
+| FluidAudio | main | Parakeet transcription (ANE) |
 | MLXSwiftLM | branch `main` | Qwen local inference |
 | MarkdownUI | 2.x | Markdown rendering in summary tab |
 
@@ -100,7 +89,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 `Memgram/Calendar/` contains three files with no dependencies on each other beyond `CalendarContext`:
 
-- **`CalendarContext.swift`** — `Codable/Equatable` snapshot of an `EKEvent` (title, notes, attendees, organizer, start/end). Stored as JSON in `meetings.calendar_context`. `promptBlock()` formats it for LLM injection. Static `scheduledDateFormatter` to avoid repeated allocations.
+- **`CalendarContext.swift`** — `Codable/Equatable` snapshot of an `EKEvent` (title, notes, attendees, organizer, start/end). Stored as JSON in `meetings.calendar_context`. `promptBlock()` formats it for LLM injection — **title, schedule, and notes only**; attendees/organizer are stored but deliberately excluded from the prompt (removed in `c8fa635`, they degraded summaries). Static `scheduledDateFormatter` to avoid repeated allocations.
 - **`CalendarManager.swift`** — `@MainActor ObservableObject` singleton. Wraps `EKEventStore`. Manages auth, upcoming event polling (60s timer + `EKEventStoreChanged`), calendar list, and `selectedCalendarIds` (UserDefaults, empty = all). `refreshUpcomingEvent()` excludes events whose `startDate` is >10 minutes in the past.
 - **`CalendarNotificationService.swift`** — `UNUserNotification` scheduling. Category `MEETING_START` with action `START_RECORDING`. `scheduleNotification(for:)` fires 60s before event. `cancelAll()` scoped to `"meeting-"` prefix only.
 
@@ -125,7 +114,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - **Record IDs:** `"{table}_{uuid}"` format (e.g. `meetings_ABC-123`)
 - **`SyncTransport` protocol** (`Memgram/Sync/SyncTransport.swift`) — abstraction over `CKSyncEngine`. Production: `CKSyncTransport` created in `start()`. Tests: `FakeSyncTransport` injected via `init(db:transport:)`.
 - **`SyncStatus` enum** — `pendingUpload`, `placeholder`, `synced`, `failed`. Stored as `sync_status` text column in `meetings` table. Set by `enqueueSave` (→ `pendingUpload`), `didSend` success (→ `synced`), `didSend` failure (→ `failed`), `applyRemoteRecord` (→ `synced`).
-- **`MeetingStatus` enum** — `recording`, `transcribing`, `diarizing`, `done`, `interrupted`. `diarizing` set before `SpeakerDiarizer` runs; `interrupted` set by crash recovery for meetings stuck in recording/transcribing/diarizing.
+- **`MeetingStatus` enum** — `recording`, `transcribing`, `diarizing`, `done`, `interrupted`, `error`. `diarizing` is a legacy case (nothing sets it since diarization was removed); `interrupted` set by crash recovery for meetings stuck in recording/transcribing/diarizing.
 - **Enqueue pattern:** Each `MeetingStore` write method calls `sync?.enqueueSave/enqueueDelete` after the GRDB write. No TransactionObserver.
 - **System fields:** Stored as `ck_system_fields` blob column (NSKeyedArchiver-encoded CKRecord metadata). Used to send updates as modifications, not creates.
 - **FK ordering:** Segments/speakers may arrive before their parent meeting from CloudKit. `applyRemoteRecord` creates placeholder meetings (`syncStatus = .placeholder`, `title = "Syncing…"`) to satisfy FK constraints.
@@ -141,6 +130,24 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 - Never use raw SQL with `Date.timeIntervalSinceReferenceDate` in GRDB — always use Codable `update(db)`/`insert(db)`.
 - `PRAGMA foreign_keys = OFF` is silently ignored inside GRDB `db.write {}` transactions.
 - xcodegen regenerates `.entitlements` from `project.yml` — all entitlements must be in `entitlements.properties`, not added via Xcode UI.
+
+## Remote Chunk Pipeline (iPhone/Watch → Mac)
+
+iPhone/Watch recordings upload 10s/30s raw-audio chunks as `AudioChunk` CKRecords (direct CloudKit, bypassing CKSyncEngine). `RemoteMeetingProcessor` (macOS, 10s poll) claims, transcribes, and deletes chunks, then finalizes and summarizes the meeting. **Macs are treated as unreliable and intermittently available** — any Mac may sleep or die mid-work and another (or the same one, later) must be able to take over safely:
+
+- **Chunk claims:** `claimChunk` CAS-updates status pending→processing using CloudKit's default `.ifServerRecordUnchanged`; per-record failures arrive in the *results dictionary*, not as thrown errors — always check them. Claims stale for >2 min are reset to pending (`resetStuckProcessingChunks`); startup/wake recovery uses the same threshold — never reset with `olderThan: 0` (steals other Macs' fresh claims → duplicated transcript text).
+- **Idempotent transcription:** before and after transcribing, the segment window `[offsetSeconds, offset+duration)` is checked — if segments already exist there (another Mac processed it, or our pre-sleep attempt landed), the result is discarded instead of double-appended.
+- **Retry cap:** 3 attempts per chunk per session, then the chunk is marked `status = "failed"` so it stops blocking finalization; failed leftovers are deleted at finalization (`deleteRemainingChunks`).
+- **`appendRemoteSegment`** creates a placeholder meeting when the meeting record hasn't synced yet (chunks routinely outrun CKSyncEngine) — never let the FK constraint swallow segments.
+- **Cross-Mac work claims:** finalization and summarization are guarded by `ProcessingClaim` marker records (`finalize_{meetingId}` / `summarize_{meetingId}`) — first Mac to create one wins; claims untouched for 10/15 min are presumed abandoned and stolen via CAS re-save. Claim creation fails OPEN on unexpected errors (e.g. record type missing from prod schema) so work still happens.
+- **Summary janitor:** each poll also picks up recent (<48h) `.done` meetings with a transcript but no summary (finalizing Mac slept/crashed mid-summarize) — grace period 5 min after `endedAt`, 2 attempts per session.
+- **Finalize fast-path guard:** only meetings this Mac saw `AudioChunk` records for are finalized promptly; other `.transcribing` meetings (possibly another device's live recording synced mid-drain) must be quiet for 5 min past their last segment. The local `RecordingSession.currentMeetingId` is never touched.
+- **Interrupted-recording alert:** only offered for meetings in UserDefaults `locallyRecordedMeetingIds` (recorded on THIS Mac) — discarding a syncing iPhone meeting would delete it everywhere.
+
+**Pitfalls:**
+- ⚠️ **CloudKit prod schema:** the `ProcessingClaim` record type and the AudioChunk `"failed"` status value auto-create in the Development environment on first run, but the **record type must be deployed to Production** in CloudKit Console before a TestFlight/App Store release (claims fail open until then, reverting to pre-claim behavior).
+- CKQuery results are paginated (~100 records) — always follow cursors (`fetchAll(matching:)` in `AudioChunkService`).
+- After a successful CAS save, the in-memory CKRecord's change tag is stale — use the record returned in the save results for any follow-up CAS save.
 
 ## Bug Reporting
 
@@ -216,7 +223,7 @@ MicrophoneCapture (AVAudioEngine, 16kHz mono)
 
 **Pitfalls:**
 - `@Suite`/`@Test` macros are incompatible with `@available(macOS 14.0, *)` on the struct — omit `@available` since the test target already deploys to macOS 14.0.
-- `AppDelegate.applicationDidFinishLaunching` bails out immediately when `XCTestBundlePath` env var is set — prevents Qwen preload, Parakeet/Sortformer downloads, and CloudKit init from running during tests.
+- `AppDelegate.applicationDidFinishLaunching` bails out immediately when `XCTestBundlePath` env var is set — prevents Qwen preload, Parakeet downloads, and CloudKit init from running during tests.
 - `CloudSyncEngine.container` is `lazy` — avoids `CKContainer` initialization (which requires CloudKit entitlement) in test instances that use `FakeSyncTransport`.
 - Do NOT call `engine.applyRemoteRecord()` or `engine.reEnqueueOrphanedRecords()` from tests — both are `fileprivate`. Route incoming records through `transport.receive(modifications:deletions:)`; trigger re-enqueue via `engine.enqueueSave(table:id:)` or `engine.start()`.
 
