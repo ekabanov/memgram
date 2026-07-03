@@ -450,10 +450,24 @@ private struct QwenDownloadCard: View {
                 }
                 if isDownloading {
                     ProgressView(value: qwen.downloadProgress)
-                        .tint(.purple)
-                    Text("\(QwenLocalProvider.downloadSizeLabel) · runs locally")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .tint(qwen.downloadStalled ? .orange : .purple)
+                    if qwen.downloadStalled {
+                        HStack(spacing: 8) {
+                            Text("Stalled — no data received for a while")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                            Button("Retry") {
+                                qwen.cancelDownload()
+                                qwen.preload()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                        }
+                    } else {
+                        Text("\(QwenLocalProvider.downloadSizeLabel) · runs locally")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 } else if let err = qwen.loadError {
                     Text(err)
                         .font(.caption2)

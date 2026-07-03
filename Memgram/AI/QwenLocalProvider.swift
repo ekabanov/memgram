@@ -45,8 +45,15 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
     /// True only while a GENUINE first-time download is running — cached
     /// weight loads never set this, so the UI can't flash fake download cards.
     @Published var isDownloading = false
+    /// True when a running download hasn't moved for a while (stalled HTTP
+    /// transfer — Hugging Face throttling or a dead connection). Cleared as
+    /// soon as bytes flow again. Surfaced in the download card with a Retry.
+    @Published var downloadStalled = false
     @Published var isLoaded = false
     @Published var loadError: String?
+
+    private var lastProgressAt = Date()
+    private var stallWatchdog: Task<Void, Never>?
 
     /// Persisted per model ID: has this model ever fully downloaded?
     /// Keying by ID means a RAM-tier change shows real progress again.
@@ -227,6 +234,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         if firstDownload {
             downloadProgress = 0
             isDownloading = true
+            startStallWatchdog()
         }
 
         let task = Task<Void, Error> {
@@ -243,6 +251,11 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                         // concurrent callbacks that can arrive out of order.
                         guard let self, frac > self.downloadProgress else { return }
                         self.downloadProgress = frac
+                        self.lastProgressAt = Date()
+                        if self.downloadStalled {
+                            self.downloadStalled = false
+                            self.log.info("Qwen download resumed at \(Int(frac * 100))%")
+                        }
                     }
                     if Int(frac * 100) % 10 == 0 {
                         self?.log.debug("Download progress: \(Int(frac * 100))%")
@@ -267,6 +280,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
                 self?.isLoaded = true
                 self?.downloadProgress = 1.0
                 self?.isDownloading = false
+                self?.downloadStalled = false
                 self?.hasCompletedDownload = true
                 self?.loadTask = nil
             }
@@ -285,6 +299,7 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
             log.error("Model load failed: \(error)")
             loadError = error.localizedDescription
             isDownloading = false
+            downloadStalled = false
             loadTask = nil
             throw error
         }
@@ -324,8 +339,29 @@ final class QwenLocalProvider: ObservableObject, LLMProvider {
         loadTask = nil
         downloadProgress = hasCompletedDownload ? 1.0 : 0
         isDownloading = false
+        downloadStalled = false
         loadError = nil
         // isLoaded intentionally not reset — if model was already loaded, keep it
+    }
+
+    /// Flags the download as stalled when no bytes arrive for 60s. HubApi has
+    /// no transfer timeout — a dead connection otherwise freezes the bar
+    /// forever with no signal to the user.
+    private func startStallWatchdog() {
+        lastProgressAt = Date()
+        downloadStalled = false
+        stallWatchdog?.cancel()
+        stallWatchdog = Task { @MainActor [weak self] in
+            while let self, self.isDownloading, !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 15_000_000_000)
+                guard self.isDownloading else { break }
+                let quiet = Date().timeIntervalSince(self.lastProgressAt)
+                if quiet > 60 && !self.downloadStalled {
+                    self.downloadStalled = true
+                    self.log.warning("Qwen download stalled — no progress for \(Int(quiet))s at \(Int(self.downloadProgress * 100))%")
+                }
+            }
+        }
     }
 
     func preload() {
