@@ -4,7 +4,7 @@ import OSLog
 
 private let log = Logger.make("AudioRec")
 
-/// Records microphone audio at 16 kHz mono Float32, splitting into 30-second chunk files.
+/// Records microphone audio at 16 kHz mono Float32, splitting into 10-second chunk files.
 @MainActor
 final class MobileAudioRecorder: ObservableObject {
     static let shared = MobileAudioRecorder()
@@ -12,7 +12,7 @@ final class MobileAudioRecorder: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var elapsedSeconds: Double = 0
 
-    /// Called on the main actor when a 30-second (or final) chunk file is ready.
+    /// Called on the main actor when a 10-second (or final) chunk file is ready.
     var onChunkReady: ((URL, Int, Double) -> Void)?
 
     // MARK: - Constants
@@ -103,6 +103,7 @@ final class MobileAudioRecorder: ObservableObject {
         isRecording = false
 
         // Flush remaining samples as a partial chunk
+        var finalChunk: (url: URL, index: Int, offset: Double)?
         bufferQueue.sync {
             if !accumulatedSamples.isEmpty {
                 let samples = accumulatedSamples
@@ -113,11 +114,17 @@ final class MobileAudioRecorder: ObservableObject {
                 totalSamplesWritten += samples.count
 
                 if let url = Self.writeChunkFile(samples: samples) {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onChunkReady?(url, idx, offset)
-                    }
+                    finalChunk = (url, idx, offset)
                 }
             }
+        }
+
+        // Deliver the final partial chunk synchronously (stop() already runs on the
+        // main actor) so it fires before callers clear `onChunkReady` after stop()
+        // returns. An async dispatch here would run after the caller nils the
+        // callback, silently dropping the last chunk of every recording.
+        if let finalChunk {
+            onChunkReady?(finalChunk.url, finalChunk.index, finalChunk.offset)
         }
 
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)

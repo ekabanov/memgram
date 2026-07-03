@@ -228,12 +228,18 @@ struct MobileRecordingView: View {
     }
 
     private func stopRecording() {
+        // stop() delivers the final partial chunk synchronously via onChunkReady,
+        // so the callback must only be cleared AFTER stop() returns. That way the
+        // final chunk's upload task is registered before finishRecording() awaits.
         recorder.stop()
         recorder.onChunkReady = nil
 
         Task {
             await uploader.finishRecording()
             pendingMacMeetingId = uploader.uploadedMeetingId
+            if uploader.failedChunks > 0 {
+                errorMessage = "\(uploader.failedChunks) audio chunk\(uploader.failedChunks == 1 ? "" : "s") failed to upload — the transcript may have gaps"
+            }
             log.info("Recording finished and uploaded")
         }
     }

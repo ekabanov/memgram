@@ -91,7 +91,8 @@ final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
         let title = calendarCtx?.eventTitle ?? "Untitled Meeting"
         let meetingId: String
         do {
-            meetingId = try AudioChunkUploader.shared.startMeeting(title: title, calendarContext: calendarCtx)
+            // Explicit-id API: must not clobber an in-progress phone recording's state.
+            meetingId = try AudioChunkUploader.shared.createMeeting(title: title, calendarContext: calendarCtx)
         } catch {
             log.error("Failed to create meeting for Watch recording: \(error)")
             return
@@ -121,7 +122,7 @@ final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
             let data = chunk.withUnsafeBufferPointer { Data(buffer: $0) }
             do {
                 try data.write(to: chunkURL)
-                AudioChunkUploader.shared.uploadChunk(fileURL: chunkURL, chunkIndex: chunkIndex, offsetSeconds: offsetSeconds)
+                AudioChunkUploader.shared.uploadChunk(meetingId: meetingId, fileURL: chunkURL, chunkIndex: chunkIndex, offsetSeconds: offsetSeconds)
                 log.info("Watch chunk \(chunkIndex) queued for upload")
             } catch {
                 log.error("Failed to write Watch chunk \(chunkIndex): \(error)")
@@ -132,7 +133,7 @@ final class PhoneSessionManager: NSObject, ObservableObject, WCSessionDelegate {
         }
 
         log.info("Watch recording chunked into \(chunkIndex) pieces — finishing upload")
-        await AudioChunkUploader.shared.finishRecording()
+        await AudioChunkUploader.shared.finishMeeting(meetingId)
     }
 
     // MARK: - Audio conversion
