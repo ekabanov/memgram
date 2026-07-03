@@ -16,36 +16,70 @@ final class SummaryEngine: ObservableObject {
     @Published private(set) var lastError: (meetingId: String, message: String)?
 
     private let systemPrompt = """
-        You are an expert meeting analyst. You produce accurate, comprehensive, \
-        and well-structured meeting summaries. You extract every substantive point \
-        discussed — nothing important is lost.
+        You write meeting notes that the participants will rely on weeks later. \
+        Your notes capture the substance of the conversation — facts, numbers, \
+        plans, decisions, commitments — accurately and completely.
 
-        CRITICAL RULES:
-        - ONLY include information explicitly present in the transcript.
-        - NEVER fabricate, infer, or assume details not stated.
-        - If a section has no relevant content, write "None identified" and move on.
-        - Attribute statements, decisions, and tasks to a speaker only when the \
-        attribution is certain from the transcript or its speaker labels. When \
-        unsure who said something, describe WHAT was said without naming WHO — \
-        a missing attribution is fine, a wrong one is not.
-        - Preserve the reasoning and context behind decisions, not just the outcomes.
-        - Correct obvious transcription errors in proper nouns based on context — do not \
-        annotate the corrections. When calendar event metadata is provided, use it to \
-        correct proper nouns.
+        RULES:
+        - Only include what is actually in the transcript. Never invent, \
+        embellish, or fill gaps with assumptions.
+        - Write the content, not the conversation. State facts and plans \
+        directly ("Fundraising round targeted for September/October") — never \
+        narrate speech acts ("X explained that they are targeting..."). \
+        Attribute a point to a person only where ownership matters: decisions, \
+        commitments, disagreements, and strong individual positions.
+        - When you do attribute: use a name only when the transcript makes the \
+        identity certain. A missing attribution is fine; a wrong one is not.
+        - Keep every concrete detail: numbers, dates, amounts, names, metrics, \
+        deadlines. Replacing a specific figure with a vague phrase is a failure.
+        - Transcripts contain speech-recognition errors. Silently correct words \
+        that are obviously garbled given the context; keep uncertain proper \
+        nouns exactly as transcribed. Use calendar metadata, when provided, to \
+        correct names and terms.
+        - Plain, direct language. Short sentences. No corporate filler.
+        """
+
+    /// Shared output format — used by both the single-pass path and the
+    /// long-meeting merge so their results are structurally identical.
+    private static let notesFormat = """
+        ## Overview
+        2-4 sentences: what this conversation was, who was involved (only if \
+        evident from the transcript), and the main outcome or theme.
+
+        ## [Topic name]
+        One section per major topic actually discussed, with a short concrete \
+        heading (never a generic label like "Discussion"). Under each heading, \
+        tight bullets carrying the substance: specifics, numbers, reasoning, \
+        alternatives that were considered. Fold minor asides into the nearest \
+        real topic; drop small talk entirely.
+
+        ## Decisions
+        Each decision actually made in the meeting, one bullet each, with the \
+        rationale in one clause. OMIT this section if no decisions were made.
+
+        ## Action items
+        - **Owner** — task (deadline if mentioned)
+        Owner is a name when certain; otherwise "You" for the recording user's \
+        commitments or "Them" for the other side's. OMIT if there are none.
+
+        ## Open questions
+        Unresolved items and explicitly deferred topics. OMIT if none.
+
+        Never add sections beyond these. Never pad — a short meeting gets \
+        short notes. Do not write "None identified"; omit the section instead.
         """
 
     /// Prompt note explaining the channel-derived speaker labels. Only included
     /// when the transcript actually carries them.
     private static let speakerLabelNote = """
-        Speaker labels: lines starting with "Me:" were spoken by the person who \
-        recorded this meeting (captured through their microphone). Lines starting \
-        with "Remote:" are everything that came through the call audio — this may \
-        be SEVERAL different people. The Me/Remote split is reliable; treat it as \
-        ground truth. Within "Remote", attribute a statement to a named person \
-        only when the transcript itself makes the identity clear (a \
-        self-introduction, or someone being addressed by name right before \
-        answering); otherwise write "a remote participant". Refer to "Me" as \
-        "you" or by name if they introduce themselves. Never guess identities.
+        Transcript speaker labels: "Me:" is the person who recorded this \
+        meeting; "Remote:" is everyone on the other end of the call — possibly \
+        several different people. This split is reliable ground truth. Use it \
+        to assign ownership correctly (action-item owners, sides of a \
+        disagreement): the recording user's commitments are "You", the other \
+        side's are "Them" or a name. Use a name only when the transcript itself \
+        reveals who is speaking (self-introduction, or being addressed by name \
+        right before answering). Never guess identities.
 
         """
 
@@ -295,37 +329,10 @@ final class SummaryEngine: ObservableObject {
             contextBlock += speakerNote
         }
         let user = """
-        \(contextBlock)Analyze the meeting transcript below and produce a structured summary in \
-        Markdown format. Follow these steps internally before writing:
+        \(contextBlock)Read the entire transcript below, then write Markdown meeting notes \
+        in exactly this format:
 
-        1. Identify all distinct topics/agenda items discussed.
-        2. For each topic, extract: key points, decisions, rationale, and any \
-        disagreements or alternatives considered.
-        3. Identify all action items with owners and deadlines.
-        4. Identify all open questions and unresolved issues.
-
-        Then produce the summary using EXACTLY this structure:
-
-        ## Key discussion topics
-        For each major topic discussed, provide a subsection:
-        ### [Topic name]
-        Summarize the discussion thoroughly — include specific arguments, data \
-        points, examples, and context mentioned. Do not compress away nuance.
-
-        ## Open questions and follow-ups
-        List unresolved questions, items explicitly deferred, topics needing \
-        further investigation, and any disagreements that were not resolved.
-
-        ## Action items
-        List each task as a bullet: what needs to be done, who owns it (only if \
-        the owner is clear from the transcript), and any deadline mentioned.
-
-        FORMATTING RULES:
-        - Use concise but complete language — do not sacrifice detail for brevity.
-        - If no action items or open questions exist, write \
-        "None identified" for that section rather than omitting it.
-        - Exclude small talk, greetings, and filler unless they directly affect \
-        a decision or action.
+        \(Self.notesFormat)
 
         Transcript:
 
@@ -345,18 +352,20 @@ final class SummaryEngine: ObservableObject {
             .map { "Segment \($0.offset + 1):\n\($0.element)" }
             .joined(separator: "\n\n")
         let user = """
-        The following are notes from consecutive segments of a long meeting, each formatted in Markdown:
+        The following are notes from consecutive segments of ONE long meeting:
 
         \(combined)
 
-        Merge these into comprehensive combined meeting notes in **Markdown format**. \
-        Integrate information across segments — do not repeat the same point multiple times. \
-        Cover all significant topics and details. Keep speaker attributions exactly as \
-        stated in the segment notes — never merge statements from different speakers \
-        into one attribution, and never invent names.
+        Merge them into a single set of meeting notes in exactly this format:
 
-        Use EXACTLY these sections: ## Key discussion topics (with ### subheadings \
-        per topic), ## Open questions and follow-ups, ## Action items.
+        \(Self.notesFormat)
+
+        Merging rules: combine duplicate topics into one section; keep every \
+        concrete detail (numbers, dates, names, commitments); keep ownership \
+        attributions exactly as stated in the segment notes — never merge \
+        different people's statements into one attribution, never invent names; \
+        a topic resolved in a later segment supersedes the open question from \
+        an earlier one.
         """
         var accumulated = ""
         for try await chunk in provider.stream(system: systemPrompt, user: user) {
